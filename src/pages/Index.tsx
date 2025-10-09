@@ -1,11 +1,28 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { DataSourcesPanel } from "@/components/DataSourcesPanel";
+import { ChatPanel } from "@/components/ChatPanel";
+import { ClinicalNotebookPanel } from "@/components/ClinicalNotebookPanel";
+import { Header } from "@/components/Header";
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="flex flex-col h-screen bg-gradient-subtle">
+      <Header />
+      
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Panel - Data Sources */}
+        <div className="w-80 border-r border-border bg-card flex-shrink-0 overflow-hidden">
+          <DataSourcesPanel />
+        </div>
+
+        {/* Center Panel - Chat Assistant */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <ChatPanel />
+        </div>
+
+        {/* Right Panel - Clinical Notebook */}
+        <div className="w-96 border-l border-border bg-card flex-shrink-0 overflow-hidden">
+          <ClinicalNotebookPanel />
+        </div>
       </div>
     </div>
   );
