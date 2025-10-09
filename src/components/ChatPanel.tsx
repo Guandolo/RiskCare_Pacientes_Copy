@@ -6,6 +6,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Message {
   role: "user" | "assistant";
@@ -271,9 +273,25 @@ export const ChatPanel = () => {
                       </div>
                     )}
                     <div className="flex-1">
-                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                        {msg.content}
-                      </p>
+                      <div className="prose prose-sm max-w-none dark:prose-invert prose-p:leading-relaxed prose-pre:bg-muted prose-pre:text-foreground">
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                            ul: ({node, ...props}) => <ul className="mb-2 ml-4 list-disc" {...props} />,
+                            ol: ({node, ...props}) => <ol className="mb-2 ml-4 list-decimal" {...props} />,
+                            li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                            strong: ({node, ...props}) => <strong className="font-semibold text-foreground" {...props} />,
+                            code: ({node, inline, ...props}: any) => 
+                              inline 
+                                ? <code className="bg-muted px-1 py-0.5 rounded text-sm" {...props} />
+                                : <code className="block bg-muted p-2 rounded text-sm overflow-x-auto" {...props} />,
+                            sup: ({node, ...props}) => <sup className="text-primary font-medium" {...props} />,
+                          }}
+                        >
+                          {msg.content}
+                        </ReactMarkdown>
+                      </div>
                     </div>
                   </div>
                 </Card>

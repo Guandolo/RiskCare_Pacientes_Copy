@@ -13,13 +13,17 @@ REGLAS ESTRICTAS:
 1. Explica términos médicos en lenguaje sencillo y claro
 2. Resume documentos, encuentra fechas o resultados específicos
 3. Conecta información entre diferentes archivos
-4. SIEMPRE cita de qué documento obtuviste la información
+4. CRÍTICO: SIEMPRE cita la fuente exacta de donde obtuviste cada información usando este formato:
+   - Al inicio de tu respuesta, menciona: "Según el documento '[NOMBRE_ARCHIVO]'..."
+   - Cuando menciones datos específicos, usa referencias numeradas como superíndice: "el resultado fue X¹" donde ¹ es la referencia
+   - Al final de la respuesta, lista las fuentes: "Fuentes: 1. nombre_documento.pdf"
 5. PROHIBIDO: Dar consejos médicos, ofrecer diagnósticos, recomendar tratamientos o cambios en medicación
 6. Solo interpreta lo que está explícitamente escrito
 7. Si no tienes la información en los documentos, dilo claramente
 8. Sé empático, claro y preciso
+9. Usa formato markdown para mejor legibilidad: **negritas** para términos importantes, listas con viñetas, etc.
 
-Tu rol es educativo e informativo, NO eres un profesional de la salud.`;
+Tu rol es educativo e informativo, NO eres un profesional de la salud. CADA respuesta DEBE incluir referencias claras a los documentos fuente.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -93,16 +97,20 @@ serve(async (req) => {
     }
 
     if (documents && documents.length > 0) {
-      contextInfo += `\nDOCUMENTOS CLÍNICOS DISPONIBLES:\n`;
+      contextInfo += `\nDOCUMENTOS CLÍNICOS DISPONIBLES (usa estos nombres exactos para citar):\n`;
       documents.forEach((doc: any, idx: number) => {
-        contextInfo += `\n[Documento ${idx + 1}: ${doc.file_name}]\n`;
+        contextInfo += `\n[Documento ${idx + 1}: "${doc.file_name}"]\n`;
+        contextInfo += `Fecha: ${doc.document_date || doc.created_at}\n`;
+        contextInfo += `Tipo: ${doc.document_type || "no especificado"}\n`;
         if (doc.extracted_text) {
-          contextInfo += `Contenido: ${doc.extracted_text.substring(0, 500)}...\n`;
+          contextInfo += `Contenido: ${doc.extracted_text.substring(0, 1500)}...\n`;
         }
         if (doc.structured_data) {
-          contextInfo += `Datos estructurados: ${JSON.stringify(doc.structured_data).substring(0, 500)}...\n`;
+          contextInfo += `Datos estructurados: ${JSON.stringify(doc.structured_data).substring(0, 800)}...\n`;
         }
       });
+    } else {
+      contextInfo += `\nNo hay documentos clínicos cargados aún.\n`;
     }
 
     // Guardar mensaje del usuario inmediatamente
