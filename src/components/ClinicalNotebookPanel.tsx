@@ -10,6 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClinicalMapViewer } from "./ClinicalMapViewer";
 import { DiagnosticAidsViewer } from "./DiagnosticAidsViewer";
+import { ParaclinicosViewer } from "./ParaclinicosViewer";
+import { MedicamentosViewer } from "./MedicamentosViewer";
 
 interface AnalysisModule {
   id: string;
@@ -82,14 +84,6 @@ export const ClinicalNotebookPanel = () => {
   };
 
   const handleGenerate = async (module: AnalysisModule) => {
-    if (module.type !== 'mapa_clinico' && module.type !== 'ayudas_diagnosticas') {
-      toast({
-        title: "En desarrollo",
-        description: `El módulo "${module.title}" estará disponible próximamente.`,
-      });
-      return;
-    }
-
     try {
       setGeneratingModule(module.id);
       setGeneratedData(null);
@@ -106,9 +100,14 @@ export const ClinicalNotebookPanel = () => {
 
       console.log(`Generating ${module.type}...`);
 
-      const functionName = module.type === 'mapa_clinico' 
-        ? 'generate-clinical-map' 
-        : 'generate-diagnostic-aids';
+      const functionMap = {
+        'mapa_clinico': 'generate-clinical-map',
+        'ayudas_diagnosticas': 'generate-diagnostic-aids',
+        'paraclinicos': 'generate-paraclinicos',
+        'medicamentos': 'generate-medicamentos'
+      };
+
+      const functionName = functionMap[module.type];
 
       const { data, error } = await supabase.functions.invoke(functionName, {
         headers: { Authorization: `Bearer ${session.access_token}` },
@@ -121,7 +120,16 @@ export const ClinicalNotebookPanel = () => {
 
       console.log(`${module.type} generated:`, data);
 
-      const content = module.type === 'mapa_clinico' ? data?.map : data?.diagnosticAids;
+      let content;
+      if (module.type === 'mapa_clinico') {
+        content = data?.map;
+      } else if (module.type === 'ayudas_diagnosticas') {
+        content = data?.diagnosticAids;
+      } else if (module.type === 'paraclinicos') {
+        content = data?.paraclinicos;
+      } else if (module.type === 'medicamentos') {
+        content = data?.medicamentos;
+      }
 
       if (content) {
         setGeneratedData({
@@ -281,6 +289,12 @@ export const ClinicalNotebookPanel = () => {
                   {generatedData.type === 'ayudas_diagnosticas' && (
                     <DiagnosticAidsViewer data={generatedData.content} />
                   )}
+                  {generatedData.type === 'paraclinicos' && (
+                    <ParaclinicosViewer data={generatedData.content} />
+                  )}
+                  {generatedData.type === 'medicamentos' && (
+                    <MedicamentosViewer data={generatedData.content} />
+                  )}
                 </div>
               </Card>
             )}
@@ -345,6 +359,12 @@ export const ClinicalNotebookPanel = () => {
               )}
               {generatedData?.type === 'ayudas_diagnosticas' && (
                 <DiagnosticAidsViewer data={generatedData.content} />
+              )}
+              {generatedData?.type === 'paraclinicos' && (
+                <ParaclinicosViewer data={generatedData.content} />
+              )}
+              {generatedData?.type === 'medicamentos' && (
+                <MedicamentosViewer data={generatedData.content} />
               )}
             </div>
           </DialogContent>
