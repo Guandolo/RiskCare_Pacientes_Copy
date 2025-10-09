@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          role: string
+          sources: Json | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          role: string
+          sources?: Json | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          role?: string
+          sources?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      clinical_documents: {
+        Row: {
+          created_at: string | null
+          document_date: string | null
+          document_type: string | null
+          extracted_text: string | null
+          file_name: string
+          file_type: string
+          file_url: string
+          id: string
+          structured_data: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          document_date?: string | null
+          document_type?: string | null
+          extracted_text?: string | null
+          file_name: string
+          file_type: string
+          file_url: string
+          id?: string
+          structured_data?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          document_date?: string | null
+          document_type?: string | null
+          extracted_text?: string | null
+          file_name?: string
+          file_type?: string
+          file_url?: string
+          id?: string
+          structured_data?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       patient_profiles: {
         Row: {
           age: number | null

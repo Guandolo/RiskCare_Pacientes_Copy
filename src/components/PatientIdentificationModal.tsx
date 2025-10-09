@@ -33,18 +33,14 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
   const [loading, setLoading] = useState(false);
 
   const fetchTopusData = async () => {
-    const formdata = new FormData();
-    formdata.append("token", "&Th89RjkeGkoWRoanjvedZQxcLJvxfP53=Ex");
-    formdata.append("doc_type", documentType);
-    formdata.append("identification", identification);
-
-    const response = await fetch("https://topus.com.co/ApiRest/request_ss", {
-      method: "POST",
-      body: formdata,
+    const { data, error } = await supabase.functions.invoke('fetch-topus-data', {
+      body: { documentType, identification }
     });
 
-    const result = await response.text();
-    return JSON.parse(result);
+    if (error) throw error;
+    if (!data.success) throw new Error(data.error || 'Error al consultar Topus');
+    
+    return data.data;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
