@@ -11,3 +11,9 @@ verify_jwt = true
 
 [functions.process-document]
 verify_jwt = true
+
+[functions.chat-stream]
+verify_jwt = true
+
+[functions.chat-suggestions]
+verify_jwt = true

@@ -18,16 +18,31 @@ export const ChatPanel = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const suggestedQuestions = [
-    "¿Qué significa hipertensión arterial esencial?",
-    "¿Cuáles fueron los resultados de mi último examen de sangre?",
-    "¿Cuándo fue mi última consulta de cardiología?",
-    "¿Qué medicamentos me han formulado recientemente?",
-  ];
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
   useEffect(() => {
     loadChatHistory();
+    loadSuggestions();
   }, []);
+
+  const loadSuggestions = async () => {
+    try {
+      setSuggestionsLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data, error } = await supabase.functions.invoke('chat-suggestions', {
+        body: {},
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+      });
+      if (!error && data?.suggestions) {
+        setSuggestions(data.suggestions as string[]);
+      }
+    } catch (e) {
+      console.error('Error cargando sugerencias:', e);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  };
 
   const loadChatHistory = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -55,20 +70,65 @@ export const ChatPanel = () => {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No hay sesión activa');
-      }
+      if (!session) throw new Error('No hay sesión activa');
 
-      const { data, error } = await supabase.functions.invoke('chat-assistant', {
-        body: { message: userMessage },
+      const CHAT_URL = `https://mixunsevvfenajctpdfq.functions.supabase.co/functions/v1/chat-stream`;
+      const resp = await fetch(CHAT_URL, {
+        method: 'POST',
         headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ message: userMessage }),
       });
 
-      if (error) throw error;
+      if (!resp.ok || !resp.body) {
+        if (resp.status === 401) throw new Error('No autenticado');
+        if (resp.status === 429) throw new Error('Límite de solicitudes alcanzado, intenta luego.');
+        if (resp.status === 402) throw new Error('Se requieren créditos para AI.');
+        throw new Error('No se pudo iniciar el stream');
+      }
 
-      setMessages(prev => [...prev, { role: "assistant", content: data.message }]);
+      // Stream SSE token a token
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let assistantSoFar = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let idx: number;
+        while ((idx = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line.startsWith(':') || line.trim() === '') continue;
+          if (!line.startsWith('data: ')) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const delta: string | undefined = parsed.choices?.[0]?.delta?.content;
+            if (delta) {
+              assistantSoFar += delta;
+              setMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last?.role === 'assistant') {
+                  return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
+                }
+                return [...prev, { role: 'assistant', content: assistantSoFar }];
+              });
+            }
+          } catch {
+            buffer = line + '\n' + buffer;
+            break;
+          }
+        }
+      }
     } catch (error) {
       console.error('Error al enviar mensaje:', error);
       toast({
@@ -129,17 +189,30 @@ export const ChatPanel = () => {
                   <span className="font-medium">Preguntas sugeridas:</span>
                 </div>
                 <div className="grid grid-cols-1 gap-2">
-                  {suggestedQuestions.map((question, idx) => (
-                    <Button
-                      key={idx}
-                      variant="outline"
-                      className="justify-start text-left h-auto py-3 px-4 hover:bg-primary/5 hover:border-primary/30 transition-all"
-                      onClick={() => setMessage(question)}
-                      disabled={isLoading}
-                    >
-                      <span className="text-sm">{question}</span>
-                    </Button>
-                  ))}
+                  {suggestionsLoading ? (
+                    Array.from({ length: 4 }).map((_, idx) => (
+                      <Button key={idx} variant="outline" disabled className="justify-start text-left h-auto py-3 px-4">
+                        <span className="text-sm text-muted-foreground">Cargando sugerencias...</span>
+                      </Button>
+                    ))
+                  ) : (
+                    (suggestions.length ? suggestions : [
+                      "¿Qué significa hipertensión arterial esencial?",
+                      "¿Cuáles fueron los resultados de mi último examen de sangre?",
+                      "¿Cuándo fue mi última consulta de cardiología?",
+                      "¿Qué medicamentos me han formulado recientemente?",
+                    ]).map((question, idx) => (
+                      <Button
+                        key={idx}
+                        variant="outline"
+                        className="justify-start text-left h-auto py-3 px-4 hover:bg-primary/5 hover:border-primary/30 transition-all"
+                        onClick={() => setMessage(question)}
+                        disabled={isLoading}
+                      >
+                        <span className="text-sm">{question}</span>
+                      </Button>
+                    ))
+                  )}
                 </div>
               </div>
             </>
