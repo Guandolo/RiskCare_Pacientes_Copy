@@ -14,9 +14,9 @@ serve(async (req) => {
   try {
     const { documentType, identification } = await req.json();
     
-    const TOPUS_TOKEN = Deno.env.get('TOPUS_API_TOKEN');
+    const TOPUS_TOKEN = Deno.env.get('API_TOPUS');
     if (!TOPUS_TOKEN) {
-      throw new Error('TOPUS_API_TOKEN no configurado');
+      throw new Error('API_TOPUS no configurado');
     }
 
     console.log('Consultando Topus API para:', documentType, identification);
