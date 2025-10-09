@@ -77,40 +77,95 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY no configurado');
     }
 
-    const prompt = `Analiza la siguiente información clínica del paciente y genera un mapa conceptual en formato JSON.
+    const prompt = `Analiza la siguiente información clínica del paciente y genera un mapa conceptual interactivo en formato JSON.
 
 INFORMACIÓN CLÍNICA:
 ${clinicalContext}
 
-INSTRUCCIONES:
-1. Identifica las CONDICIONES médicas principales del paciente
-2. Identifica los MEDICAMENTOS formulados
-3. Identifica los PARACLÍNICOS relevantes (laboratorios, exámenes)
-4. Identifica los ESPECIALISTAS tratantes
-5. Establece CONEXIONES lógicas entre estos elementos
+REGLAS CRÍTICAS PARA GENERAR EL MAPA:
 
-FORMATO DE SALIDA (JSON estricto):
+1. NODOS - Debes crear estos tipos de nodos:
+   - UN nodo "patient" central con el nombre del paciente
+   - Nodos "condition" para CADA condición/diagnóstico mencionado
+   - Nodos "medication" para CADA medicamento formulado
+   - Nodos "paraclinical" para resultados de laboratorio/exámenes relevantes
+   - Nodos "specialist" para especialidades médicas que tratan al paciente
+
+2. CONEXIONES OBLIGATORIAS:
+   - SIEMPRE conecta el paciente a sus condiciones principales
+   - SIEMPRE conecta cada medicamento a la condición específica que trata
+   - SIEMPRE conecta cada paraclínico a la condición que monitorea
+   - SIEMPRE conecta cada especialista a las condiciones que maneja
+   - NUNCA dejes nodos aislados sin conexiones
+
+3. EJEMPLO DE ESTRUCTURA CORRECTA:
+   patient → "Diabetes Mellitus Tipo 2"
+   "Diabetes Mellitus Tipo 2" → "Metformina 850mg" (label: "tratada con")
+   "Diabetes Mellitus Tipo 2" → "HbA1c: 7.2%" (label: "monitoreada por")
+   "Diabetes Mellitus Tipo 2" → "Endocrinología" (label: "manejada por")
+
+FORMATO DE SALIDA (JSON):
 {
   "nodes": [
     {
-      "id": "unique-id",
-      "type": "condition|medication|paraclinical|specialist|patient",
-      "label": "Nombre corto",
-      "description": "Descripción breve",
-      "data": {}
+      "id": "patient",
+      "type": "patient",
+      "label": "Nombre Paciente"
+    },
+    {
+      "id": "condition_diabetes",
+      "type": "condition",
+      "label": "Diabetes Mellitus Tipo 2"
+    },
+    {
+      "id": "med_metformina",
+      "type": "medication",
+      "label": "Metformina 850mg"
+    },
+    {
+      "id": "para_hba1c",
+      "type": "paraclinical",
+      "label": "HbA1c: 7.2%"
+    },
+    {
+      "id": "spec_endocrino",
+      "type": "specialist",
+      "label": "Endocrinología"
     }
   ],
   "edges": [
     {
-      "id": "edge-id",
-      "source": "source-node-id",
-      "target": "target-node-id",
-      "label": "tipo de relación"
+      "id": "e1",
+      "source": "patient",
+      "target": "condition_diabetes",
+      "label": "padece"
+    },
+    {
+      "id": "e2",
+      "source": "condition_diabetes",
+      "target": "med_metformina",
+      "label": "tratada con"
+    },
+    {
+      "id": "e3",
+      "source": "condition_diabetes",
+      "target": "para_hba1c",
+      "label": "monitoreada por"
+    },
+    {
+      "id": "e4",
+      "source": "condition_diabetes",
+      "target": "spec_endocrino",
+      "label": "manejada por"
     }
   ]
 }
 
-IMPORTANTE: Responde ÚNICAMENTE con el JSON, sin texto adicional. El nodo principal debe ser tipo "patient".`;
+IMPORTANTE:
+- Usa IDs descriptivos (condition_X, med_X, para_X, spec_X)
+- Labels de edges deben ser verbos claros
+- Responde ÚNICAMENTE con el JSON, sin markdown ni texto adicional
+- TODAS las conexiones deben tener sentido clínico`;
 
     console.log('Calling Lovable AI...');
 
