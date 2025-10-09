@@ -5,3 +5,9 @@ verify_jwt = true
 
 [functions.chat-assistant]
 verify_jwt = true
+
+[functions.fetch-hismart-data]
+verify_jwt = true
+
+[functions.process-document]
+verify_jwt = true
