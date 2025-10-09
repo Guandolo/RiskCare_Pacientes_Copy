@@ -35,7 +35,10 @@ export const DataSourcesPanel = () => {
   const [hismartData, setHismartData] = useState<any>(null);
   const [editingPhone, setEditingPhone] = useState(false);
   const [phoneValue, setPhoneValue] = useState("");
-  const [patientInfoOpen, setPatientInfoOpen] = useState(true);
+  const [patientInfoOpen, setPatientInfoOpen] = useState(false);
+  const [hismartLastFetch, setHismartLastFetch] = useState<string | null>(null);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [selectedDocPreview, setSelectedDocPreview] = useState<ClinicalDocument | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -127,6 +130,13 @@ export const DataSourcesPanel = () => {
       console.log('Datos de HiSmart:', data);
       if (data.success && data.data?.result?.data) {
         setHismartData(data.data.result.data);
+        setHismartLastFetch(new Date().toLocaleString('es-CO', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }));
         toast.success('Datos clínicos consultados exitosamente');
       } else {
         toast.error('No se encontraron datos clínicos');
@@ -428,31 +438,38 @@ export const DataSourcesPanel = () => {
           </Collapsible>
 
           {/* Botón consultar HiSmart */}
-          <Button 
-            className="w-full gap-2 bg-secondary hover:bg-secondary/80 transition-all" 
-            size="lg"
-            onClick={handleFetchHismart}
-            disabled={loadingHismart || !profile}
-          >
-            {loadingHismart ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                Consultando...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="w-4 h-4" />
-                Consultar Datos Clínicos en HC
-              </>
+          <div className="space-y-2">
+            <Button 
+              className="w-full gap-2 bg-secondary hover:bg-secondary/80 transition-all" 
+              size="lg"
+              onClick={handleFetchHismart}
+              disabled={loadingHismart || !profile}
+            >
+              {loadingHismart ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Consultando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4" />
+                  {hismartLastFetch ? 'Actualizar Datos Clínicos' : 'Consultar Datos Clínicos en HC'}
+                </>
+              )}
+            </Button>
+            {hismartLastFetch && (
+              <p className="text-xs text-muted-foreground text-center">
+                Última consulta: {hismartLastFetch}
+              </p>
             )}
-          </Button>
+          </div>
 
           {/* Datos de HiSmart */}
           {hismartData && (
             <div className="space-y-2">
               {/* Registros Clínicos */}
               {hismartData.clinical_records && hismartData.clinical_records.length > 0 && (
-                <Collapsible defaultOpen={true}>
+                <Collapsible defaultOpen={false}>
                   <Card>
                     <CollapsibleTrigger className="w-full p-3 flex justify-between items-center hover:bg-accent/5">
                       <h4 className="text-sm font-semibold text-foreground">Registros Clínicos ({hismartData.clinical_records.length})</h4>
@@ -579,58 +596,108 @@ export const DataSourcesPanel = () => {
           </div>
 
           {/* Documents List - Colapsable */}
-          <Collapsible defaultOpen={false}>
+          <Collapsible open={documentsOpen} onOpenChange={setDocumentsOpen}>
             <Card>
               <CollapsibleTrigger className="w-full p-3 flex justify-between items-center hover:bg-accent/5">
                 <h3 className="text-sm font-semibold text-foreground">
                   Historial Consolidado ({documents.length})
                 </h3>
-                <ChevronDown className="w-4 h-4" />
+                {documentsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </CollapsibleTrigger>
               
               <CollapsibleContent>
-                <ScrollArea className="max-h-[300px]">
-                  <div className="px-3 pb-3 space-y-2 pr-2">
-                    {documents.length > 0 ? (
-                      documents.map((doc) => (
-                        <Card key={doc.id} className="p-2.5 bg-accent/5">
-                          <div className="flex items-start gap-2">
-                            <div className="w-7 h-7 rounded bg-secondary/10 flex items-center justify-center flex-shrink-0">
-                              <FileText className="w-3.5 h-3.5 text-secondary" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium truncate">{doc.file_name}</p>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="text-xs text-muted-foreground truncate">{doc.document_type || 'Documento'}</span>
-                                <span className="text-xs text-muted-foreground">•</span>
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                    {formatDate(doc.document_date || doc.created_at)}
-                                  </span>
+                <div className="p-3 space-y-2">
+                  {documents.length > 0 ? (
+                    <ScrollArea className="h-[250px] pr-3">
+                      <div className="space-y-2">
+                        {documents.map((doc) => (
+                          <Card 
+                            key={doc.id} 
+                            className={`p-2.5 cursor-pointer transition-all hover:bg-accent/10 ${
+                              selectedDocPreview?.id === doc.id ? 'bg-accent/10 border-primary/50' : 'bg-accent/5'
+                            }`}
+                            onClick={() => setSelectedDocPreview(doc)}
+                          >
+                            <div className="flex items-start gap-2">
+                              <div className="w-8 h-8 rounded bg-secondary/10 flex items-center justify-center flex-shrink-0">
+                                <FileText className="w-4 h-4 text-secondary" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium truncate">{doc.file_name}</p>
+                                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                  <span className="text-[10px] text-muted-foreground truncate">{doc.document_type || 'Documento'}</span>
+                                  <span className="text-[10px] text-muted-foreground">•</span>
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                      {formatDate(doc.document_date || doc.created_at)}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteDocument(doc.id, doc.file_name);
+                                }}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
                             </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-                              onClick={() => handleDeleteDocument(doc.id, doc.file_name)}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        </Card>
-                      ))
-                    ) : (
-                      <div className="p-4 text-center">
-                        <p className="text-xs text-muted-foreground">
-                          No hay documentos cargados aún
-                        </p>
+                          </Card>
+                        ))}
                       </div>
-                    )}
-                  </div>
-                </ScrollArea>
+                    </ScrollArea>
+                  ) : (
+                    <div className="p-4 text-center">
+                      <p className="text-xs text-muted-foreground">
+                        No hay documentos cargados aún
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Document Preview */}
+                  {selectedDocPreview && (
+                    <Card className="p-3 bg-primary/5 border-primary/20">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-start">
+                          <h4 className="text-xs font-semibold text-foreground">Vista Previa</h4>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-5 w-5 p-0"
+                            onClick={() => setSelectedDocPreview(null)}
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                        <div className="text-[10px] space-y-1.5">
+                          <div>
+                            <span className="text-muted-foreground">Archivo:</span>
+                            <p className="font-medium text-foreground break-words">{selectedDocPreview.file_name}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Tipo:</span>
+                            <p className="font-medium text-foreground">{selectedDocPreview.document_type || 'No especificado'}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Fecha del documento:</span>
+                            <p className="font-medium text-foreground">
+                              {formatDate(selectedDocPreview.document_date) || 'No especificada'}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Cargado:</span>
+                            <p className="font-medium text-foreground">{formatDate(selectedDocPreview.created_at)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+                </div>
               </CollapsibleContent>
             </Card>
           </Collapsible>
