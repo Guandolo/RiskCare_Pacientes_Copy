@@ -1,9 +1,87 @@
-import { Upload, FileText, Calendar, Heart } from "lucide-react";
+import { Upload, FileText, Calendar, Heart, Edit2, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+interface PatientProfile {
+  full_name: string | null;
+  identification: string;
+  document_type: string;
+  age: number | null;
+  eps: string | null;
+  phone: string | null;
+  topus_data: any;
+}
 
 export const DataSourcesPanel = () => {
+  const [profile, setProfile] = useState<PatientProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [editingPhone, setEditingPhone] = useState(false);
+  const [phoneValue, setPhoneValue] = useState("");
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('patient_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) throw error;
+      
+      setProfile(data);
+      setPhoneValue(data.phone || "");
+    } catch (error) {
+      console.error('Error cargando perfil:', error);
+      toast.error('Error cargando información del paciente');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePhoneUpdate = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('patient_profiles')
+        .update({ phone: phoneValue })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast.success('Teléfono actualizado');
+      setEditingPhone(false);
+      loadProfile();
+    } catch (error) {
+      console.error('Error actualizando teléfono:', error);
+      toast.error('Error actualizando teléfono');
+    }
+  };
+
+  // Extraer datos relevantes de topus_data
+  const getTopusValue = (path: string) => {
+    if (!profile?.topus_data) return null;
+    const keys = path.split('.');
+    let value = profile.topus_data;
+    for (const key of keys) {
+      value = value?.[key];
+    }
+    return value;
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-border">
@@ -25,24 +103,63 @@ export const DataSourcesPanel = () => {
               </div>
             </div>
             
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Nombre:</span>
-                <span className="font-medium">Cargando...</span>
+            {loading ? (
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Cargando...</span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Cédula:</span>
-                <span className="font-medium">-</span>
+            ) : profile ? (
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Nombre:</span>
+                  <span className="font-medium">{profile.full_name || getTopusValue('primer_nombre') + ' ' + getTopusValue('primer_apellido')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Cédula:</span>
+                  <span className="font-medium">{profile.identification}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Edad:</span>
+                  <span className="font-medium">{profile.age || getTopusValue('edad') || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">EPS:</span>
+                  <span className="font-medium">{profile.eps || getTopusValue('administradora') || '-'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Teléfono:</span>
+                  {editingPhone ? (
+                    <div className="flex gap-1">
+                      <Input
+                        value={phoneValue}
+                        onChange={(e) => setPhoneValue(e.target.value)}
+                        className="h-6 text-xs w-24"
+                        placeholder="Celular"
+                      />
+                      <Button size="sm" className="h-6 px-2" onClick={handlePhoneUpdate}>
+                        ✓
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setEditingPhone(false)}>
+                        ✕
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 items-center">
+                      <span className="font-medium">{profile.phone || '-'}</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-5 w-5 p-0"
+                        onClick={() => setEditingPhone(true)}
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Edad:</span>
-                <span className="font-medium">-</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">EPS:</span>
-                <span className="font-medium">-</span>
-              </div>
-            </div>
+            ) : null}
           </Card>
 
           {/* Upload Section */}
