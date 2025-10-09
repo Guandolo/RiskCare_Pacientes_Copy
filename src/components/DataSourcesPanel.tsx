@@ -589,46 +589,48 @@ export const DataSourcesPanel = () => {
               </CollapsibleTrigger>
               
               <CollapsibleContent>
-                <div className="px-3 pb-3 space-y-2">
-                  {documents.length > 0 ? (
-                    documents.map((doc) => (
-                      <Card key={doc.id} className="p-3 bg-accent/5">
-                        <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded bg-secondary/10 flex items-center justify-center flex-shrink-0">
-                            <FileText className="w-4 h-4 text-secondary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium truncate">{doc.file_name}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs text-muted-foreground">{doc.document_type || 'Documento'}</span>
-                              <span className="text-xs text-muted-foreground">•</span>
-                              <div className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground">
-                                  {formatDate(doc.document_date || doc.created_at)}
-                                </span>
+                <ScrollArea className="max-h-[300px]">
+                  <div className="px-3 pb-3 space-y-2 pr-2">
+                    {documents.length > 0 ? (
+                      documents.map((doc) => (
+                        <Card key={doc.id} className="p-2.5 bg-accent/5">
+                          <div className="flex items-start gap-2">
+                            <div className="w-7 h-7 rounded bg-secondary/10 flex items-center justify-center flex-shrink-0">
+                              <FileText className="w-3.5 h-3.5 text-secondary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate">{doc.file_name}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-xs text-muted-foreground truncate">{doc.document_type || 'Documento'}</span>
+                                <span className="text-xs text-muted-foreground">•</span>
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                    {formatDate(doc.document_date || doc.created_at)}
+                                  </span>
+                                </div>
                               </div>
                             </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
+                              onClick={() => handleDeleteDocument(doc.id, doc.file_name)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDeleteDocument(doc.id, doc.file_name)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </Card>
-                    ))
-                  ) : (
-                    <div className="p-4 text-center">
-                      <p className="text-xs text-muted-foreground">
-                        No hay documentos cargados aún
-                      </p>
-                    </div>
-                  )}
-                </div>
+                        </Card>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center">
+                        <p className="text-xs text-muted-foreground">
+                          No hay documentos cargados aún
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
               </CollapsibleContent>
             </Card>
           </Collapsible>

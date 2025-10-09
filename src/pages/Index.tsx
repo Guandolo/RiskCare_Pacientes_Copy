@@ -70,17 +70,17 @@ const Index = () => {
         
         <div className="flex-1 flex overflow-hidden">
           {/* Left Panel - Data Sources */}
-          <div className="w-80 border-r border-border bg-card flex-shrink-0 overflow-hidden">
+          <div className="w-[380px] border-r border-border bg-card flex-shrink-0 overflow-hidden">
             <DataSourcesPanel />
           </div>
 
           {/* Center Panel - Chat Assistant */}
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
             <ChatPanel />
           </div>
 
           {/* Right Panel - Clinical Notebook */}
-          <div className="w-96 border-l border-border bg-card flex-shrink-0 overflow-hidden">
+          <div className="w-[420px] border-l border-border bg-card flex-shrink-0 overflow-hidden">
             <ClinicalNotebookPanel />
           </div>
         </div>
