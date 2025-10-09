@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check } from "lucide-react";
+import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check, Mic, MicOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -37,11 +37,15 @@ export const ChatPanel = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const editInputRef = useRef<HTMLInputElement>(null);
+  
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     loadOrCreateConversation();
     loadConversations();
     loadSuggestions();
+    initializeSpeechRecognition();
   }, []);
 
   // Reaccionar a cambios de autenticación
@@ -227,6 +231,84 @@ export const ChatPanel = () => {
       }
     } catch (error) {
       console.error('Error saving title:', error);
+    }
+  };
+
+  const initializeSpeechRecognition = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      console.log('Speech recognition not supported');
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'es-CO';
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      console.log('Voice recognition started');
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      console.log('Transcript:', transcript);
+      setMessage(transcript);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+      
+      if (event.error === 'not-allowed') {
+        toast({
+          title: "Permiso denegado",
+          description: "Por favor permite el acceso al micrófono para usar esta función.",
+          variant: "destructive"
+        });
+      } else if (event.error === 'no-speech') {
+        toast({
+          title: "No se detectó voz",
+          description: "No se escuchó ninguna voz. Intenta de nuevo.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    recognition.onend = () => {
+      console.log('Voice recognition ended');
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+  };
+
+  const toggleVoiceRecognition = () => {
+    if (!recognitionRef.current) {
+      toast({
+        title: "No disponible",
+        description: "El reconocimiento de voz no está disponible en este navegador. Usa Chrome o Edge.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      try {
+        recognitionRef.current.start();
+      } catch (error) {
+        console.error('Error starting recognition:', error);
+        toast({
+          title: "Error",
+          description: "No se pudo iniciar el reconocimiento de voz.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -579,6 +661,15 @@ export const ChatPanel = () => {
               className="flex-1"
               disabled={isLoading}
             />
+            <Button
+              size="icon"
+              variant={isListening ? "default" : "outline"}
+              onClick={toggleVoiceRecognition}
+              disabled={isLoading}
+              className={isListening ? "bg-destructive hover:bg-destructive/90 animate-pulse" : ""}
+            >
+              {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </Button>
             <Button 
               size="icon" 
               className="bg-primary hover:bg-primary-dark transition-all"
