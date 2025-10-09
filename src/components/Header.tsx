@@ -1,19 +1,12 @@
-import { Activity, LogOut, User } from "lucide-react";
+import { LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import riskCareLogo from "@/assets/riskcare-logo.png";
 
 export const Header = () => {
   return (
     <header className="h-16 border-b border-border bg-card shadow-sm flex items-center justify-between px-6">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
-          <Activity className="w-6 h-6 text-primary-foreground" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            RiskCare Pacientes
-          </h1>
-          <p className="text-xs text-muted-foreground">Asistente Clínico Inteligente</p>
-        </div>
+        <img src={riskCareLogo} alt="RiskCare" className="h-10" />
       </div>
 
       <div className="flex items-center gap-4">
