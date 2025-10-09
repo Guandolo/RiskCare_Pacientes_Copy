@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClinicalMapViewer } from "./ClinicalMapViewer";
+import { DiagnosticAidsViewer } from "./DiagnosticAidsViewer";
 
 interface AnalysisModule {
   id: string;
@@ -57,7 +58,7 @@ export const ClinicalNotebookPanel = () => {
   const { toast } = useToast();
 
   const handleGenerate = async (module: AnalysisModule) => {
-    if (module.type !== 'mapa_clinico') {
+    if (module.type !== 'mapa_clinico' && module.type !== 'ayudas_diagnosticas') {
       toast({
         title: "En desarrollo",
         description: `El módulo "${module.title}" estará disponible próximamente.`,
@@ -79,24 +80,30 @@ export const ClinicalNotebookPanel = () => {
         return;
       }
 
-      console.log('Generating clinical map...');
+      console.log(`Generating ${module.type}...`);
 
-      const { data, error } = await supabase.functions.invoke('generate-clinical-map', {
+      const functionName = module.type === 'mapa_clinico' 
+        ? 'generate-clinical-map' 
+        : 'generate-diagnostic-aids';
+
+      const { data, error } = await supabase.functions.invoke(functionName, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
       if (error) {
-        console.error('Error generating map:', error);
+        console.error(`Error generating ${module.type}:`, error);
         throw error;
       }
 
-      console.log('Map generated:', data);
+      console.log(`${module.type} generated:`, data);
 
-      if (data?.map) {
+      const content = module.type === 'mapa_clinico' ? data?.map : data?.diagnosticAids;
+
+      if (content) {
         setGeneratedData({
           type: module.type,
           title: module.title,
-          content: data.map,
+          content: content,
         });
         setNoteTitle(`${module.title} - ${new Date().toLocaleDateString('es-CO')}`);
       }
@@ -241,6 +248,9 @@ export const ClinicalNotebookPanel = () => {
                 {generatedData.type === 'mapa_clinico' && (
                   <ClinicalMapViewer mapData={generatedData.content} />
                 )}
+                {generatedData.type === 'ayudas_diagnosticas' && (
+                  <DiagnosticAidsViewer data={generatedData.content} />
+                )}
               </div>
             </Card>
           )}
@@ -256,6 +266,9 @@ export const ClinicalNotebookPanel = () => {
           <div className="flex-1 h-full">
             {generatedData?.type === 'mapa_clinico' && (
               <ClinicalMapViewer mapData={generatedData.content} />
+            )}
+            {generatedData?.type === 'ayudas_diagnosticas' && (
+              <DiagnosticAidsViewer data={generatedData.content} />
             )}
           </div>
         </DialogContent>
