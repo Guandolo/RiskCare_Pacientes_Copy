@@ -18,42 +18,30 @@ serve(async (req) => {
       throw new Error('API_HISMART no configurado');
     }
 
-    console.log('Consultando HiSmart API para:', documentType, identification);
+    console.log('Consultando HiSmart API para:', identification);
 
-    // TODO: Aquí va la implementación real de la API de HiSmart
-    // Por ahora retorno datos de ejemplo
-    const mockData = {
-      consultas: [
-        {
-          fecha: "2024-03-15",
-          especialidad: "Cardiología",
-          diagnostico: "Control rutinario",
-          medico: "Dr. Juan Pérez"
-        }
-      ],
-      laboratorios: [
-        {
-          fecha: "2024-03-15",
-          tipo: "Hemograma completo",
-          resultados: {
-            hemoglobina: "14.5 g/dL",
-            leucocitos: "7500 /mm3"
-          }
-        }
-      ],
-      imagenes: [
-        {
-          fecha: "2024-02-28",
-          tipo: "Radiografía de tórax",
-          hallazgos: "Sin alteraciones significativas"
-        }
-      ]
-    };
+    // Llamar a la API real de HiSmart
+    const formData = JSON.stringify({ id_patient: parseInt(identification) });
 
+    const hismartResponse = await fetch('https://hismart.com.co/toolbar/public/Insertdb_hismart/get_patient', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic amVpc29ucGVyZXpAaGlzbWFydC5jb20uY286NjQzMSpyb21wZQ=='
+      },
+      body: formData
+    });
+
+    if (!hismartResponse.ok) {
+      throw new Error(`HiSmart API error: ${hismartResponse.status}`);
+    }
+
+    const hismartData = await hismartResponse.json();
+    
     console.log('Datos de HiSmart obtenidos exitosamente');
 
     return new Response(
-      JSON.stringify({ success: true, data: mockData }),
+      JSON.stringify({ success: true, data: hismartData }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 

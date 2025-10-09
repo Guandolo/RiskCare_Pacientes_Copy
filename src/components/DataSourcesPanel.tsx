@@ -39,9 +39,13 @@ export const DataSourcesPanel = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    loadProfile();
-    loadDocuments();
+    loadProfileAndData();
   }, []);
+
+  const loadProfileAndData = async () => {
+    await loadProfile();
+    await loadDocuments();
+  };
 
   const loadProfile = async () => {
     try {
@@ -121,8 +125,12 @@ export const DataSourcesPanel = () => {
       if (error) throw error;
 
       console.log('Datos de HiSmart:', data);
-      setHismartData(data.data);
-      toast.success('Datos clínicos consultados exitosamente');
+      if (data.success && data.data?.result?.data) {
+        setHismartData(data.data.result.data);
+        toast.success('Datos clínicos consultados exitosamente');
+      } else {
+        toast.error('No se encontraron datos clínicos');
+      }
     } catch (error) {
       console.error('Error consultando HiSmart:', error);
       toast.error('Error consultando datos clínicos');
@@ -441,96 +449,100 @@ export const DataSourcesPanel = () => {
 
           {/* Datos de HiSmart */}
           {hismartData && (
-            <Card className="p-4 bg-accent/5 border-accent/20">
-              <h3 className="text-sm font-semibold mb-3 text-foreground">Datos Clínicos (HC)</h3>
-              <div className="space-y-4">
-                {/* Consultas */}
-                {hismartData.consultas && hismartData.consultas.length > 0 && (
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Consultas</h4>
-                    {hismartData.consultas.map((consulta: any, idx: number) => (
-                      <Card key={idx} className="p-3 mb-2 bg-background/50">
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div>
-                            <span className="text-muted-foreground">Fecha:</span>{' '}
-                            <span className="font-medium">{consulta.fecha}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Especialidad:</span>{' '}
-                            <span className="font-medium">{consulta.especialidad}</span>
-                          </div>
-                          <div className="col-span-2">
-                            <span className="text-muted-foreground">Diagnóstico:</span>{' '}
-                            <span className="font-medium">{consulta.diagnostico}</span>
-                          </div>
-                          <div className="col-span-2">
-                            <span className="text-muted-foreground">Médico:</span>{' '}
-                            <span className="font-medium">{consulta.medico}</span>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-
-                {/* Laboratorios */}
-                {hismartData.laboratorios && hismartData.laboratorios.length > 0 && (
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Laboratorios</h4>
-                    {hismartData.laboratorios.map((lab: any, idx: number) => (
-                      <Card key={idx} className="p-3 mb-2 bg-background/50">
-                        <div className="space-y-2 text-xs">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Fecha:</span>
-                            <span className="font-medium">{lab.fecha}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Tipo:</span>
-                            <span className="font-medium">{lab.tipo}</span>
-                          </div>
-                          {lab.resultados && (
-                            <div className="pt-2 border-t border-border/50">
-                              <div className="text-muted-foreground mb-1">Resultados:</div>
-                              {Object.entries(lab.resultados).map(([key, value]) => (
-                                <div key={key} className="flex justify-between pl-2">
-                                  <span className="text-muted-foreground capitalize">{key}:</span>
-                                  <span className="font-medium">{value as string}</span>
+            <div className="space-y-2">
+              {/* Registros Clínicos */}
+              {hismartData.clinical_records && hismartData.clinical_records.length > 0 && (
+                <Collapsible defaultOpen={true}>
+                  <Card>
+                    <CollapsibleTrigger className="w-full p-3 flex justify-between items-center hover:bg-accent/5">
+                      <h4 className="text-sm font-semibold text-foreground">Registros Clínicos ({hismartData.clinical_records.length})</h4>
+                      <ChevronDown className="w-4 h-4" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="px-3 pb-3 space-y-2">
+                        {hismartData.clinical_records.map((record: any, idx: number) => (
+                          <Card key={idx} className="p-3 bg-accent/5">
+                            <div className="text-xs space-y-2">
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Fecha:</span>
+                                <span className="font-medium">{record.registration_date || record.date_of_attention}</span>
+                              </div>
+                              {record.diagnoses && (
+                                <div>
+                                  <span className="text-muted-foreground">Diagnóstico:</span>
+                                  <p className="font-medium mt-1">{record.diagnoses}</p>
                                 </div>
-                              ))}
+                              )}
+                              {record.id_company && (
+                                <div>
+                                  <span className="text-muted-foreground">ID Compañía:</span> {record.id_company}
+                                </div>
+                              )}
+                              {record.details && record.details.length > 0 && (
+                                <Collapsible>
+                                  <CollapsibleTrigger className="text-primary text-xs hover:underline">
+                                    Ver detalles ({record.details.length})
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-2 p-2 bg-background rounded">
+                                    <pre className="text-[10px] overflow-x-auto whitespace-pre-wrap">
+                                      {JSON.stringify(record.details[0], null, 2)}
+                                    </pre>
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                          </Card>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              )}
 
-                {/* Imágenes */}
-                {hismartData.imagenes && hismartData.imagenes.length > 0 && (
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Imágenes Diagnósticas</h4>
-                    {hismartData.imagenes.map((img: any, idx: number) => (
-                      <Card key={idx} className="p-3 mb-2 bg-background/50">
-                        <div className="space-y-2 text-xs">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Fecha:</span>
-                            <span className="font-medium">{img.fecha}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Tipo:</span>
-                            <span className="font-medium">{img.tipo}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Hallazgos:</span>{' '}
-                            <span className="font-medium">{img.hallazgos}</span>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </Card>
+              {/* Registros de Prescripciones */}
+              {hismartData.prescription_records && hismartData.prescription_records.length > 0 && (
+                <Collapsible defaultOpen={false}>
+                  <Card>
+                    <CollapsibleTrigger className="w-full p-3 flex justify-between items-center hover:bg-accent/5">
+                      <h4 className="text-sm font-semibold text-foreground">Prescripciones ({hismartData.prescription_records.length})</h4>
+                      <ChevronDown className="w-4 h-4" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="px-3 pb-3 space-y-2">
+                        {hismartData.prescription_records.map((record: any, idx: number) => (
+                          <Card key={idx} className="p-3 bg-accent/5">
+                            <div className="text-xs space-y-2">
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Fecha:</span>
+                                <span className="font-medium">{record.registration_date}</span>
+                              </div>
+                              {record.diagnoses && (
+                                <div>
+                                  <span className="text-muted-foreground">Diagnóstico:</span>
+                                  <p className="font-medium mt-1">{record.diagnoses}</p>
+                                </div>
+                              )}
+                              {record.details && record.details.length > 0 && (
+                                <Collapsible>
+                                  <CollapsibleTrigger className="text-primary text-xs hover:underline">
+                                    Ver detalles médicos
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-2 p-2 bg-background rounded">
+                                    <pre className="text-[10px] overflow-x-auto whitespace-pre-wrap">
+                                      {JSON.stringify(record.details[0], null, 2)}
+                                    </pre>
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              )}
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              )}
+            </div>
           )}
 
           {/* Upload Section */}
@@ -566,51 +578,60 @@ export const DataSourcesPanel = () => {
             </p>
           </div>
 
-          {/* Documents List */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Historial Consolidado
-            </h3>
-            
-            {documents.length > 0 ? (
-              documents.map((doc) => (
-                <Card key={doc.id} className="p-3 hover:shadow-md transition-shadow">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded bg-secondary/10 flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-4 h-4 text-secondary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate">{doc.file_name}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-muted-foreground">{doc.document_type || 'Documento'}</span>
-                        <span className="text-xs text-muted-foreground">•</span>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(doc.document_date || doc.created_at)}
-                          </span>
+          {/* Documents List - Colapsable */}
+          <Collapsible defaultOpen={false}>
+            <Card>
+              <CollapsibleTrigger className="w-full p-3 flex justify-between items-center hover:bg-accent/5">
+                <h3 className="text-sm font-semibold text-foreground">
+                  Historial Consolidado ({documents.length})
+                </h3>
+                <ChevronDown className="w-4 h-4" />
+              </CollapsibleTrigger>
+              
+              <CollapsibleContent>
+                <div className="px-3 pb-3 space-y-2">
+                  {documents.length > 0 ? (
+                    documents.map((doc) => (
+                      <Card key={doc.id} className="p-3 bg-accent/5">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded bg-secondary/10 flex items-center justify-center flex-shrink-0">
+                            <FileText className="w-4 h-4 text-secondary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate">{doc.file_name}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-muted-foreground">{doc.document_type || 'Documento'}</span>
+                              <span className="text-xs text-muted-foreground">•</span>
+                              <div className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">
+                                  {formatDate(doc.document_date || doc.created_at)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteDocument(doc.id, doc.file_name)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                      </div>
+                      </Card>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center">
+                      <p className="text-xs text-muted-foreground">
+                        No hay documentos cargados aún
+                      </p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDeleteDocument(doc.id, doc.file_name)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </Card>
-              ))
-            ) : (
-              <Card className="p-4 text-center">
-                <p className="text-xs text-muted-foreground">
-                  No hay documentos cargados aún
-                </p>
-              </Card>
-            )}
-          </div>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
         </div>
       </ScrollArea>
     </div>

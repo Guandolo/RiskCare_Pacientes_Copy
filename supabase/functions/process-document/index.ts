@@ -25,7 +25,16 @@ serve(async (req) => {
     const fileResponse = await fetch(fileUrl);
     const fileBlob = await fileResponse.blob();
     const arrayBuffer = await fileBlob.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    
+    // Convertir a base64 de forma segura para archivos grandes
+    const uint8Array = new Uint8Array(arrayBuffer);
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.slice(i, i + chunkSize);
+      binary += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    const base64 = btoa(binary);
 
     // Determinar el mimeType
     const mimeType = fileType === 'application/pdf' ? 'application/pdf' : 
