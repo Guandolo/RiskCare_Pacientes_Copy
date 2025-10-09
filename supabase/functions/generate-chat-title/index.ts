@@ -51,7 +51,7 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY no configurado');
     }
 
-    const aiResponse = await fetch('https://api.lovable.app/v1/ai/chat', {
+    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${lovableApiKey}`,
@@ -61,12 +61,8 @@ serve(async (req) => {
         model: 'google/gemini-2.5-flash-lite',
         messages: [
           {
-            role: 'system',
-            content: 'Eres un asistente que genera títulos cortos (máximo 5 palabras) para conversaciones médicas. El título debe ser descriptivo y en español. Responde SOLO con el título, sin comillas ni puntuación adicional.'
-          },
-          {
             role: 'user',
-            content: `Genera un título corto para esta pregunta médica: "${message}"`
+            content: `Genera un título descriptivo muy corto (máximo 4 palabras) en español para esta consulta médica: "${message}". Responde SOLO con el título, sin comillas ni puntuación adicional. Ejemplos: "Ecocardiograma marzo 2023", "Resultados laboratorio recientes", "Consulta cardiología"`
           }
         ],
         max_tokens: 20,
