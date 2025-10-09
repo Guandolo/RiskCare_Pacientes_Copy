@@ -29,7 +29,14 @@ const Auth = () => {
       <Card className="w-full max-w-md shadow-elegant">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center mb-4">
-            <img src={riskCareLogo} alt="RiskCare" className="h-16" />
+            <img 
+              src={riskCareLogo} 
+              alt="RiskCare" 
+              className="h-16" 
+              width="330" 
+              height="160"
+              loading="eager"
+            />
           </div>
           <CardTitle className="text-2xl">Bienvenido a RiskCare Pacientes</CardTitle>
           <CardDescription className="text-base">

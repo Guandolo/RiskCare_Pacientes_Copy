@@ -19,7 +19,14 @@ export const Header = () => {
   return (
     <header className="h-16 border-b border-border bg-card shadow-sm flex items-center justify-between px-6">
       <div className="flex items-center gap-3">
-        <img src={riskCareLogo} alt="RiskCare" className="h-10" />
+        <img 
+          src={riskCareLogo} 
+          alt="RiskCare" 
+          className="h-10" 
+          width="206" 
+          height="100"
+          loading="eager"
+        />
       </div>
 
       <div className="flex items-center gap-4">
