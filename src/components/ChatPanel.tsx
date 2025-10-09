@@ -26,6 +26,21 @@ export const ChatPanel = () => {
     loadSuggestions();
   }, []);
 
+  // Reaccionar a cambios de autenticación (corrige casos de sugerencias estáticas y 401)
+  useEffect(() => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        loadChatHistory();
+        loadSuggestions();
+      }
+      if (event === 'SIGNED_OUT') {
+        setMessages([]);
+        setSuggestions([]);
+      }
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
   const loadSuggestions = async () => {
     try {
       setSuggestionsLoading(true);
@@ -59,8 +74,12 @@ export const ChatPanel = () => {
   };
 
   const loadChatHistory = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('No user found for chat history');
+        return;
+      }
 
     const { data, error } = await supabase
       .from('chat_messages')
@@ -69,21 +88,31 @@ export const ChatPanel = () => {
       .order('created_at', { ascending: true })
       .limit(20);
 
-    if (!error && data) {
-      setMessages(data.map(msg => ({ role: msg.role as "user" | "assistant", content: msg.content })));
+      if (!error && data) {
+        setMessages(data.map(msg => ({ role: msg.role as "user" | "assistant", content: msg.content })));
+      } else if (error) {
+        console.error('Error loading chat history:', error);
+      }
+    } catch (error) {
+      console.error('Error in loadChatHistory:', error);
     }
   };
 
   const handleSendMessage = async () => {
     if (!message.trim()) return;
 
-    const userMessage = message;
-    setMessage("");
-    setMessages(prev => [...prev, { role: "user", content: userMessage }]);
-    setIsLoading(true);
-
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({ title: 'Error', description: 'Debes iniciar sesión para usar el chat.', variant: 'destructive' });
+        return;
+      }
+
+      const userMessage = message;
+      setMessage("");
+      setMessages(prev => [...prev, { role: "user", content: userMessage }]);
+      setIsLoading(true);
+
       if (!session) throw new Error('No hay sesión activa');
 
       const CHAT_URL = `https://mixunsevvfenajctpdfq.functions.supabase.co/functions/v1/chat-stream`;
