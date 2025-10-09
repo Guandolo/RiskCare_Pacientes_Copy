@@ -110,53 +110,122 @@ export const DataSourcesPanel = () => {
                 </div>
               </div>
             ) : profile ? (
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Nombre:</span>
-                  <span className="font-medium">{profile.full_name || getTopusValue('primer_nombre') + ' ' + getTopusValue('primer_apellido')}</span>
+              <div className="space-y-3 text-xs">
+                {/* Nombre completo */}
+                <div className="pb-2 border-b border-border/50">
+                  <div className="text-base font-bold text-foreground">
+                    {getTopusValue('result.nombre')} {getTopusValue('result.s_nombre')} {getTopusValue('result.apellido')} {getTopusValue('result.s_apellido')}
+                  </div>
+                  <div className="text-muted-foreground mt-1">
+                    Cédula de Ciudadanía: {profile.identification}
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Cédula:</span>
-                  <span className="font-medium">{profile.identification}</span>
+
+                {/* Fila 1: Estado y Sexo */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-muted-foreground mb-1">Estado</div>
+                    <div className="font-medium">{getTopusValue('result.estado') || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground mb-1">Sexo</div>
+                    <div className="font-medium">{getTopusValue('result.sexo') || 'N/A'}</div>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Edad:</span>
-                  <span className="font-medium">{profile.age || getTopusValue('edad') || '-'}</span>
+
+                {/* Fila 2: Edad y Fecha de Nacimiento */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-muted-foreground mb-1">Edad</div>
+                    <div className="font-medium">{getTopusValue('result.edad')} años</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground mb-1">Fecha de Nacimiento</div>
+                    <div className="font-medium">{getTopusValue('result.fecha_nacimiento') || 'N/A'}</div>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">EPS:</span>
-                  <span className="font-medium">{profile.eps || getTopusValue('administradora') || '-'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Teléfono:</span>
-                  {editingPhone ? (
-                    <div className="flex gap-1">
-                      <Input
-                        value={phoneValue}
-                        onChange={(e) => setPhoneValue(e.target.value)}
-                        className="h-6 text-xs w-24"
-                        placeholder="Celular"
-                      />
-                      <Button size="sm" className="h-6 px-2" onClick={handlePhoneUpdate}>
-                        ✓
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setEditingPhone(false)}>
-                        ✕
-                      </Button>
+
+                {/* Fila 3: Ubicación */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-muted-foreground mb-1">Ubicación</div>
+                    <div className="font-medium">
+                      {getTopusValue('result.municipio_id')}, {getTopusValue('result.departamento_id')}
                     </div>
-                  ) : (
-                    <div className="flex gap-2 items-center">
-                      <span className="font-medium">{profile.phone || '-'}</span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-5 w-5 p-0"
-                        onClick={() => setEditingPhone(true)}
-                      >
-                        <Edit2 className="w-3 h-3" />
-                      </Button>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground mb-1">Estado Afiliación</div>
+                    <div className="font-medium text-[10px] leading-tight">
+                      {getTopusValue('result.estado_afiliacion') || 'N/A'}
                     </div>
-                  )}
+                  </div>
+                </div>
+
+                {/* Fila 4: EPS y Tipo Régimen */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-muted-foreground mb-1">EPS</div>
+                    <div className="font-medium">{getTopusValue('result.eps') || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground mb-1">Tipo Régimen</div>
+                    <div className="font-medium text-[10px] leading-tight">
+                      {getTopusValue('result.eps_tipo') || 'N/A'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fila 5: Código EPS y EPS Homologada */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-muted-foreground mb-1">Código EPS</div>
+                    <div className="font-medium">{getTopusValue('result.eps_codigo') || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground mb-1">EPS Homologada</div>
+                    <div className="font-medium text-[10px] leading-tight">
+                      {getTopusValue('result.eps_homologada') || 'N/A'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fila 6: NIT Homologado y Teléfono */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-muted-foreground mb-1">NIT Homologado</div>
+                    <div className="font-medium">{getTopusValue('result.nit_homologado') || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground mb-1">Teléfono</div>
+                    {editingPhone ? (
+                      <div className="flex gap-1">
+                        <Input
+                          value={phoneValue}
+                          onChange={(e) => setPhoneValue(e.target.value)}
+                          className="h-6 text-xs"
+                          placeholder="Celular"
+                        />
+                        <Button size="sm" className="h-6 px-2" onClick={handlePhoneUpdate}>
+                          ✓
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setEditingPhone(false)}>
+                          ✕
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2 items-center">
+                        <span className="font-medium">{profile.phone || 'Sin registrar'}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-5 w-5 p-0"
+                          onClick={() => setEditingPhone(true)}
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : null}
