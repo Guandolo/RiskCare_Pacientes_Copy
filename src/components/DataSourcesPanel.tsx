@@ -1,4 +1,4 @@
-import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -32,6 +32,7 @@ export const DataSourcesPanel = () => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [loadingHismart, setLoadingHismart] = useState(false);
+  const [hismartData, setHismartData] = useState<any>(null);
   const [editingPhone, setEditingPhone] = useState(false);
   const [phoneValue, setPhoneValue] = useState("");
   const [patientInfoOpen, setPatientInfoOpen] = useState(true);
@@ -120,14 +121,42 @@ export const DataSourcesPanel = () => {
       if (error) throw error;
 
       console.log('Datos de HiSmart:', data);
+      setHismartData(data.data);
       toast.success('Datos clínicos consultados exitosamente');
-      
-      // Aquí podrías guardar los datos de HiSmart en una tabla o procesarlos
     } catch (error) {
       console.error('Error consultando HiSmart:', error);
       toast.error('Error consultando datos clínicos');
     } finally {
       setLoadingHismart(false);
+    }
+  };
+
+  const handleDeleteDocument = async (docId: string, fileName: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Eliminar de la base de datos
+      const { error: dbError } = await supabase
+        .from('clinical_documents')
+        .delete()
+        .eq('id', docId);
+
+      if (dbError) throw dbError;
+
+      // Eliminar del storage
+      const filePath = fileName.includes('/') ? fileName : `${user.id}/${fileName}`;
+      const { error: storageError } = await supabase.storage
+        .from('clinical-documents')
+        .remove([filePath]);
+
+      if (storageError) console.error('Error eliminando del storage:', storageError);
+
+      toast.success('Documento eliminado');
+      loadDocuments();
+    } catch (error) {
+      console.error('Error eliminando documento:', error);
+      toast.error('Error eliminando documento');
     }
   };
 
@@ -245,7 +274,11 @@ export const DataSourcesPanel = () => {
                   </div>
                   <div className="flex-1 text-left">
                     <h3 className="font-semibold text-sm">Información del Paciente</h3>
-                    <p className="text-xs text-muted-foreground">Datos demográficos básicos</p>
+                    {profile && (
+                      <p className="text-xs text-foreground font-medium mt-1">
+                        {getTopusValue('result.nombre')} {getTopusValue('result.apellido')} - CC {profile.identification}
+                      </p>
+                    )}
                   </div>
                   {patientInfoOpen ? (
                     <ChevronUp className="w-4 h-4 text-muted-foreground" />
@@ -406,6 +439,100 @@ export const DataSourcesPanel = () => {
             )}
           </Button>
 
+          {/* Datos de HiSmart */}
+          {hismartData && (
+            <Card className="p-4 bg-accent/5 border-accent/20">
+              <h3 className="text-sm font-semibold mb-3 text-foreground">Datos Clínicos (HC)</h3>
+              <div className="space-y-4">
+                {/* Consultas */}
+                {hismartData.consultas && hismartData.consultas.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Consultas</h4>
+                    {hismartData.consultas.map((consulta: any, idx: number) => (
+                      <Card key={idx} className="p-3 mb-2 bg-background/50">
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-muted-foreground">Fecha:</span>{' '}
+                            <span className="font-medium">{consulta.fecha}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Especialidad:</span>{' '}
+                            <span className="font-medium">{consulta.especialidad}</span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-muted-foreground">Diagnóstico:</span>{' '}
+                            <span className="font-medium">{consulta.diagnostico}</span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-muted-foreground">Médico:</span>{' '}
+                            <span className="font-medium">{consulta.medico}</span>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+
+                {/* Laboratorios */}
+                {hismartData.laboratorios && hismartData.laboratorios.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Laboratorios</h4>
+                    {hismartData.laboratorios.map((lab: any, idx: number) => (
+                      <Card key={idx} className="p-3 mb-2 bg-background/50">
+                        <div className="space-y-2 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Fecha:</span>
+                            <span className="font-medium">{lab.fecha}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Tipo:</span>
+                            <span className="font-medium">{lab.tipo}</span>
+                          </div>
+                          {lab.resultados && (
+                            <div className="pt-2 border-t border-border/50">
+                              <div className="text-muted-foreground mb-1">Resultados:</div>
+                              {Object.entries(lab.resultados).map(([key, value]) => (
+                                <div key={key} className="flex justify-between pl-2">
+                                  <span className="text-muted-foreground capitalize">{key}:</span>
+                                  <span className="font-medium">{value as string}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+
+                {/* Imágenes */}
+                {hismartData.imagenes && hismartData.imagenes.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Imágenes Diagnósticas</h4>
+                    {hismartData.imagenes.map((img: any, idx: number) => (
+                      <Card key={idx} className="p-3 mb-2 bg-background/50">
+                        <div className="space-y-2 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Fecha:</span>
+                            <span className="font-medium">{img.fecha}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Tipo:</span>
+                            <span className="font-medium">{img.tipo}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Hallazgos:</span>{' '}
+                            <span className="font-medium">{img.hallazgos}</span>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
           {/* Upload Section */}
           <div className="space-y-2">
             <input
@@ -447,7 +574,7 @@ export const DataSourcesPanel = () => {
             
             {documents.length > 0 ? (
               documents.map((doc) => (
-                <Card key={doc.id} className="p-3 hover:shadow-md transition-shadow cursor-pointer">
+                <Card key={doc.id} className="p-3 hover:shadow-md transition-shadow">
                   <div className="flex items-start gap-3">
                     <div className="w-8 h-8 rounded bg-secondary/10 flex items-center justify-center flex-shrink-0">
                       <FileText className="w-4 h-4 text-secondary" />
@@ -465,6 +592,14 @@ export const DataSourcesPanel = () => {
                         </div>
                       </div>
                     </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDeleteDocument(doc.id, doc.file_name)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </Card>
               ))
