@@ -77,95 +77,76 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY no configurado');
     }
 
-    const prompt = `Analiza la siguiente información clínica del paciente y genera un mapa conceptual interactivo en formato JSON.
+    const prompt = `Analiza la siguiente información clínica del paciente y crea un mapa clínico interactivo que muestre las relaciones entre condiciones, tratamientos, estudios y especialistas.
 
 INFORMACIÓN CLÍNICA:
 ${clinicalContext}
 
-REGLAS CRÍTICAS PARA GENERAR EL MAPA:
+INSTRUCCIONES PARA GENERAR EL MAPA:
 
-1. NODOS - Debes crear estos tipos de nodos:
-   - UN nodo "patient" central con el nombre del paciente
-   - Nodos "condition" para CADA condición/diagnóstico mencionado
-   - Nodos "medication" para CADA medicamento formulado
-   - Nodos "paraclinical" para resultados de laboratorio/exámenes relevantes
-   - Nodos "specialist" para especialidades médicas que tratan al paciente
+1. NODOS A CREAR:
+   a) UN nodo "patient" (id: "patient") con el nombre completo del paciente
+   b) Nodos "condition" para CADA diagnóstico o condición de salud identificada
+   c) Nodos "medication" para TODOS los medicamentos mencionados
+   d) Nodos "paraclinical" para estudios y resultados de laboratorio clave
+   e) Nodos "specialist" para especialidades médicas involucradas
 
-2. CONEXIONES OBLIGATORIAS:
-   - SIEMPRE conecta el paciente a sus condiciones principales
-   - SIEMPRE conecta cada medicamento a la condición específica que trata
-   - SIEMPRE conecta cada paraclínico a la condición que monitorea
-   - SIEMPRE conecta cada especialista a las condiciones que maneja
-   - NUNCA dejes nodos aislados sin conexiones
+2. CONEXIONES REQUERIDAS (MUY IMPORTANTE):
+   
+   TIPO 1 - Del PACIENTE a sus CONDICIONES:
+   - source: "patient"
+   - target: id de cada condición
+   - label: "diagnosticado con"
+   
+   TIPO 2 - De CONDICIONES a MEDICAMENTOS:
+   - source: id de condición
+   - target: id de medicamento que la trata
+   - label: "tratada con"
+   
+   TIPO 3 - De CONDICIONES a PARACLÍNICOS:
+   - source: id de condición
+   - target: id de estudio/resultado
+   - label: "monitoreada con"
+   
+   TIPO 4 - De CONDICIONES a ESPECIALISTAS:
+   - source: id de condición
+   - target: id de especialista
+   - label: "controlada por"
 
-3. EJEMPLO DE ESTRUCTURA CORRECTA:
-   patient → "Diabetes Mellitus Tipo 2"
-   "Diabetes Mellitus Tipo 2" → "Metformina 850mg" (label: "tratada con")
-   "Diabetes Mellitus Tipo 2" → "HbA1c: 7.2%" (label: "monitoreada por")
-   "Diabetes Mellitus Tipo 2" → "Endocrinología" (label: "manejada por")
+3. REGLAS CRÍTICAS:
+   - TODOS los nodos DEBEN estar conectados de alguna forma
+   - Si un medicamento trata múltiples condiciones, crear múltiples edges
+   - Asegurar que cada condición tenga al menos 2 conexiones (medicamentos, estudios o especialistas)
+   - NO crear nodos huérfanos (sin conexiones)
 
-FORMATO DE SALIDA (JSON):
+FORMATO DE RESPUESTA (JSON puro):
 {
   "nodes": [
-    {
-      "id": "patient",
-      "type": "patient",
-      "label": "Nombre Paciente"
-    },
-    {
-      "id": "condition_diabetes",
-      "type": "condition",
-      "label": "Diabetes Mellitus Tipo 2"
-    },
-    {
-      "id": "med_metformina",
-      "type": "medication",
-      "label": "Metformina 850mg"
-    },
-    {
-      "id": "para_hba1c",
-      "type": "paraclinical",
-      "label": "HbA1c: 7.2%"
-    },
-    {
-      "id": "spec_endocrino",
-      "type": "specialist",
-      "label": "Endocrinología"
-    }
+    {"id": "patient", "type": "patient", "label": "NOMBRE COMPLETO PACIENTE"},
+    {"id": "cond_diabetes", "type": "condition", "label": "Diabetes Mellitus Tipo 2"},
+    {"id": "cond_hta", "type": "condition", "label": "Hipertensión Arterial"},
+    {"id": "med_metformina", "type": "medication", "label": "Metformina 850mg"},
+    {"id": "med_losartan", "type": "medication", "label": "Losartán 50mg"},
+    {"id": "para_glucosa", "type": "paraclinical", "label": "Glucosa: 130 mg/dL"},
+    {"id": "para_hba1c", "type": "paraclinical", "label": "HbA1c: 7.5%"},
+    {"id": "para_presion", "type": "paraclinical", "label": "Presión: 145/90 mmHg"},
+    {"id": "spec_cardio", "type": "specialist", "label": "Cardiología"},
+    {"id": "spec_medint", "type": "specialist", "label": "Medicina Interna"}
   ],
   "edges": [
-    {
-      "id": "e1",
-      "source": "patient",
-      "target": "condition_diabetes",
-      "label": "padece"
-    },
-    {
-      "id": "e2",
-      "source": "condition_diabetes",
-      "target": "med_metformina",
-      "label": "tratada con"
-    },
-    {
-      "id": "e3",
-      "source": "condition_diabetes",
-      "target": "para_hba1c",
-      "label": "monitoreada por"
-    },
-    {
-      "id": "e4",
-      "source": "condition_diabetes",
-      "target": "spec_endocrino",
-      "label": "manejada por"
-    }
+    {"id": "e1", "source": "patient", "target": "cond_diabetes", "label": "diagnosticado con"},
+    {"id": "e2", "source": "patient", "target": "cond_hta", "label": "diagnosticado con"},
+    {"id": "e3", "source": "cond_diabetes", "target": "med_metformina", "label": "tratada con"},
+    {"id": "e4", "source": "cond_diabetes", "target": "para_glucosa", "label": "monitoreada con"},
+    {"id": "e5", "source": "cond_diabetes", "target": "para_hba1c", "label": "monitoreada con"},
+    {"id": "e6", "source": "cond_hta", "target": "med_losartan", "label": "tratada con"},
+    {"id": "e7", "source": "cond_hta", "target": "para_presion", "label": "monitoreada con"},
+    {"id": "e8", "source": "cond_hta", "target": "spec_cardio", "label": "controlada por"},
+    {"id": "e9", "source": "cond_diabetes", "target": "spec_medint", "label": "controlada por"}
   ]
 }
 
-IMPORTANTE:
-- Usa IDs descriptivos (condition_X, med_X, para_X, spec_X)
-- Labels de edges deben ser verbos claros
-- Responde ÚNICAMENTE con el JSON, sin markdown ni texto adicional
-- TODAS las conexiones deben tener sentido clínico`;
+RESPONDE ÚNICAMENTE CON EL JSON. Sin comentarios, sin markdown, sin explicaciones.`;
 
     console.log('Calling Lovable AI...');
 

@@ -101,32 +101,82 @@ interface ClinicalMapViewerProps {
 }
 
 export const ClinicalMapViewer = ({ mapData }: ClinicalMapViewerProps) => {
-  // Convertir los nodos al formato de ReactFlow con layout automático
+  // Convertir los nodos al formato de ReactFlow con layout mejorado
   const layoutNodes = (nodes: any[]): Node[] => {
-    return nodes.map((node, index) => {
-      const type = node.type || 'default';
-      const isPatient = type === 'patient';
-      
-      // Layout en círculo para nodos alrededor del paciente
-      const angle = isPatient ? 0 : (2 * Math.PI * index) / (nodes.length - 1);
-      const radius = isPatient ? 0 : 300;
-      
-      return {
+    const patient = nodes.find(n => n.type === 'patient');
+    const conditions = nodes.filter(n => n.type === 'condition');
+    const medications = nodes.filter(n => n.type === 'medication');
+    const paraclinicals = nodes.filter(n => n.type === 'paraclinical');
+    const specialists = nodes.filter(n => n.type === 'specialist');
+    
+    const positioned: Node[] = [];
+    const centerX = 500;
+    const centerY = 300;
+    
+    // Paciente en el centro
+    if (patient) {
+      positioned.push({
+        id: patient.id,
+        type: patient.type,
+        position: { x: centerX, y: centerY },
+        data: { label: patient.label, description: patient.description, ...patient.data },
+      });
+    }
+    
+    // Condiciones en círculo alrededor del paciente (radio 250px)
+    conditions.forEach((node, i) => {
+      const angle = (2 * Math.PI * i) / Math.max(conditions.length, 1);
+      positioned.push({
         id: node.id,
-        type: type,
+        type: node.type,
         position: {
-          x: isPatient ? 400 : 400 + radius * Math.cos(angle),
-          y: isPatient ? 300 : 300 + radius * Math.sin(angle),
+          x: centerX + 280 * Math.cos(angle) - 80,
+          y: centerY + 280 * Math.sin(angle) - 20,
         },
-        data: {
-          label: node.label,
-          description: node.description,
-          ...node.data,
-        },
-        sourcePosition: Position.Right,
-        targetPosition: Position.Left,
-      };
+        data: { label: node.label, description: node.description, ...node.data },
+      });
     });
+    
+    // Medicamentos a la izquierda en columna
+    medications.forEach((node, i) => {
+      positioned.push({
+        id: node.id,
+        type: node.type,
+        position: {
+          x: 50,
+          y: 50 + i * 80,
+        },
+        data: { label: node.label, description: node.description, ...node.data },
+      });
+    });
+    
+    // Paraclínicos arriba en fila
+    paraclinicals.forEach((node, i) => {
+      positioned.push({
+        id: node.id,
+        type: node.type,
+        position: {
+          x: 300 + i * 220,
+          y: 20,
+        },
+        data: { label: node.label, description: node.description, ...node.data },
+      });
+    });
+    
+    // Especialistas a la derecha en columna
+    specialists.forEach((node, i) => {
+      positioned.push({
+        id: node.id,
+        type: node.type,
+        position: {
+          x: 950,
+          y: 100 + i * 100,
+        },
+        data: { label: node.label, description: node.description, ...node.data },
+      });
+    });
+    
+    return positioned;
   };
 
   const layoutEdges = (edges: any[]): Edge[] => {
@@ -135,16 +185,29 @@ export const ClinicalMapViewer = ({ mapData }: ClinicalMapViewerProps) => {
       source: edge.source,
       target: edge.target,
       label: edge.label,
-      type: 'smoothstep',
+      type: 'default',
       animated: true,
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        width: 20,
-        height: 20,
+        width: 25,
+        height: 25,
+        color: 'hsl(var(--primary))',
       },
       style: {
-        strokeWidth: 2,
+        strokeWidth: 2.5,
+        stroke: 'hsl(var(--primary))',
       },
+      labelStyle: {
+        fontSize: 11,
+        fontWeight: 500,
+        fill: 'hsl(var(--foreground))',
+      },
+      labelBgStyle: {
+        fill: 'hsl(var(--background))',
+        fillOpacity: 0.9,
+      },
+      labelBgPadding: [6, 4] as [number, number],
+      labelBgBorderRadius: 4,
     }));
   };
 
