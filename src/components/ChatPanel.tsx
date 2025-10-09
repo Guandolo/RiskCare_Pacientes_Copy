@@ -183,9 +183,28 @@ export const ChatPanel = () => {
   };
 
   const switchConversation = async (conversationId: string) => {
-    setCurrentConversationId(conversationId);
-    await loadChatHistory(conversationId);
-    setHistoryOpen(false);
+    try {
+      setCurrentConversationId(conversationId);
+      setMessages([]); // Limpiar mensajes actuales
+      await loadChatHistory(conversationId);
+      
+      // Regenerar sugerencias basadas en la nueva conversación
+      await loadSuggestions();
+      
+      setHistoryOpen(false);
+      
+      toast({
+        title: "Conversación cargada",
+        description: "Ahora puedes continuar esta conversación",
+      });
+    } catch (error) {
+      console.error('Error switching conversation:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo cargar la conversación",
+        variant: "destructive"
+      });
+    }
   };
 
   const generateTitle = async (firstMessage: string) => {
