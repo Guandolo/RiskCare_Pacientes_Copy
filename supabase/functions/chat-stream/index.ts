@@ -35,17 +35,18 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const jwt = authHeader.replace("Bearer ", "").trim();
+    const { data: userData, error: userErr } = await supabase.auth.getUser(jwt);
+    if (userErr || !userData?.user) {
       return new Response(JSON.stringify({ error: "Usuario no autenticado" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const user = userData.user;
 
     const { message } = await req.json();
     if (!message || typeof message !== "string") {
