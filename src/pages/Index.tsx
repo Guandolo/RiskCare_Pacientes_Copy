@@ -7,6 +7,7 @@ import { Header } from "@/components/Header";
 import { PatientIdentificationModal } from "@/components/PatientIdentificationModal";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -68,21 +69,45 @@ const Index = () => {
       <div className="flex flex-col h-screen bg-gradient-subtle">
         <Header />
         
-        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-          {/* Left Panel - Data Sources */}
-          <div className="w-full lg:w-[380px] border-b lg:border-b-0 lg:border-r border-border bg-card flex-shrink-0 overflow-y-auto lg:overflow-hidden max-h-[40vh] lg:max-h-none">
-            <DataSourcesPanel />
-          </div>
+        <div className="flex-1 overflow-hidden">
+          <ResizablePanelGroup direction="horizontal" className="h-full">
+            {/* Left Panel - Data Sources */}
+            <ResizablePanel 
+              defaultSize={22} 
+              minSize={15} 
+              maxSize={35}
+              collapsible={true}
+              collapsedSize={0}
+            >
+              <div className="h-full border-r border-border bg-card overflow-hidden">
+                <DataSourcesPanel />
+              </div>
+            </ResizablePanel>
 
-          {/* Center Panel - Chat Assistant */}
-          <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-            <ChatPanel />
-          </div>
+            <ResizableHandle withHandle />
 
-          {/* Right Panel - Clinical Notebook */}
-          <div className="w-full lg:w-[420px] border-t lg:border-t-0 lg:border-l border-border bg-card flex-shrink-0 overflow-y-auto lg:overflow-hidden max-h-[40vh] lg:max-h-none">
-            <ClinicalNotebookPanel />
-          </div>
+            {/* Center Panel - Chat Assistant */}
+            <ResizablePanel defaultSize={48} minSize={30}>
+              <div className="h-full flex flex-col overflow-hidden">
+                <ChatPanel />
+              </div>
+            </ResizablePanel>
+
+            <ResizableHandle withHandle />
+
+            {/* Right Panel - Clinical Notebook */}
+            <ResizablePanel 
+              defaultSize={30} 
+              minSize={20} 
+              maxSize={40}
+              collapsible={true}
+              collapsedSize={0}
+            >
+              <div className="h-full border-l border-border bg-card overflow-hidden">
+                <ClinicalNotebookPanel />
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </div>
       </div>
     </>

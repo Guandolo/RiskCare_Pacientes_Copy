@@ -192,7 +192,7 @@ export const ClinicalNotebookPanel = () => {
     <TooltipProvider>
       <div className="flex flex-col h-full bg-background">
         {/* Header */}
-        <div className="p-4 border-b border-border bg-card">
+        <div className="p-4 border-b border-border">
           <h2 className="text-sm font-semibold text-foreground">Bitácora Clínica</h2>
           <p className="text-xs text-muted-foreground">Herramientas de análisis</p>
         </div>
