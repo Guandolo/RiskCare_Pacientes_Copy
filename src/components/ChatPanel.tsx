@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Send, Sparkles, Lightbulb } from "lucide-react";
+import { Send, Sparkles, Lightbulb, RotateCw, History, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
@@ -14,6 +15,13 @@ interface Message {
   content: string;
 }
 
+interface Conversation {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export const ChatPanel = () => {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -22,22 +30,30 @@ export const ChatPanel = () => {
 
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
-    loadChatHistory();
+    loadOrCreateConversation();
+    loadConversations();
     loadSuggestions();
   }, []);
 
-  // Reaccionar a cambios de autenticación (corrige casos de sugerencias estáticas y 401)
+  // Reaccionar a cambios de autenticación
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        loadChatHistory();
+        loadOrCreateConversation();
+        loadConversations();
         loadSuggestions();
       }
       if (event === 'SIGNED_OUT') {
         setMessages([]);
         setSuggestions([]);
+        setCurrentConversationId(null);
+        setConversations([]);
       }
     });
     return () => listener.subscription.unsubscribe();
@@ -75,33 +91,98 @@ export const ChatPanel = () => {
     }
   };
 
-  const loadChatHistory = async () => {
+  const loadOrCreateConversation = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('No user found for chat history');
-        return;
-      }
+      if (!user) return;
 
-    const { data, error } = await supabase
-      .from('chat_messages')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: true })
-      .limit(20);
+      // Buscar la conversación más reciente
+      const { data: latestConv } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single();
 
-      if (!error && data) {
-        setMessages(data.map(msg => ({ role: msg.role as "user" | "assistant", content: msg.content })));
-      } else if (error) {
-        console.error('Error loading chat history:', error);
+      if (latestConv) {
+        setCurrentConversationId(latestConv.id);
+        await loadChatHistory(latestConv.id);
+      } else {
+        await createNewConversation();
       }
     } catch (error) {
-      console.error('Error in loadChatHistory:', error);
+      console.error('Error loading conversation:', error);
     }
   };
 
+  const loadConversations = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false });
+
+      if (!error && data) {
+        setConversations(data);
+      }
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+    }
+  };
+
+  const loadChatHistory = async (conversationId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true });
+
+      if (!error && data) {
+        setMessages(data.map(msg => ({ role: msg.role as "user" | "assistant", content: msg.content })));
+      }
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+    }
+  };
+
+  const createNewConversation = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('conversations')
+        .insert({ user_id: user.id, title: 'Nueva conversación' })
+        .select()
+        .single();
+
+      if (!error && data) {
+        setCurrentConversationId(data.id);
+        setMessages([]);
+        await loadConversations();
+      }
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+    }
+  };
+
+  const switchConversation = async (conversationId: string) => {
+    setCurrentConversationId(conversationId);
+    await loadChatHistory(conversationId);
+    setHistoryOpen(false);
+  };
+
   const handleSendMessage = async () => {
-    if (!message.trim()) return;
+    if (!message.trim() || !currentConversationId) return;
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -114,8 +195,6 @@ export const ChatPanel = () => {
       setMessage("");
       setMessages(prev => [...prev, { role: "user", content: userMessage }]);
       setIsLoading(true);
-
-      if (!session) throw new Error('No hay sesión activa');
 
       const CHAT_URL = `https://mixunsevvfenajctpdfq.functions.supabase.co/functions/v1/chat-stream`;
       const resp = await fetch(CHAT_URL, {
@@ -192,13 +271,79 @@ export const ChatPanel = () => {
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
       <div className="p-4 border-b border-border bg-card">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-primary-foreground" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Asistente Clínico IA</h2>
+              <p className="text-xs text-muted-foreground">Pregunta sobre tu historial médico</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Asistente Clínico IA</h2>
-            <p className="text-xs text-muted-foreground">Pregunta sobre tu historial médico</p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={createNewConversation}
+              className="gap-2"
+              disabled={isLoading}
+            >
+              <RotateCw className="w-4 h-4" />
+              Reiniciar
+            </Button>
+            <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <History className="w-4 h-4" />
+                  Historial
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Historial de Conversaciones</SheetTitle>
+                </SheetHeader>
+                <ScrollArea className="h-[calc(100vh-8rem)] mt-4">
+                  <div className="space-y-2">
+                    {conversations.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">
+                        No hay conversaciones previas
+                      </p>
+                    ) : (
+                      conversations.map((conv) => (
+                        <Card
+                          key={conv.id}
+                          className={`p-3 cursor-pointer hover:bg-accent transition-colors ${
+                            conv.id === currentConversationId ? 'border-primary' : ''
+                          }`}
+                          onClick={() => switchConversation(conv.id)}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {conv.title || 'Sin título'}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(conv.updated_at).toLocaleDateString('es-CO', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                            </div>
+                            {conv.id === currentConversationId && (
+                              <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-1" />
+                            )}
+                          </div>
+                        </Card>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </div>
