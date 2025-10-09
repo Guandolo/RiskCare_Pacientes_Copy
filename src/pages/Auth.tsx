@@ -32,10 +32,7 @@ const Auth = () => {
             <img 
               src={riskCareLogo} 
               alt="RiskCare" 
-              className="h-16" 
-              width="330" 
-              height="160"
-              loading="eager"
+              className="h-16 w-auto object-contain"
             />
           </div>
           <CardTitle className="text-2xl">Bienvenido a RiskCare Pacientes</CardTitle>

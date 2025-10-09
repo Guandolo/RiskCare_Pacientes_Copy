@@ -22,10 +22,7 @@ export const Header = () => {
         <img 
           src={riskCareLogo} 
           alt="RiskCare" 
-          className="h-10" 
-          width="206" 
-          height="100"
-          loading="eager"
+          className="h-10 w-auto object-contain"
         />
       </div>
 
