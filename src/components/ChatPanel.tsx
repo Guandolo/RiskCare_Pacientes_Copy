@@ -30,12 +30,26 @@ export const ChatPanel = () => {
     try {
       setSuggestionsLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log('No session for suggestions');
+        return;
+      }
+      
+      console.log('Loading suggestions...');
       const { data, error } = await supabase.functions.invoke('chat-suggestions', {
         body: {},
-        headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
-      if (!error && data?.suggestions) {
-        setSuggestions(data.suggestions as string[]);
+      
+      if (error) {
+        console.error('Suggestions error:', error);
+        return;
+      }
+      
+      console.log('Suggestions response:', data);
+      if (data?.suggestions && Array.isArray(data.suggestions)) {
+        console.log('Setting suggestions:', data.suggestions);
+        setSuggestions(data.suggestions);
       }
     } catch (e) {
       console.error('Error cargando sugerencias:', e);
@@ -131,12 +145,13 @@ export const ChatPanel = () => {
       }
     } catch (error) {
       console.error('Error al enviar mensaje:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
       toast({
         title: "Error",
-        description: "No se pudo enviar el mensaje. Intenta de nuevo.",
+        description: errorMsg,
         variant: "destructive"
       });
-      setMessages(prev => prev.slice(0, -1)); // Remove user message on error
+      setMessages(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
     }
