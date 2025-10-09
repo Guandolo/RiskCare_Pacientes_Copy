@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Send, Sparkles, Lightbulb, RotateCw, History, X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -34,6 +34,9 @@ export const ChatPanel = () => {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const editInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadOrCreateConversation();
@@ -181,6 +184,52 @@ export const ChatPanel = () => {
     setHistoryOpen(false);
   };
 
+  const generateTitle = async (firstMessage: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase.functions.invoke('generate-chat-title', {
+        body: { message: firstMessage },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (error) {
+        console.error('Error generating title:', error);
+        return 'Consulta médica';
+      }
+
+      return data?.title || 'Consulta médica';
+    } catch (error) {
+      console.error('Error generating title:', error);
+      return 'Consulta médica';
+    }
+  };
+
+  const startEditingTitle = (conv: Conversation) => {
+    setEditingId(conv.id);
+    setEditingTitle(conv.title || '');
+    setTimeout(() => editInputRef.current?.focus(), 100);
+  };
+
+  const saveTitle = async (convId: string) => {
+    try {
+      const { error } = await supabase
+        .from('conversations')
+        .update({ title: editingTitle, updated_at: new Date().toISOString() })
+        .eq('id', convId);
+
+      if (!error) {
+        await loadConversations();
+        setEditingId(null);
+      } else {
+        console.error('Error saving title:', error);
+      }
+    } catch (error) {
+      console.error('Error saving title:', error);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!message.trim() || !currentConversationId) return;
 
@@ -192,9 +241,20 @@ export const ChatPanel = () => {
       }
 
       const userMessage = message;
+      const isFirstMessage = messages.length === 0;
       setMessage("");
       setMessages(prev => [...prev, { role: "user", content: userMessage }]);
       setIsLoading(true);
+
+      // Generar título si es el primer mensaje
+      if (isFirstMessage && currentConversationId) {
+        const title = await generateTitle(userMessage);
+        await supabase
+          .from('conversations')
+          .update({ title, updated_at: new Date().toISOString() })
+          .eq('id', currentConversationId);
+        await loadConversations();
+      }
 
       const CHAT_URL = `https://mixunsevvfenajctpdfq.functions.supabase.co/functions/v1/chat-stream`;
       const resp = await fetch(CHAT_URL, {
@@ -313,29 +373,74 @@ export const ChatPanel = () => {
                       conversations.map((conv) => (
                         <Card
                           key={conv.id}
-                          className={`p-3 cursor-pointer hover:bg-accent transition-colors ${
+                          className={`p-3 hover:bg-accent transition-colors ${
                             conv.id === currentConversationId ? 'border-primary' : ''
                           }`}
-                          onClick={() => switchConversation(conv.id)}
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {conv.title || 'Sin título'}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {new Date(conv.updated_at).toLocaleDateString('es-CO', {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </p>
+                            <div 
+                              className="flex-1 min-w-0 cursor-pointer"
+                              onClick={() => switchConversation(conv.id)}
+                            >
+                              {editingId === conv.id ? (
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    ref={editInputRef}
+                                    value={editingTitle}
+                                    onChange={(e) => setEditingTitle(e.target.value)}
+                                    onKeyPress={(e) => {
+                                      if (e.key === 'Enter') saveTitle(conv.id);
+                                    }}
+                                    className="text-sm h-7"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      saveTitle(conv.id);
+                                    }}
+                                  >
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <>
+                                  <p className="text-sm font-medium truncate">
+                                    {conv.title || 'Sin título'}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {new Date(conv.updated_at).toLocaleDateString('es-CO', {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </p>
+                                </>
+                              )}
                             </div>
-                            {conv.id === currentConversationId && (
-                              <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-1" />
-                            )}
+                            <div className="flex items-center gap-1">
+                              {editingId !== conv.id && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    startEditingTitle(conv);
+                                  }}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              )}
+                              {conv.id === currentConversationId && (
+                                <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
+                              )}
+                            </div>
                           </div>
                         </Card>
                       ))
