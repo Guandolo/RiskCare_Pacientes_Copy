@@ -68,9 +68,9 @@ const Index = () => {
       <div className="flex flex-col h-screen bg-gradient-subtle">
         <Header />
         
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
           {/* Left Panel - Data Sources */}
-          <div className="w-[380px] border-r border-border bg-card flex-shrink-0 overflow-hidden">
+          <div className="w-full lg:w-[380px] border-b lg:border-b-0 lg:border-r border-border bg-card flex-shrink-0 overflow-y-auto lg:overflow-hidden max-h-[40vh] lg:max-h-none">
             <DataSourcesPanel />
           </div>
 
@@ -80,7 +80,7 @@ const Index = () => {
           </div>
 
           {/* Right Panel - Clinical Notebook */}
-          <div className="w-[420px] border-l border-border bg-card flex-shrink-0 overflow-hidden">
+          <div className="w-full lg:w-[420px] border-t lg:border-t-0 lg:border-l border-border bg-card flex-shrink-0 overflow-y-auto lg:overflow-hidden max-h-[40vh] lg:max-h-none">
             <ClinicalNotebookPanel />
           </div>
         </div>

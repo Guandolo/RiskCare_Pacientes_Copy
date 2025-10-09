@@ -65,6 +65,15 @@ export const DataSourcesPanel = () => {
       
       setProfile(data);
       setPhoneValue(data.phone || "");
+      
+      // Cargar datos de HiSmart guardados si existen
+      if (data.topus_data && typeof data.topus_data === 'object') {
+        const topusData = data.topus_data as any;
+        if (topusData.hismart_data) {
+          setHismartData(topusData.hismart_data);
+          setHismartLastFetch(topusData.hismart_last_fetch || null);
+        }
+      }
     } catch (error) {
       console.error('Error cargando perfil:', error);
       toast.error('Error cargando información del paciente');
@@ -118,6 +127,9 @@ export const DataSourcesPanel = () => {
     
     setLoadingHismart(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data, error } = await supabase.functions.invoke('fetch-hismart-data', {
         body: {
           documentType: profile.document_type,
@@ -129,14 +141,34 @@ export const DataSourcesPanel = () => {
 
       console.log('Datos de HiSmart:', data);
       if (data.success && data.data?.result?.data) {
-        setHismartData(data.data.result.data);
-        setHismartLastFetch(new Date().toLocaleString('es-CO', {
+        const hismartInfo = data.data.result.data;
+        setHismartData(hismartInfo);
+        
+        const fetchDate = new Date().toLocaleString('es-CO', {
           year: 'numeric',
           month: 'long',
           day: 'numeric',
           hour: '2-digit',
           minute: '2-digit'
-        }));
+        });
+        setHismartLastFetch(fetchDate);
+        
+        // Guardar datos de HiSmart en la base de datos
+        const { error: updateError } = await supabase
+          .from('patient_profiles')
+          .update({
+            topus_data: {
+              ...profile.topus_data,
+              hismart_data: hismartInfo,
+              hismart_last_fetch: fetchDate
+            }
+          })
+          .eq('user_id', user.id);
+
+        if (updateError) {
+          console.error('Error guardando datos de HiSmart:', updateError);
+        }
+
         toast.success('Datos clínicos consultados exitosamente');
       } else {
         toast.error('No se encontraron datos clínicos');

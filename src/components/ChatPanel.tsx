@@ -54,8 +54,16 @@ export const ChatPanel = () => {
     setIsLoading(true);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No hay sesión activa');
+      }
+
       const { data, error } = await supabase.functions.invoke('chat-assistant', {
-        body: { message: userMessage }
+        body: { message: userMessage },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
 
       if (error) throw error;
