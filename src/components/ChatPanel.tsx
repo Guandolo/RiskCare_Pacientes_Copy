@@ -44,17 +44,35 @@ export const ChatPanel = () => {
   useEffect(() => {
     loadOrCreateConversation();
     loadConversations();
-    loadSuggestions();
     initializeSpeechRecognition();
+    
+    // Cargar sugerencias solo al montar el componente
+    const loadInitialSuggestions = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await loadSuggestions();
+      }
+    };
+    loadInitialSuggestions();
+
+    // Listener para recargar sugerencias cuando se actualicen documentos
+    const handleDocumentsUpdate = () => {
+      loadSuggestions();
+    };
+    window.addEventListener('documentsUpdated', handleDocumentsUpdate);
+
+    return () => {
+      window.removeEventListener('documentsUpdated', handleDocumentsUpdate);
+    };
   }, []);
 
   // Reaccionar a cambios de autenticación
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      if (event === 'SIGNED_IN') {
         loadOrCreateConversation();
         loadConversations();
-        loadSuggestions();
+        loadSuggestions(); // Solo cuando inicia sesión
       }
       if (event === 'SIGNED_OUT') {
         setMessages([]);
@@ -187,10 +205,6 @@ export const ChatPanel = () => {
       setCurrentConversationId(conversationId);
       setMessages([]); // Limpiar mensajes actuales
       await loadChatHistory(conversationId);
-      
-      // Regenerar sugerencias basadas en la nueva conversación
-      await loadSuggestions();
-      
       setHistoryOpen(false);
       
       toast({
@@ -602,11 +616,11 @@ export const ChatPanel = () => {
                       <Button
                         key={idx}
                         variant="outline"
-                        className="justify-start text-left h-auto py-3 px-4 hover:bg-primary/5 hover:border-primary/30 transition-all"
+                        className="justify-start text-left h-auto py-3 px-4 bg-card hover:bg-accent hover:border-primary/50 border-border transition-all text-foreground font-medium"
                         onClick={() => setMessage(question)}
                         disabled={isLoading}
                       >
-                        <span className="text-sm">{question}</span>
+                        <span className="text-sm leading-relaxed">{question}</span>
                       </Button>
                     ))
                   )}

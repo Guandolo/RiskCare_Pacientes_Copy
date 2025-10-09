@@ -160,11 +160,15 @@ RESPONDE ÚNICAMENTE CON EL JSON. Sin comentarios, sin markdown, sin explicacion
         model: 'google/gemini-2.5-pro',
         messages: [
           {
+            role: 'system',
+            content: 'Eres un experto en crear mapas conceptuales clínicos. Siempre respondes ÚNICAMENTE con JSON válido, sin markdown ni explicaciones.'
+          },
+          {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: 0.3,
+        temperature: 0.2,
       }),
     });
 

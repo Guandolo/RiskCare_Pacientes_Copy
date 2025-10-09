@@ -169,6 +169,9 @@ export const DataSourcesPanel = () => {
           console.error('Error guardando datos de HiSmart:', updateError);
         }
 
+        // Disparar evento para actualizar sugerencias
+        window.dispatchEvent(new CustomEvent('documentsUpdated'));
+
         toast.success('Datos clínicos consultados exitosamente');
       } else {
         toast.error('No se encontraron datos clínicos');
@@ -276,6 +279,9 @@ export const DataSourcesPanel = () => {
 
       // Recargar documentos
       await loadDocuments();
+      
+      // Disparar evento personalizado para actualizar sugerencias en ChatPanel
+      window.dispatchEvent(new CustomEvent('documentsUpdated'));
       
     } catch (error) {
       console.error('Error en carga de archivos:', error);
