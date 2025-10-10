@@ -60,7 +60,20 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setDocuments(data || []);
+      
+      // Procesar URLs públicas para cada documento
+      const documentsWithUrls = (data || []).map(doc => {
+        let publicUrl = doc.file_url;
+        if (!publicUrl || !/^https?:\/\//.test(publicUrl)) {
+          const { data: urlData } = supabase.storage
+            .from('clinical-documents')
+            .getPublicUrl(doc.file_url);
+          publicUrl = urlData.publicUrl;
+        }
+        return { ...doc, file_url: publicUrl };
+      });
+      
+      setDocuments(documentsWithUrls);
     } catch (error) {
       console.error('Error loading documents:', error);
       toast.error('Error cargando documentos');
@@ -196,18 +209,18 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-6xl h-[90vh] p-0">
-          <DialogHeader className="p-6 pb-4 border-b border-border">
+        <DialogContent className="max-w-7xl h-[85vh] p-0">
+          <DialogHeader className="p-6 pb-3 border-b border-border">
             <DialogTitle className="text-2xl font-bold">Mis Documentos Clínicos</DialogTitle>
             <p className="text-sm text-muted-foreground mt-1">
               {filteredDocuments.length} documento{filteredDocuments.length !== 1 ? 's' : ''}
             </p>
           </DialogHeader>
 
-          <div className="p-6 pt-4 flex flex-col gap-4 flex-1 overflow-hidden">
+          <div className="px-6 py-4 flex flex-col gap-4 flex-1 overflow-hidden">
             {/* Barra de búsqueda y filtros */}
-            <div className="flex gap-3 flex-wrap">
-              <div className="flex-1 min-w-[300px] relative">
+            <div className="flex gap-3 flex-wrap items-center">
+              <div className="flex-1 min-w-[250px] relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar documentos por nombre o tipo..."
@@ -220,7 +233,7 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
               <Select value={filterType} onValueChange={setFilterType}>
                 <SelectTrigger className="w-[200px]">
                   <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="Filtrar por tipo" />
+                  <SelectValue placeholder="Todos los tipos" />
                 </SelectTrigger>
                 <SelectContent className="z-[60] bg-popover">
                   <SelectItem value="all">Todos los tipos</SelectItem>
@@ -242,7 +255,7 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
             </div>
 
             {/* Lista de documentos */}
-            <ScrollArea className="flex-1 -mx-6 px-6">
+            <ScrollArea className="flex-1">
               {loadingDocs ? (
                 <div className="flex items-center justify-center h-64">
                   <div className="text-center">
@@ -267,7 +280,7 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
                   )}
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
                   {filteredDocuments.map((doc) => (
                     <Card 
                       key={doc.id} 
@@ -301,7 +314,7 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
                         {doc.file_type?.includes('image') && doc.file_url && (
                           <div className="aspect-video bg-muted rounded-md mb-3 overflow-hidden">
                             <img 
-                              src={doc.file_url.startsWith('http') ? doc.file_url : supabase.storage.from('clinical-documents').getPublicUrl(doc.file_url).data.publicUrl}
+                              src={doc.file_url}
                               alt={doc.file_name}
                               className="w-full h-full object-cover"
                             />
