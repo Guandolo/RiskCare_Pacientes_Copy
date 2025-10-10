@@ -338,10 +338,17 @@ export const DataSourcesPanel = () => {
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col h-full bg-muted/30" data-tour="documents-panel">{/* Fondo gris claro */}
-        <div className="p-4 border-b border-border bg-background shadow-sm">{/* Header blanco */}
-          <h2 className="text-sm font-semibold text-foreground mb-1">Mis Documentos Clínicos</h2>
-          <p className="text-xs text-muted-foreground">Fuentes de datos consolidadas</p>
+      <div className="flex flex-col h-full bg-muted/30" data-tour="documents-panel">
+        <div className="p-4 border-b border-border bg-background shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
+              <FolderOpen className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Mis Documentos Clínicos</h2>
+              <p className="text-xs text-muted-foreground">Fuentes de datos consolidadas</p>
+            </div>
+          </div>
         </div>
 
       <ScrollArea className="flex-1">
