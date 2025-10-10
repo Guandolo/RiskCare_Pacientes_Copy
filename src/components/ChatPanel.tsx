@@ -398,7 +398,7 @@ export const ChatPanel = () => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ message: userMessage }),
+        body: JSON.stringify({ message: userMessage, conversationId: currentConversationId }),
       });
 
       if (!resp.ok || !resp.body) {

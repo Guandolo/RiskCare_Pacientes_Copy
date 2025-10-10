@@ -86,7 +86,7 @@ serve(async (req) => {
 
     const user = userData.user;
 
-    const { message } = await req.json();
+    const { message, conversationId } = await req.json();
     if (!message || typeof message !== "string") {
       return new Response(JSON.stringify({ error: "Mensaje inválido" }), {
         status: 400,
@@ -120,8 +120,9 @@ serve(async (req) => {
       .from("chat_messages")
       .select("role, content, created_at")
       .eq("user_id", user.id)
+      .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true })
-      .limit(10);
+      .limit(50);
 
     let contextInfo = `INFORMACIÓN DEL PACIENTE:\n`;
     if (profile) {
@@ -149,7 +150,7 @@ serve(async (req) => {
 
     // Guardar mensaje del usuario inmediatamente
     await supabase.from("chat_messages").insert([
-      { user_id: user.id, role: "user", content: message },
+      { user_id: user.id, role: "user", content: message, conversation_id: conversationId },
     ]);
 
     const messages: Array<{ role: string; content: string }> = [
@@ -295,7 +296,7 @@ serve(async (req) => {
 
     // Guardar mensaje del asistente en DB
     await supabase.from("chat_messages").insert([
-      { user_id: user.id, role: "assistant", content: finalResponse },
+      { user_id: user.id, role: "assistant", content: finalResponse, conversation_id: conversationId },
     ]);
 
     // Paso 4: Simular streaming de la respuesta validada
