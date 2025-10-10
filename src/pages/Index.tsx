@@ -87,17 +87,22 @@ const Index = () => {
     }
   }, [user, profileChecked]);
 
-  // Listener para cerrar el modal cuando se complete el perfil
+  // Listener para cerrar el modal cuando se complete o cargue el perfil
   useEffect(() => {
     const handleProfileComplete = () => {
       setShowIdentificationModal(false);
       setProfileChecked(true);
     };
+    const handleProfileLoaded = () => {
+      setShowIdentificationModal(false);
+    };
     
     window.addEventListener('profileUpdated', handleProfileComplete);
+    window.addEventListener('profileLoaded', handleProfileLoaded);
     
     return () => {
       window.removeEventListener('profileUpdated', handleProfileComplete);
+      window.removeEventListener('profileLoaded', handleProfileLoaded);
     };
   }, []);
 

@@ -102,6 +102,8 @@ export const DataSourcesPanel = () => {
       
       setProfile(data);
       setPhoneValue(data.phone || "");
+      // Notificar a la app que ya hay perfil cargado
+      window.dispatchEvent(new CustomEvent('profileLoaded'));
       
       // Cargar datos de HiSmart guardados si existen
       if (data.topus_data && typeof data.topus_data === 'object') {
