@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Network, FlaskConical, ScanSearch, Pill, Loader2, Maximize2, Save, X } from "lucide-react";
+import { Network, FlaskConical, ScanSearch, Pill, Activity, Loader2, Maximize2, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -12,13 +12,14 @@ import { ClinicalMapViewer } from "./ClinicalMapViewer";
 import { DiagnosticAidsViewer } from "./DiagnosticAidsViewer";
 import { ParaclinicosViewer } from "./ParaclinicosViewer";
 import { MedicamentosViewer } from "./MedicamentosViewer";
+import { BodyAnalysisViewer } from "./BodyAnalysisViewer";
 
 interface AnalysisModule {
   id: string;
   title: string;
   description: string;
   icon: any;
-  type: 'mapa_clinico' | 'paraclinicos' | 'ayudas_diagnosticas' | 'medicamentos';
+  type: 'mapa_clinico' | 'paraclinicos' | 'ayudas_diagnosticas' | 'medicamentos' | 'analisis_corporal';
 }
 
 const analysisModules: AnalysisModule[] = [
@@ -49,6 +50,13 @@ const analysisModules: AnalysisModule[] = [
     description: 'Historial de formulaciones médicas',
     icon: Pill,
     type: 'medicamentos'
+  },
+  {
+    id: 'analisis_corporal',
+    title: 'Análisis Corporal',
+    description: 'Gráficos de evolución de peso, IMC y signos vitales',
+    icon: Activity,
+    type: 'analisis_corporal'
   },
 ];
 
@@ -104,7 +112,8 @@ export const ClinicalNotebookPanel = () => {
         'mapa_clinico': 'generate-clinical-map',
         'ayudas_diagnosticas': 'generate-diagnostic-aids',
         'paraclinicos': 'generate-paraclinicos',
-        'medicamentos': 'generate-medicamentos'
+        'medicamentos': 'generate-medicamentos',
+        'analisis_corporal': 'generate-body-analysis'
       };
 
       const functionName = functionMap[module.type];
@@ -129,6 +138,8 @@ export const ClinicalNotebookPanel = () => {
         content = data?.paraclinicos;
       } else if (module.type === 'medicamentos') {
         content = data?.medicamentos;
+      } else if (module.type === 'analisis_corporal') {
+        content = data?.bodyAnalysis;
       }
 
       if (content) {
@@ -224,6 +235,7 @@ export const ClinicalNotebookPanel = () => {
                           module.type === 'mapa_clinico' ? 'bg-purple-50 dark:bg-purple-950/30' :
                           module.type === 'paraclinicos' ? 'bg-blue-50 dark:bg-blue-950/30' :
                           module.type === 'ayudas_diagnosticas' ? 'bg-amber-50 dark:bg-amber-950/30' :
+                          module.type === 'analisis_corporal' ? 'bg-pink-50 dark:bg-pink-950/30' :
                           'bg-green-50 dark:bg-green-950/30'
                         }`}>
                           {generatingModule === module.id ? (
@@ -233,6 +245,7 @@ export const ClinicalNotebookPanel = () => {
                               module.type === 'mapa_clinico' ? 'text-purple-600 dark:text-purple-400' :
                               module.type === 'paraclinicos' ? 'text-blue-600 dark:text-blue-400' :
                               module.type === 'ayudas_diagnosticas' ? 'text-amber-600 dark:text-amber-400' :
+                              module.type === 'analisis_corporal' ? 'text-pink-600 dark:text-pink-400' :
                               'text-green-600 dark:text-green-400'
                             }`} />
                           )}
@@ -295,6 +308,9 @@ export const ClinicalNotebookPanel = () => {
                   {generatedData.type === 'medicamentos' && (
                     <MedicamentosViewer data={generatedData.content} />
                   )}
+                  {generatedData.type === 'analisis_corporal' && (
+                    <BodyAnalysisViewer data={generatedData.content} />
+                  )}
                 </div>
               </Card>
             )}
@@ -322,12 +338,14 @@ export const ClinicalNotebookPanel = () => {
                         note.type === 'mapa_clinico' ? 'bg-purple-50 dark:bg-purple-950/30' :
                         note.type === 'paraclinicos' ? 'bg-blue-50 dark:bg-blue-950/30' :
                         note.type === 'ayudas_diagnosticas' ? 'bg-amber-50 dark:bg-amber-950/30' :
+                        note.type === 'analisis_corporal' ? 'bg-pink-50 dark:bg-pink-950/30' :
                         'bg-green-50 dark:bg-green-950/30'
                       }`}>
                         {note.type === 'mapa_clinico' && <Network className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
                         {note.type === 'paraclinicos' && <FlaskConical className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
                         {note.type === 'ayudas_diagnosticas' && <ScanSearch className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
                         {note.type === 'medicamentos' && <Pill className="w-4 h-4 text-green-600 dark:text-green-400" />}
+                        {note.type === 'analisis_corporal' && <Activity className="w-4 h-4 text-pink-600 dark:text-pink-400" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-foreground truncate">{note.title}</p>
@@ -365,6 +383,9 @@ export const ClinicalNotebookPanel = () => {
               )}
               {generatedData?.type === 'medicamentos' && (
                 <MedicamentosViewer data={generatedData.content} />
+              )}
+              {generatedData?.type === 'analisis_corporal' && (
+                <BodyAnalysisViewer data={generatedData.content} />
               )}
             </div>
           </DialogContent>

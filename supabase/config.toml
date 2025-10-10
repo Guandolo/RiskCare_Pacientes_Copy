@@ -17,3 +17,21 @@ verify_jwt = true
 
 [functions.chat-suggestions]
 verify_jwt = true
+
+[functions.generate-clinical-map]
+verify_jwt = true
+
+[functions.generate-paraclinicos]
+verify_jwt = true
+
+[functions.generate-diagnostic-aids]
+verify_jwt = true
+
+[functions.generate-medicamentos]
+verify_jwt = true
+
+[functions.generate-body-analysis]
+verify_jwt = true
+
+[functions.generate-chat-title]
+verify_jwt = true
