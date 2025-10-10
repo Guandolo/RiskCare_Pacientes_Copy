@@ -367,14 +367,17 @@ export const ClinicalNotebookPanel = () => {
     <TooltipProvider>
       <div className="flex flex-col h-full bg-background" data-tour="notebook-panel">
         {/* Header */}
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Bitácora Clínica</h2>
-            <p className="text-xs text-muted-foreground">Herramientas de análisis</p>
-          </div>
-          <div className="opacity-0 pointer-events-none">
-            {/* Placeholder para mantener alineación con panel de chat */}
-            <Button size="icon" variant="ghost" className="w-8 h-8"></Button>
+        <div className="p-4 border-b border-border bg-background shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
+                <Network className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Bitácora Clínica</h2>
+                <p className="text-xs text-muted-foreground">Herramientas de análisis</p>
+              </div>
+            </div>
           </div>
         </div>
 
