@@ -61,16 +61,11 @@ export const ChatPanel = () => {
     const init = async () => {
       await loadOrCreateConversation();
       await loadConversations();
-      // Cargar sugerencias después de cargar la conversación
-      loadSuggestions();
     };
     init();
     initializeSpeechRecognition();
 
-    // Listener para recargar sugerencias cuando se actualicen documentos
-    const handleDocumentsUpdate = () => {
-      loadSuggestions();
-    };
+    const handleDocumentsUpdate = () => {};
     window.addEventListener('documentsUpdated', handleDocumentsUpdate);
 
     return () => {
@@ -85,7 +80,6 @@ export const ChatPanel = () => {
       if (event === 'SIGNED_IN' && !hasLoadedInitialSuggestions) {
         loadOrCreateConversation();
         loadConversations();
-        loadSuggestions(); // Solo cuando inicia sesión por primera vez
         setHasLoadedInitialSuggestions(true);
       }
       if (event === 'SIGNED_OUT') {
@@ -510,11 +504,6 @@ export const ChatPanel = () => {
         await loadConversations();
       }
 
-      // Generar nuevas sugerencias basadas en el contexto de la conversación
-      // Esperar un momento para que el mensaje se procese completamente
-      setTimeout(() => {
-        loadSuggestions([...messages, { role: "user", content: userMessage }, { role: "assistant", content: assistantSoFar }]);
-      }, 1000);
 
     } catch (error) {
       console.error('Error al enviar mensaje:', error);
@@ -873,70 +862,7 @@ export const ChatPanel = () => {
       {/* Input Area */}
       <div className="border-t border-border bg-card">
         <div className="max-w-3xl mx-auto">
-          {/* Suggested Questions - Horizontal Carousel */}
-          {suggestions.length > 0 && (
-            <div className="px-4 pt-4 pb-3 border-b border-border/50">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Lightbulb className="w-4 h-4 text-primary" />
-                  <span className="text-xs font-medium text-muted-foreground">Preguntas sugeridas</span>
-                </div>
-              </div>
-              <div className="relative">
-                {/* Scrollable Suggestions - Centered */}
-                <div 
-                  ref={suggestionsScrollRef}
-                  className="flex gap-2 overflow-x-auto scrollbar-hide scroll-smooth px-1"
-                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                >
-                  {suggestionsLoading ? (
-                    Array.from({ length: 3 }).map((_, idx) => (
-                      <Card key={idx} className="flex-shrink-0 w-full max-w-[280px] px-4 py-3 bg-muted/30 animate-pulse">
-                        <div className="h-6 bg-muted rounded"></div>
-                      </Card>
-                    ))
-                  ) : (
-                    suggestions.map((question, idx) => (
-                      <Card
-                        key={idx}
-                        className="flex-shrink-0 w-full max-w-[280px] px-4 py-3 bg-gradient-to-br from-card to-card/80 hover:from-accent hover:to-accent/80 hover:border-primary/40 border-border transition-all cursor-pointer group/card shadow-sm hover:shadow-md"
-                        onClick={() => setMessage(question)}
-                      >
-                        <div className="flex items-start gap-2">
-                          <Sparkles className="w-3.5 h-3.5 text-primary/60 group-hover/card:text-primary transition-colors flex-shrink-0 mt-0.5" />
-                          <p className="text-xs text-foreground/90 leading-relaxed line-clamp-2 group-hover/card:text-primary transition-colors font-medium">
-                            {question}
-                          </p>
-                        </div>
-                      </Card>
-                    ))
-                  )}
-                </div>
-                
-                {/* Navigation arrows - only show if there are more than 3 suggestions */}
-                {suggestions.length > 3 && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute -left-2 top-1/2 -translate-y-1/2 z-10 h-7 w-7 rounded-full bg-background/90 backdrop-blur-sm shadow-lg border border-border/50 hover:bg-accent"
-                      onClick={() => scrollSuggestions('left')}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute -right-2 top-1/2 -translate-y-1/2 z-10 h-7 w-7 rounded-full bg-background/90 backdrop-blur-sm shadow-lg border border-border/50 hover:bg-accent"
-                      onClick={() => scrollSuggestions('right')}
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
+          {/* Sugerencias deshabilitadas para ganar espacio */}
 
           <div className="p-4">
             <div className="flex gap-2">

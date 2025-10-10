@@ -2,28 +2,44 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import riskCareLogo from "@/assets/riskcare-logo.png";
+import { supabase } from "@/integrations/supabase/client";
 
 const Auth = () => {
-  const { user, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [authLoading, setAuthLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    if (user) {
-      navigate("/");
-    }
-  }, [user, navigate]);
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      if (data.user) navigate("/");
+    });
+  }, [navigate]);
 
   const handleGoogleSignIn = async () => {
     try {
       setAuthLoading(true);
       console.log('[Auth] Google sign-in clicked');
-      await signInWithGoogle();
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`,
+          queryParams: { prompt: 'select_account' },
+          skipBrowserRedirect: true,
+        },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        if (window.top) {
+          (window.top as Window).location.href = data.url;
+        } else {
+          window.location.href = data.url;
+        }
+      }
     } catch (error: any) {
-      toast.error(error.message || "Error al iniciar sesión");
+      toast.error(error.message || 'Error al iniciar sesión');
     } finally {
       setAuthLoading(false);
     }
