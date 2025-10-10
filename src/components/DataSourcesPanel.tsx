@@ -48,6 +48,12 @@ export const DataSourcesPanel = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   useEffect(() => {
+    // Clear state when component mounts
+    setProfile(null);
+    setDocuments([]);
+    setHismartData(null);
+    setHismartLastFetch(null);
+    
     loadProfileAndData();
 
     // Listener para recargar perfil cuando se cree por primera vez
@@ -58,8 +64,12 @@ export const DataSourcesPanel = () => {
 
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
+      // Clear state on unmount
+      setProfile(null);
+      setDocuments([]);
+      setHismartData(null);
     };
-  }, []);
+  }, []); // Empty dependency to run only on mount/unmount
 
   const loadProfileAndData = async () => {
     await loadProfile();

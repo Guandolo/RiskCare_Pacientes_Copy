@@ -70,11 +70,19 @@ export const ChatPanel = () => {
 
   // Reaccionar a cambios de autenticación
   useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' && !hasLoadedInitialSuggestions) {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        // Clear all state when signing in
+        setMessages([]);
+        setConversations([]);
+        setCurrentConversationId(null);
+        setSuggestions([]);
+        setHasLoadedInitialSuggestions(false);
+        
+        // Load fresh data for new user
         loadOrCreateConversation();
         loadConversations();
-        loadSuggestions(); // Solo cuando inicia sesión por primera vez
+        loadSuggestions();
         setHasLoadedInitialSuggestions(true);
       }
       if (event === 'SIGNED_OUT') {

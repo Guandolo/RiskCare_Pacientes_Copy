@@ -71,6 +71,22 @@ export const ClinicalNotebookPanel = () => {
 
   useEffect(() => {
     loadSavedNotes();
+    
+    // Clear state on auth changes
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        setSavedNotes([]);
+        setGeneratedData(null);
+        setGeneratingModule(null);
+        loadSavedNotes();
+      }
+      if (event === 'SIGNED_OUT') {
+        setSavedNotes([]);
+        setGeneratedData(null);
+      }
+    });
+    
+    return () => listener.subscription.unsubscribe();
   }, []);
 
   const loadSavedNotes = async () => {

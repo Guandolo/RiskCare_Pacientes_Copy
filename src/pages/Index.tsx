@@ -27,7 +27,12 @@ const Index = () => {
 
   useEffect(() => {
     const checkProfile = async () => {
-      if (!user) return;
+      if (!user) {
+        setCheckingProfile(false);
+        return;
+      }
+      
+      setCheckingProfile(true);
       
       const { data, error } = await supabase
         .from("patient_profiles")
@@ -44,8 +49,10 @@ const Index = () => {
 
     if (user) {
       checkProfile();
+    } else {
+      setCheckingProfile(false);
     }
-  }, [user]);
+  }, [user?.id]); // Dependency on user.id to trigger on user change
 
   if (loading || checkingProfile) {
     return (
