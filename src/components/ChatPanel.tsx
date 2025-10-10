@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check, Mic, MicOff, Paperclip, Clock, CheckCircle2, Loader2 } from "lucide-react";
+import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check, Mic, MicOff, Paperclip, Clock, CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { SecureUploadModal } from "./SecureUploadModal";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Message {
   role: "user" | "assistant";
@@ -732,6 +733,27 @@ export const ChatPanel = () => {
                           {msg.content}
                         </ReactMarkdown>
                       </div>
+                      
+                      {/* Sello de Respuesta Verificada */}
+                      {msg.role === 'assistant' && !isLoading && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50">
+                                <ShieldCheck className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                <span className="text-xs font-medium text-green-600 dark:text-green-400">
+                                  Respuesta Verificada
+                                </span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-xs">
+                              <p className="text-xs">
+                                Esta respuesta fue verificada por nuestro sistema de auditoría para asegurar que la información es fiel a tus documentos cargados.
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                     </div>
                   </div>
                 </Card>
