@@ -49,6 +49,9 @@ const Index = () => {
       }
       
       try {
+        // Esperar un poco para que DataSourcesPanel cargue primero
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         const { data, error } = await supabase
           .from("patient_profiles")
           .select("*")
@@ -66,7 +69,7 @@ const Index = () => {
           console.log("No profile found, showing identification modal");
           setShowIdentificationModal(true);
         } else {
-          console.log("Profile found, closing modal");
+          console.log("Profile found, NOT showing modal");
           setShowIdentificationModal(false);
         }
         
