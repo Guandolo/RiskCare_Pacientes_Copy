@@ -93,7 +93,7 @@ export const ChatPanel = () => {
     return () => window.removeEventListener('authChanged', handle);
   }, [hasLoadedInitialSuggestions]);
 
-  const loadSuggestions = async () => {
+  const loadSuggestions = async (conversationContext?: Message[]) => {
     try {
       setSuggestionsLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
@@ -102,9 +102,11 @@ export const ChatPanel = () => {
         return;
       }
       
-      console.log('Loading suggestions...');
+      console.log('Loading suggestions with context...');
       const { data, error } = await supabase.functions.invoke('chat-suggestions', {
-        body: {},
+        body: { 
+          conversationContext: conversationContext || messages 
+        },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       
@@ -491,6 +493,13 @@ export const ChatPanel = () => {
           .eq('id', currentConversationId);
         await loadConversations();
       }
+
+      // Generar nuevas sugerencias basadas en el contexto de la conversación
+      // Esperar un momento para que el mensaje se procese completamente
+      setTimeout(() => {
+        loadSuggestions([...messages, { role: "user", content: userMessage }, { role: "assistant", content: assistantSoFar }]);
+      }, 1000);
+
     } catch (error) {
       console.error('Error al enviar mensaje:', error);
       const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
@@ -686,7 +695,7 @@ export const ChatPanel = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={loadSuggestions}
+                    onClick={() => loadSuggestions()}
                     disabled={suggestionsLoading}
                     className="h-auto py-1 px-2 text-xs gap-1 hover:bg-primary/10 hover:text-primary"
                   >

@@ -34,6 +34,9 @@ serve(async (req) => {
 
     const user = userData.user;
 
+    // Obtener el contexto de la conversación del body
+    const { conversationContext } = await req.json();
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       return new Response(JSON.stringify({ error: "LOVABLE_API_KEY no configurada" }), {
@@ -93,6 +96,19 @@ serve(async (req) => {
     }
 
     console.log('Context length:', contextInfo.length);
+    console.log('Conversation context:', conversationContext?.length || 0, 'messages');
+
+    // Construir el prompt considerando el contexto de la conversación
+    let conversationSummary = '';
+    if (conversationContext && conversationContext.length > 0) {
+      conversationSummary = '\n\nCONTEXTO DE LA CONVERSACIÓN ACTUAL:\n';
+      // Tomar los últimos 4 mensajes para contexto
+      const recentMessages = conversationContext.slice(-4);
+      recentMessages.forEach((msg: any, idx: number) => {
+        conversationSummary += `${msg.role === 'user' ? 'Usuario' : 'Asistente'}: ${msg.content.substring(0, 200)}${msg.content.length > 200 ? '...' : ''}\n`;
+      });
+      conversationSummary += '\nBASADO en esta conversación, genera preguntas de seguimiento que ayuden al usuario a profundizar en los temas que está explorando.\n';
+    }
 
     const systemPrompt = `Eres un asistente que genera preguntas EXPLORATORIAS para ayudar al paciente a COMPRENDER su información médica existente.
 
@@ -101,7 +117,8 @@ REGLAS FUNDAMENTALES - NO NEGOCIABLES:
 - Las preguntas NUNCA deben solicitar diagnósticos, recomendaciones o consejos médicos
 - Las preguntas SOLO deben buscar EXPLORAR y ENTENDER los datos ya disponibles
 - ENFÓCATE en aclarar términos médicos, fechas, resultados y contenido de documentos
-- Si NO hay documentos, pregunta sobre términos médicos comunes para educar al paciente
+- Si HAY contexto de conversación, genera preguntas de SEGUIMIENTO relacionadas con lo que el usuario está preguntando
+- Si NO hay documentos ni conversación, pregunta sobre términos médicos comunes para educar al paciente
 - NO inventes información que no esté en el contexto
 
 TIPOS DE PREGUNTAS PERMITIDAS (Enfoque: Exploración de Datos):
@@ -111,6 +128,7 @@ TIPOS DE PREGUNTAS PERMITIDAS (Enfoque: Exploración de Datos):
 ✓ "¿Qué medicamentos aparecen formulados en mi historial?"
 ✓ "¿Qué estudios de imagenología tengo registrados?"
 ✓ "¿Cuál es la tendencia de mi [parámetro] en los últimos exámenes?"
+✓ Preguntas de seguimiento basadas en el tema que el usuario está explorando
 
 TIPOS DE PREGUNTAS PROHIBIDAS (Inducen a consejos médicos):
 ✗ "¿Qué debo hacer con...?"
@@ -126,7 +144,7 @@ OBJETIVO: El paciente debe poder explorar y comprender sus datos sin inducir al 
       model: "google/gemini-2.5-flash",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: contextInfo },
+        { role: "user", content: contextInfo + conversationSummary },
       ],
       tools: [
         {
