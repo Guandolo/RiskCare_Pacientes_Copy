@@ -1,0 +1,26 @@
+{
+  "name": "RiskCare Pacientes - Asistente Clínico Inteligente",
+  "short_name": "RiskCare",
+  "description": "Tu asistente clínico personal para entender y gestionar tu historial de salud",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "medical", "productivity"],
+  "prefer_related_applications": false
+}

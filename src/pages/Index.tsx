@@ -5,15 +5,19 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { ClinicalNotebookPanel } from "@/components/ClinicalNotebookPanel";
 import { Header } from "@/components/Header";
 import { PatientIdentificationModal } from "@/components/PatientIdentificationModal";
+import { MobileNavigation } from "@/components/MobileNavigation";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [showIdentificationModal, setShowIdentificationModal] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
+  const [mobileTab, setMobileTab] = useState<"documents" | "chat" | "notebook">("chat");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -69,46 +73,74 @@ const Index = () => {
       <div className="flex flex-col h-screen bg-gradient-subtle">
         <Header />
         
-        <div className="flex-1 overflow-hidden">
-          <ResizablePanelGroup direction="horizontal" className="h-full">
-            {/* Left Panel - Data Sources */}
-            <ResizablePanel 
-              defaultSize={22} 
-              minSize={15} 
-              maxSize={35}
-              collapsible={true}
-              collapsedSize={0}
-            >
-              <div className="h-full border-r border-border bg-card overflow-hidden">
-                <DataSourcesPanel />
-              </div>
-            </ResizablePanel>
+        {isMobile ? (
+          // Vista móvil con navegación por pestañas
+          <>
+            <div className="flex-1 overflow-hidden pb-16">
+              {mobileTab === "documents" && (
+                <div className="h-full bg-card overflow-hidden">
+                  <DataSourcesPanel />
+                </div>
+              )}
+              
+              {mobileTab === "chat" && (
+                <div className="h-full flex flex-col overflow-hidden">
+                  <ChatPanel />
+                </div>
+              )}
+              
+              {mobileTab === "notebook" && (
+                <div className="h-full bg-card overflow-hidden">
+                  <ClinicalNotebookPanel />
+                </div>
+              )}
+            </div>
+            
+            <MobileNavigation activeTab={mobileTab} onTabChange={setMobileTab} />
+          </>
+        ) : (
+          // Vista de escritorio con paneles redimensionables
+          <div className="flex-1 overflow-hidden">
+            <ResizablePanelGroup direction="horizontal" className="h-full">
+              {/* Left Panel - Data Sources */}
+              <ResizablePanel 
+                defaultSize={22} 
+                minSize={15} 
+                maxSize={35}
+                collapsible={true}
+                collapsedSize={0}
+              >
+                <div className="h-full border-r border-border bg-card overflow-hidden">
+                  <DataSourcesPanel />
+                </div>
+              </ResizablePanel>
 
-            <ResizableHandle withHandle />
+              <ResizableHandle withHandle />
 
-            {/* Center Panel - Chat Assistant */}
-            <ResizablePanel defaultSize={48} minSize={30}>
-              <div className="h-full flex flex-col overflow-hidden">
-                <ChatPanel />
-              </div>
-            </ResizablePanel>
+              {/* Center Panel - Chat Assistant */}
+              <ResizablePanel defaultSize={48} minSize={30}>
+                <div className="h-full flex flex-col overflow-hidden">
+                  <ChatPanel />
+                </div>
+              </ResizablePanel>
 
-            <ResizableHandle withHandle />
+              <ResizableHandle withHandle />
 
-            {/* Right Panel - Clinical Notebook */}
-            <ResizablePanel 
-              defaultSize={30} 
-              minSize={20} 
-              maxSize={40}
-              collapsible={true}
-              collapsedSize={0}
-            >
-              <div className="h-full border-l border-border bg-card overflow-hidden">
-                <ClinicalNotebookPanel />
-              </div>
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        </div>
+              {/* Right Panel - Clinical Notebook */}
+              <ResizablePanel 
+                defaultSize={30} 
+                minSize={20} 
+                maxSize={40}
+                collapsible={true}
+                collapsedSize={0}
+              >
+                <div className="h-full border-l border-border bg-card overflow-hidden">
+                  <ClinicalNotebookPanel />
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </div>
+        )}
       </div>
     </>
   );
