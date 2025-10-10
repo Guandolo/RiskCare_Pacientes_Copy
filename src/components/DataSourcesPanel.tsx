@@ -117,9 +117,21 @@ export const DataSourcesPanel = () => {
     }
   };
 
-  const handleViewDocument = (doc: any) => {
-    setSelectedDocPreview(doc);
-    setPreviewDialogOpen(true);
+  const handleViewDocument = async (doc: any) => {
+    try {
+      // Obtener la URL pública correcta del documento
+      const { data: { publicUrl } } = supabase.storage
+        .from('clinical-documents')
+        .getPublicUrl(doc.file_url);
+      
+      // Actualizar el documento con la URL válida
+      const docWithUrl = { ...doc, publicUrl };
+      setSelectedDocPreview(docWithUrl);
+      setPreviewDialogOpen(true);
+    } catch (error) {
+      console.error('Error al cargar vista previa:', error);
+      toast.error('No se pudo cargar la vista previa del documento');
+    }
   };
 
   const startPasswordFlow = (params: { publicUrl: string; fileName: string; fileType: string; userId: string; identification?: string | null; }) => {
@@ -743,13 +755,13 @@ export const DataSourcesPanel = () => {
               <h4 className="text-sm font-semibold mb-2">Vista Previa</h4>
               {selectedDocPreview?.file_type === 'application/pdf' ? (
                 <iframe
-                  src={selectedDocPreview.file_url}
+                  src={selectedDocPreview.publicUrl || selectedDocPreview.file_url}
                   className="w-full h-[400px] rounded border"
                   title="Vista previa del PDF"
                 />
               ) : selectedDocPreview?.file_type?.startsWith('image/') ? (
                 <img
-                  src={selectedDocPreview.file_url}
+                  src={selectedDocPreview.publicUrl || selectedDocPreview.file_url}
                   alt={selectedDocPreview.file_name}
                   className="w-full rounded border"
                 />

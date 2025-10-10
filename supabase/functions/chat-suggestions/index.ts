@@ -123,7 +123,7 @@ TIPOS DE PREGUNTAS PROHIBIDAS (Inducen a consejos médicos):
 OBJETIVO: El paciente debe poder explorar y comprender sus datos sin inducir al asistente a actuar como médico.`;
 
     const body: any = {
-      model: "google/gemini-flash-latest",
+      model: "google/gemini-2.5-flash",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: contextInfo },
@@ -158,6 +158,8 @@ OBJETIVO: El paciente debe poder explorar y comprender sus datos sin inducir al 
     
     console.log('Calling AI for suggestions...');
 
+    console.log('Calling AI for suggestions...');
+    
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {

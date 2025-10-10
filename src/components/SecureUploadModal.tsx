@@ -203,8 +203,27 @@ export const SecureUploadModal = ({ open, onOpenChange, onSuccess }: SecureUploa
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      // Solo permitir cerrar si NO está procesando
+      if (!newOpen && status !== 'processing') {
+        handleClose();
+      }
+    }}>
+      <DialogContent 
+        className="sm:max-w-md" 
+        onPointerDownOutside={(e) => {
+          // Prevenir cierre al hacer clic fuera si está procesando
+          if (status === 'processing') {
+            e.preventDefault();
+          }
+        }}
+        onEscapeKeyDown={(e) => {
+          // Prevenir cierre con Escape si está procesando
+          if (status === 'processing') {
+            e.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Carga Segura de Documentos</DialogTitle>
           <DialogDescription>

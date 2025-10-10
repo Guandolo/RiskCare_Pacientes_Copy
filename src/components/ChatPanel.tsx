@@ -497,6 +497,7 @@ export const ChatPanel = () => {
       setMessages(prev => prev.slice(0, -1));
       setProgressSteps([]);
     } finally {
+      setIsLoading(false);
       setProgressSteps([]);
     }
   };
