@@ -64,6 +64,7 @@ export const ChatPanel = () => {
   const recognitionRef = useRef<any>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -381,6 +382,11 @@ export const ChatPanel = () => {
     const text = (overrideMessage ?? message).trim();
     if (!text) return;
 
+    // Scroll al final inmediatamente al enviar
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 100);
+
     // Asegurar conversación
     let convId = currentConversationId;
     if (!convId) {
@@ -501,6 +507,9 @@ export const ChatPanel = () => {
                 }
                 return [...prev, { role: 'assistant', content: assistantSoFar }];
               });
+              
+              // Scroll suave al final mientras se recibe la respuesta
+              messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
           } catch {
             buffer = line + '\n' + buffer;
@@ -968,6 +977,8 @@ export const ChatPanel = () => {
               )}
             </>
           )}
+          {/* Referencia para scroll automático */}
+          <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
 
