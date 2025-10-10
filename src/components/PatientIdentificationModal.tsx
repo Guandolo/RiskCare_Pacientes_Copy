@@ -105,6 +105,60 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
       setDocumentType(data.data.tipoDocumento || 'CC');
       setIdentification(data.data.numeroDocumento || '');
       
+      // Guardar las imágenes en el storage para referencia futura
+      try {
+        const timestamp = Date.now();
+        
+        // Convertir base64 a blob
+        const frontBlob = await fetch(frontImage).then(r => r.blob());
+        const frontFile = new File([frontBlob], `documento_frente_${timestamp}.jpg`, { type: 'image/jpeg' });
+        
+        // Subir imagen del frente
+        const { data: uploadFrontData, error: uploadFrontError } = await supabase.storage
+          .from('clinical-documents')
+          .upload(`${userId}/documento_identidad_frente_${timestamp}.jpg`, frontFile);
+
+        if (uploadFrontError) throw uploadFrontError;
+
+        // Subir imagen del reverso si existe
+        let backPath = null;
+        if (backImage) {
+          const backBlob = await fetch(backImage).then(r => r.blob());
+          const backFile = new File([backBlob], `documento_reverso_${timestamp}.jpg`, { type: 'image/jpeg' });
+          
+          const { data: uploadBackData, error: uploadBackError } = await supabase.storage
+            .from('clinical-documents')
+            .upload(`${userId}/documento_identidad_reverso_${timestamp}.jpg`, backFile);
+
+          if (uploadBackError) throw uploadBackError;
+          backPath = uploadBackData.path;
+        }
+
+        // Crear registro en la tabla clinical_documents
+        const { error: dbError } = await supabase
+          .from('clinical_documents')
+          .insert({
+            user_id: userId,
+            file_name: uploadFrontData.path,
+            file_type: 'image/jpeg',
+            document_type: 'Documento de Identidad',
+            file_url: uploadFrontData.path,
+            structured_data: {
+              ...data.data,
+              backImagePath: backPath
+            }
+          });
+
+        if (dbError) {
+          console.error('Error guardando documento en BD:', dbError);
+        } else {
+          console.log('Documento de identidad guardado exitosamente');
+        }
+      } catch (storageError) {
+        console.error('Error guardando imágenes del documento:', storageError);
+        // No bloqueamos el flujo si falla el guardado
+      }
+      
       setScanMode('review');
       toast.success("Documento procesado exitosamente");
     } catch (error: any) {
