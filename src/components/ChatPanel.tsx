@@ -211,18 +211,16 @@ export const ChatPanel = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
-        .from('conversations')
-        .insert({ user_id: user.id, title: 'Nueva conversación' })
-        .select()
-        .single();
-
-      if (!error && data) {
-        setCurrentConversationId(data.id);
-        setMessages([]);
-        await loadConversations();
-        loadSuggestions([]);
-      }
+      // Solo limpiar el estado, no crear conversación hasta que haya mensajes
+      setCurrentConversationId(null);
+      setMessages([]);
+      setSuggestions([]);
+      loadSuggestions([]);
+      
+      toast({
+        title: "Nuevo chat iniciado",
+        description: "Comienza una nueva conversación",
+      });
     } catch (error) {
       console.error('Error creating conversation:', error);
     }
@@ -387,15 +385,30 @@ export const ChatPanel = () => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }, 100);
 
-    // Asegurar conversación
+    // Asegurar conversación - crear solo si no existe
     let convId = currentConversationId;
     if (!convId) {
-      await loadOrCreateConversation();
-      convId = currentConversationId;
-      if (!convId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         toast({ title: 'Error', description: 'Debes iniciar sesión para usar el chat.', variant: 'destructive' });
         return;
       }
+
+      // Crear nueva conversación al enviar el primer mensaje
+      const { data, error } = await supabase
+        .from('conversations')
+        .insert({ user_id: user.id, title: 'Nueva conversación' })
+        .select()
+        .single();
+
+      if (error || !data) {
+        toast({ title: 'Error', description: 'No se pudo crear la conversación', variant: 'destructive' });
+        return;
+      }
+
+      convId = data.id;
+      setCurrentConversationId(convId);
+      await loadConversations();
     }
 
     // Inicializar pasos de progreso
@@ -575,6 +588,9 @@ export const ChatPanel = () => {
 
   const handleFeedback = async (messageIndex: number, feedbackType: 'positive' | 'negative') => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const currentFeedback = messageFeedback[messageIndex];
       
       // Si es feedback positivo o toggle del mismo tipo
@@ -587,10 +603,27 @@ export const ChatPanel = () => {
         }));
 
         if (newFeedback === 'positive') {
+          // Guardar feedback positivo en la base de datos
+          const feedbackData = {
+            user_id: user.id,
+            message_id: `msg_${messageIndex}_${currentConversationId}`,
+            feedback_type: 'positive' as const,
+            comment: null
+          };
+
+          await supabase.from('chat_feedback').insert(feedbackData);
+
           toast({
             title: "Gracias por tu feedback",
             description: "Tu opinión nos ayuda a mejorar",
           });
+        } else if (newFeedback === null) {
+          // Eliminar feedback si se deselecciona
+          await supabase
+            .from('chat_feedback')
+            .delete()
+            .eq('message_id', `msg_${messageIndex}_${currentConversationId}`)
+            .eq('user_id', user.id);
         }
       } else {
         // Feedback negativo - abrir dialog
@@ -682,7 +715,7 @@ export const ChatPanel = () => {
               disabled={isLoading}
             >
               <RotateCw className="w-4 h-4" />
-              Reiniciar
+              Nuevo chat
             </Button>
             <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
               <SheetTrigger asChild>
