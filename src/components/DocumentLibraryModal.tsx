@@ -198,17 +198,7 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-6xl h-[90vh] p-0">
           <DialogHeader className="p-6 pb-4 border-b border-border">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-2xl font-bold">Mis Documentos Clínicos</DialogTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onOpenChange(false)}
-                className="h-8 w-8"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <DialogTitle className="text-2xl font-bold">Mis Documentos Clínicos</DialogTitle>
             <p className="text-sm text-muted-foreground mt-1">
               {filteredDocuments.length} documento{filteredDocuments.length !== 1 ? 's' : ''}
             </p>
@@ -379,38 +369,69 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
 
       {/* Visor de documentos */}
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
-        <DialogContent className="max-w-4xl h-[90vh]">
+        <DialogContent className="max-w-4xl h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>{selectedDoc?.file_name}</DialogTitle>
           </DialogHeader>
           
           {selectedDoc && (
-            <div className="flex-1 overflow-auto">
-              {selectedDoc.file_type?.includes('image') ? (
-                <img 
-                  src={selectedDoc.file_url}
-                  alt={selectedDoc.file_name}
-                  className="w-full h-auto"
-                />
-              ) : selectedDoc.file_type?.includes('pdf') ? (
-                <iframe
-                  src={selectedDoc.file_url}
-                  className="w-full h-full min-h-[600px]"
-                  title={selectedDoc.file_name}
-                />
-              ) : (
-                <div className="p-8 text-center">
-                  <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">
-                    Vista previa no disponible para este tipo de archivo
-                  </p>
-                  <Button 
-                    onClick={() => handleDownloadDocument(selectedDoc)}
-                    className="mt-4 gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    Descargar documento
-                  </Button>
+            <div className="flex-1 overflow-auto space-y-4">
+              {/* Previsualización del archivo */}
+              <div className="bg-muted rounded-lg p-4">
+                <h4 className="text-sm font-semibold mb-2">Vista Previa</h4>
+                {selectedDoc.file_type?.includes('image') ? (
+                  <img 
+                    src={selectedDoc.file_url}
+                    alt={selectedDoc.file_name}
+                    className="w-full rounded border"
+                  />
+                ) : selectedDoc.file_type?.includes('pdf') ? (
+                  <iframe
+                    src={selectedDoc.file_url}
+                    className="w-full h-[400px] rounded border"
+                    title={selectedDoc.file_name}
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">Previsualización no disponible</p>
+                )}
+              </div>
+
+              {/* Información Detectada */}
+              <div className="bg-muted rounded-lg p-4">
+                <h4 className="text-sm font-semibold mb-2">Información Detectada</h4>
+                <div className="space-y-3 text-sm">
+                  {selectedDoc.document_type && (
+                    <div>
+                      <span className="text-muted-foreground">Tipo de documento: </span>
+                      <span className="font-medium">{selectedDoc.document_type}</span>
+                    </div>
+                  )}
+                  {selectedDoc.document_date && (
+                    <div>
+                      <span className="text-muted-foreground">Fecha: </span>
+                      <span className="font-medium">{formatDate(selectedDoc.document_date)}</span>
+                    </div>
+                  )}
+                  {selectedDoc.structured_data && Object.keys(selectedDoc.structured_data).length > 0 && (
+                    <div>
+                      <span className="text-muted-foreground block mb-1">Datos estructurados:</span>
+                      <pre className="bg-background p-2 rounded text-xs overflow-auto max-h-40">
+                        {JSON.stringify(selectedDoc.structured_data, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Texto extraído */}
+              {selectedDoc.extracted_text && (
+                <div className="bg-muted rounded-lg p-4">
+                  <h4 className="text-sm font-semibold mb-2">Texto Extraído</h4>
+                  <ScrollArea className="h-[200px]">
+                    <p className="text-xs text-foreground whitespace-pre-wrap">
+                      {selectedDoc.extracted_text}
+                    </p>
+                  </ScrollArea>
                 </div>
               )}
             </div>

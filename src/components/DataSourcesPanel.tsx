@@ -102,7 +102,6 @@ export const DataSourcesPanel = () => {
       
       setProfile(data);
       setPhoneValue(data.phone || "");
-      setPatientInfoOpen(true);
       
       // Cargar datos de HiSmart guardados si existen
       if (data.topus_data && typeof data.topus_data === 'object') {
@@ -696,7 +695,7 @@ export const DataSourcesPanel = () => {
               <h3 className="text-sm font-semibold text-foreground">
                 Mis Documentos Cargados ({documents.length})
               </h3>
-              <ChevronDown className="w-4 h-4" />
+              <FileText className="w-4 h-4 text-muted-foreground" />
             </div>
           </Card>
         </div>
