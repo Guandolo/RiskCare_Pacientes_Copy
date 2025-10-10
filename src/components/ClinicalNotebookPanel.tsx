@@ -75,14 +75,19 @@ export const ClinicalNotebookPanel = () => {
     // Clear state on auth changes
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
-        setSavedNotes([]);
-        setGeneratedData(null);
-        setGeneratingModule(null);
-        loadSavedNotes();
+        // Defer state updates to prevent React context issues
+        setTimeout(() => {
+          setSavedNotes([]);
+          setGeneratedData(null);
+          setGeneratingModule(null);
+          loadSavedNotes();
+        }, 0);
       }
       if (event === 'SIGNED_OUT') {
-        setSavedNotes([]);
-        setGeneratedData(null);
+        setTimeout(() => {
+          setSavedNotes([]);
+          setGeneratedData(null);
+        }, 0);
       }
     });
     

@@ -72,29 +72,32 @@ export const ChatPanel = () => {
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN') {
-        // Clear all state when signing in
-        setMessages([]);
-        setConversations([]);
-        setCurrentConversationId(null);
-        setSuggestions([]);
-        setHasLoadedInitialSuggestions(false);
-        
-        // Load fresh data for new user
-        loadOrCreateConversation();
-        loadConversations();
-        loadSuggestions();
-        setHasLoadedInitialSuggestions(true);
+        // Defer state updates to prevent React context issues
+        setTimeout(() => {
+          setMessages([]);
+          setConversations([]);
+          setCurrentConversationId(null);
+          setSuggestions([]);
+          setHasLoadedInitialSuggestions(false);
+          
+          loadOrCreateConversation();
+          loadConversations();
+          loadSuggestions();
+          setHasLoadedInitialSuggestions(true);
+        }, 0);
       }
       if (event === 'SIGNED_OUT') {
-        setMessages([]);
-        setSuggestions([]);
-        setCurrentConversationId(null);
-        setConversations([]);
-        setHasLoadedInitialSuggestions(false);
+        setTimeout(() => {
+          setMessages([]);
+          setSuggestions([]);
+          setCurrentConversationId(null);
+          setConversations([]);
+          setHasLoadedInitialSuggestions(false);
+        }, 0);
       }
     });
     return () => listener.subscription.unsubscribe();
-  }, [hasLoadedInitialSuggestions]);
+  }, []);
 
   const loadSuggestions = async () => {
     try {
