@@ -653,10 +653,10 @@ export const ChatPanel = () => {
           </div>
           <div className="flex items-center gap-2">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={createNewConversation}
-              className="gap-2"
+              className="gap-2 bg-background hover:bg-accent"
               disabled={isLoading}
             >
               <RotateCw className="w-4 h-4" />
@@ -664,7 +664,7 @@ export const ChatPanel = () => {
             </Button>
             <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-2">
+                <Button variant="outline" size="sm" className="gap-2 bg-background hover:bg-accent">
                   <History className="w-4 h-4" />
                   Historial
                 </Button>
@@ -683,8 +683,10 @@ export const ChatPanel = () => {
                       conversations.map((conv) => (
                         <Card
                           key={conv.id}
-                          className={`p-3 hover:bg-accent transition-colors ${
-                            conv.id === currentConversationId ? 'border-primary' : ''
+                          className={`p-3 transition-all cursor-pointer ${
+                            conv.id === currentConversationId 
+                              ? 'bg-accent border-foreground/20 shadow-sm' 
+                              : 'hover:bg-accent/50 border-border'
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2">
@@ -937,7 +939,7 @@ export const ChatPanel = () => {
           {suggestions.length > 0 && (
             <div className="px-4 pt-3 pb-2 border-b border-border/50">
               <div className="flex items-center gap-2 mb-2">
-                <Lightbulb className="w-4 h-4 text-primary" />
+                <Lightbulb className="w-4 h-4 text-foreground/60" />
                 <span className="text-xs font-medium text-muted-foreground">Preguntas sugeridas</span>
               </div>
               <div className="relative">
@@ -956,12 +958,12 @@ export const ChatPanel = () => {
                     suggestions.map((question, idx) => (
                       <Card
                         key={idx}
-                        className="flex-shrink-0 w-[240px] px-3 py-2.5 bg-background hover:bg-accent hover:border-primary/40 border transition-all cursor-pointer"
+                        className="flex-shrink-0 w-[240px] px-3 py-2.5 bg-background hover:bg-accent/70 hover:border-foreground/20 border transition-all cursor-pointer shadow-sm"
                         onClick={() => setMessage(question)}
                       >
                         <div className="flex items-start gap-2">
-                          <Sparkles className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
-                          <p className="text-xs text-foreground leading-relaxed line-clamp-2">
+                          <Sparkles className="w-3.5 h-3.5 text-foreground/60 flex-shrink-0 mt-0.5" />
+                          <p className="text-xs text-foreground/80 leading-relaxed line-clamp-2">
                             {question}
                           </p>
                         </div>
