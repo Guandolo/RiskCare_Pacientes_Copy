@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check, Mic, MicOff, Paperclip, Clock, CheckCircle2, Loader2, ShieldCheck, ChevronLeft, ChevronRight, Copy, ThumbsUp, ThumbsDown, MoreVertical, Share2, User } from "lucide-react";
+import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check, Mic, MicOff, Paperclip, Clock, CheckCircle2, Loader2, ShieldCheck, ChevronLeft, ChevronRight, Copy, ThumbsUp, ThumbsDown, MoreVertical, Share2, User, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,6 +63,7 @@ export const ChatPanel = () => {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const init = async () => {
@@ -673,14 +674,40 @@ export const ChatPanel = () => {
                 <SheetHeader>
                   <SheetTitle>Historial de Conversaciones</SheetTitle>
                 </SheetHeader>
-                <ScrollArea className="h-[calc(100vh-8rem)] mt-4">
+                
+                {/* Buscador */}
+                <div className="mt-4 mb-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar conversaciones..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+
+                <ScrollArea className="h-[calc(100vh-12rem)]">
                   <div className="space-y-2">
                     {conversations.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-8">
                         No hay conversaciones previas
                       </p>
+                    ) : conversations.filter(conv => 
+                        conv.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        new Date(conv.updated_at).toLocaleDateString('es-CO').includes(searchQuery)
+                      ).length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">
+                        No se encontraron conversaciones
+                      </p>
                     ) : (
-                      conversations.map((conv) => (
+                      conversations
+                        .filter(conv => 
+                          conv.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          new Date(conv.updated_at).toLocaleDateString('es-CO').includes(searchQuery)
+                        )
+                        .map((conv) => (
                         <Card
                           key={conv.id}
                           className={`p-3 transition-all cursor-pointer ${
@@ -959,11 +986,9 @@ export const ChatPanel = () => {
                       <Card
                         key={idx}
                         className="flex-shrink-0 w-[240px] px-3 py-2.5 bg-background hover:bg-accent/70 hover:border-foreground/20 border transition-all cursor-pointer shadow-sm"
-                        onClick={async () => {
+                        onClick={() => {
                           setMessage(question);
-                          // Esperar un momento para que setMessage actualice el estado
-                          await new Promise(resolve => setTimeout(resolve, 50));
-                          handleSendMessage();
+                          setTimeout(() => handleSendMessage(), 100);
                         }}
                       >
                         <div className="flex items-start gap-2">
