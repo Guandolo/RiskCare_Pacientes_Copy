@@ -78,6 +78,10 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
       toast.error("Por favor captura la foto del frente del documento");
       return;
     }
+    if (!backImage) {
+      toast.error("Por favor captura la foto del reverso del documento");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -469,7 +473,7 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
               </div>
 
               <div className="space-y-2">
-                <Label>Reverso del Documento (Opcional)</Label>
+                <Label>Reverso del Documento</Label>
                 <div 
                   className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
                   onClick={() => backInputRef.current?.click()}
@@ -497,7 +501,7 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
             <Button 
               onClick={processDocument} 
               className="w-full" 
-              disabled={!frontImage || loading}
+              disabled={!frontImage || !backImage || loading}
             >
               {loading ? (
                 <>
