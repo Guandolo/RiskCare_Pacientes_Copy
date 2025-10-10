@@ -45,23 +45,19 @@ export const useAuth = () => {
 
   const signOut = async () => {
     try {
-      // 1. Clear local state first
-      setUser(null);
-      setSession(null);
-      
-      // 2. Clear all local storage
-      localStorage.clear();
-      sessionStorage.clear();
-      
-      // 3. Sign out from Supabase
+      // 1. Sign out from Supabase first (this clears auth tokens)
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("Error al cerrar sesión:", error.message);
         throw error;
       }
       
-      // 4. Force page reload to clear all state
-      window.location.href = "/auth";
+      // 2. Clear local state
+      setUser(null);
+      setSession(null);
+      
+      // 3. Navigate to auth page (state will be cleared by components listening to auth changes)
+      navigate("/auth");
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
       throw error;
