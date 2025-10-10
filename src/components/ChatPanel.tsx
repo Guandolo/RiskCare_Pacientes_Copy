@@ -69,9 +69,10 @@ export const ChatPanel = () => {
     };
   }, []);
 
-  // Reaccionar a cambios de autenticación
+  // Reaccionar a cambios de autenticación (centralizado)
   useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+    const handle = (e: any) => {
+      const event = e?.detail?.event;
       if (event === 'SIGNED_IN' && !hasLoadedInitialSuggestions) {
         loadOrCreateConversation();
         loadConversations();
@@ -85,8 +86,9 @@ export const ChatPanel = () => {
         setConversations([]);
         setHasLoadedInitialSuggestions(false);
       }
-    });
-    return () => listener.subscription.unsubscribe();
+    };
+    window.addEventListener('authChanged', handle);
+    return () => window.removeEventListener('authChanged', handle);
   }, [hasLoadedInitialSuggestions]);
 
   const loadSuggestions = async () => {

@@ -60,17 +60,18 @@ export const DataSourcesPanel = () => {
     };
     window.addEventListener('profileUpdated', handleProfileUpdate);
 
-    // Suscripción para cambios de sesión: si cambia el usuario, recargar datos
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+    // Suscripción a cambios de sesión centralizados
+    const handleAuth = () => {
       setProfile(null);
       setDocuments([]);
       setLoading(true);
       loadProfileAndData();
-    });
+    };
+    window.addEventListener('authChanged', handleAuth);
 
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
-      subscription.unsubscribe();
+      window.removeEventListener('authChanged', handleAuth);
     };
   }, []);
   const loadProfileAndData = async () => {

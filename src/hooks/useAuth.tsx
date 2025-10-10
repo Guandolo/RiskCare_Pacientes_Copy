@@ -3,6 +3,22 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 
+// Singleton auth listener to avoid multiple subscriptions across components
+let authInitialized = false;
+let currentSession: Session | null = null;
+let currentUser: User | null = null;
+
+const ensureAuthListener = () => {
+  if (authInitialized) return;
+  supabase.auth.onAuthStateChange((event, session) => {
+    currentSession = session;
+    currentUser = session?.user ?? null;
+    // Notificar a la app sin crear múltiples listeners por componente
+    window.dispatchEvent(new CustomEvent('authChanged', { detail: { event, hasSession: !!session } }));
+  });
+  authInitialized = true;
+};
+
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -10,25 +26,30 @@ export const useAuth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('[Auth] onAuthStateChange', { event, hasSession: !!session, user: session?.user?.id });
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
+    // Usar un único listener global y escuchar eventos en cada componente
+    ensureAuthListener();
 
-    // THEN check for existing session
+    const handleAuthChanged = () => {
+      setSession(currentSession);
+      setUser(currentUser);
+      setLoading(false);
+    };
+
+    window.addEventListener('authChanged', handleAuthChanged);
+
+    // Inicializar estado con la sesión actual
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('[Auth] getSession', { hasSession: !!session, user: session?.user?.id });
+      currentSession = session;
+      currentUser = session?.user ?? null;
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      window.removeEventListener('authChanged', handleAuthChanged);
+      // Nota: no desuscribimos el listener global para evitar perder eventos
+    };
   }, []);
 
   const signInWithGoogle = async () => {
