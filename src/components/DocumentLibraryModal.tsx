@@ -209,16 +209,16 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-7xl h-[85vh] p-0">
-          <DialogHeader className="p-6 pb-3 border-b border-border">
+        <DialogContent className="max-w-7xl h-[85vh] p-0 flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
             <DialogTitle className="text-2xl font-bold">Mis Documentos Clínicos</DialogTitle>
             <p className="text-sm text-muted-foreground mt-1">
               {filteredDocuments.length} documento{filteredDocuments.length !== 1 ? 's' : ''}
             </p>
           </DialogHeader>
 
-          <div className="px-6 py-4 flex flex-col gap-4 flex-1 overflow-hidden">
-            {/* Barra de búsqueda y filtros */}
+          {/* Barra de búsqueda y filtros - SIN padding top extra */}
+          <div className="px-6 pt-4 pb-3 border-b border-border bg-muted/20">
             <div className="flex gap-3 flex-wrap items-center">
               <div className="flex-1 min-w-[250px] relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -253,9 +253,11 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
                 Subir Documento
               </Button>
             </div>
+          </div>
 
-            {/* Lista de documentos */}
-            <ScrollArea className="flex-1">
+          {/* Lista de documentos */}
+          <div className="flex-1 overflow-hidden">
+            <ScrollArea className="h-full px-6 py-4">
               {loadingDocs ? (
                 <div className="flex items-center justify-center h-64">
                   <div className="text-center">
@@ -280,9 +282,9 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
                   )}
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredDocuments.map((doc) => (
-                    <Card 
+                    <Card
                       key={doc.id} 
                       className="group hover:shadow-lg transition-all cursor-pointer overflow-hidden border-2 hover:border-primary/50"
                     >
