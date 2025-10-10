@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -38,7 +39,8 @@ export const DataSourcesPanel = () => {
   const [patientInfoOpen, setPatientInfoOpen] = useState(false);
   const [hismartLastFetch, setHismartLastFetch] = useState<string | null>(null);
   const [documentsOpen, setDocumentsOpen] = useState(false);
-  const [selectedDocPreview, setSelectedDocPreview] = useState<ClinicalDocument | null>(null);
+  const [selectedDocPreview, setSelectedDocPreview] = useState<any | null>(null);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -99,7 +101,7 @@ export const DataSourcesPanel = () => {
 
       const { data, error } = await supabase
         .from('clinical_documents')
-        .select('*')
+        .select('id, file_name, document_type, document_date, created_at, file_url, file_type, extracted_text, structured_data')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -109,6 +111,11 @@ export const DataSourcesPanel = () => {
     } catch (error) {
       console.error('Error cargando documentos:', error);
     }
+  };
+
+  const handleViewDocument = (doc: any) => {
+    setSelectedDocPreview(doc);
+    setPreviewDialogOpen(true);
   };
 
   const handlePhoneUpdate = async () => {
@@ -752,6 +759,79 @@ export const DataSourcesPanel = () => {
           </Collapsible>
         </div>
       </ScrollArea>
+
+      {/* Dialog de previsualización */}
+      <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{selectedDocPreview?.file_name}</DialogTitle>
+            <DialogDescription>
+              {selectedDocPreview?.document_type || 'Documento'} • {formatDate(selectedDocPreview?.document_date || selectedDocPreview?.created_at)}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-auto space-y-4">
+            {/* Previsualización del archivo */}
+            <div className="bg-muted rounded-lg p-4">
+              <h4 className="text-sm font-semibold mb-2">Vista Previa</h4>
+              {selectedDocPreview?.file_type === 'application/pdf' ? (
+                <iframe
+                  src={selectedDocPreview.file_url}
+                  className="w-full h-[400px] rounded border"
+                  title="Vista previa del PDF"
+                />
+              ) : selectedDocPreview?.file_type?.startsWith('image/') ? (
+                <img
+                  src={selectedDocPreview.file_url}
+                  alt={selectedDocPreview.file_name}
+                  className="w-full rounded border"
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">Previsualización no disponible</p>
+              )}
+            </div>
+
+            {/* Datos extraídos */}
+            <div className="bg-muted rounded-lg p-4">
+              <h4 className="text-sm font-semibold mb-2">Información Detectada</h4>
+              <div className="space-y-3 text-sm">
+                {selectedDocPreview?.document_type && (
+                  <div>
+                    <span className="text-muted-foreground">Tipo de documento: </span>
+                    <span className="font-medium">{selectedDocPreview.document_type}</span>
+                  </div>
+                )}
+                {selectedDocPreview?.document_date && (
+                  <div>
+                    <span className="text-muted-foreground">Fecha: </span>
+                    <span className="font-medium">{formatDate(selectedDocPreview.document_date)}</span>
+                  </div>
+                )}
+                {selectedDocPreview?.structured_data && Object.keys(selectedDocPreview.structured_data).length > 0 && (
+                  <div>
+                    <span className="text-muted-foreground block mb-1">Datos estructurados:</span>
+                    <pre className="bg-background p-2 rounded text-xs overflow-auto max-h-40">
+                      {JSON.stringify(selectedDocPreview.structured_data, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Texto extraído */}
+            {selectedDocPreview?.extracted_text && (
+              <div className="bg-muted rounded-lg p-4">
+                <h4 className="text-sm font-semibold mb-2">Texto Extraído</h4>
+                <ScrollArea className="h-[200px]">
+                  <p className="text-xs text-foreground whitespace-pre-wrap">
+                    {selectedDocPreview.extracted_text}
+                  </p>
+                </ScrollArea>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
