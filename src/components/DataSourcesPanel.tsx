@@ -1,4 +1,4 @@
-import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw, Trash2, Download } from "lucide-react";
+import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw, Trash2, Download, User, CreditCard, MapPin, Building2, Phone, Droplet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -395,21 +395,26 @@ export const DataSourcesPanel = () => {
             <Card className="bg-gradient-card shadow-card border-primary/20">
               <CollapsibleTrigger className="w-full p-4">
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                     <Heart className="w-5 h-5 text-primary" />
                   </div>
                   <div className="flex-1 text-left">
                     <h3 className="font-semibold text-sm">Información del Paciente</h3>
                     {profile && (
-                      <p className="text-xs text-foreground font-medium mt-1">
-                        {getTopusValue('result.nombre')} {getTopusValue('result.apellido')} - CC {profile.identification}
-                      </p>
+                      <>
+                        <p className="text-base font-bold text-foreground mt-1">
+                          {getTopusValue('result.nombre')} {getTopusValue('result.s_nombre')} {getTopusValue('result.apellido')} {getTopusValue('result.s_apellido')}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Cédula de Ciudadanía: {profile.identification}
+                        </p>
+                      </>
                     )}
                   </div>
                   {patientInfoOpen ? (
-                    <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                    <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   )}
                 </div>
               </CollapsibleTrigger>
@@ -422,92 +427,99 @@ export const DataSourcesPanel = () => {
                     </div>
                   </div>
                 ) : profile ? (
-                  <div className="space-y-3 text-xs">
-                    {/* Nombre completo */}
-                    <div className="pb-2 border-b border-border/50">
-                      <div className="text-base font-bold text-foreground">
-                        {getTopusValue('result.nombre')} {getTopusValue('result.s_nombre')} {getTopusValue('result.apellido')} {getTopusValue('result.s_apellido')}
+                  <div className="space-y-4 text-xs pt-2">
+                    {/* Datos Personales */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+                        <User className="w-3.5 h-3.5" />
+                        <span>Datos Personales</span>
                       </div>
-                      <div className="text-muted-foreground mt-1">
-                        Cédula de Ciudadanía: {profile.identification}
-                      </div>
-                    </div>
-
-                    {/* Fila 1: Estado y Sexo */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <div className="text-muted-foreground mb-1">Estado</div>
-                        <div className="font-medium">{getTopusValue('result.estado') || 'N/A'}</div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground mb-1">Sexo</div>
-                        <div className="font-medium">{getTopusValue('result.sexo') || 'N/A'}</div>
-                      </div>
-                    </div>
-
-                    {/* Fila 2: Edad y Fecha de Nacimiento */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <div className="text-muted-foreground mb-1">Edad</div>
-                        <div className="font-medium">{getTopusValue('result.edad')} años</div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground mb-1">Fecha de Nacimiento</div>
-                        <div className="font-medium">{getTopusValue('result.fecha_nacimiento') || 'N/A'}</div>
-                      </div>
-                    </div>
-
-                    {/* Fila 3: Ubicación */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <div className="text-muted-foreground mb-1">Ubicación</div>
-                        <div className="font-medium">
-                          {getTopusValue('result.municipio_id')}, {getTopusValue('result.departamento_id')}
+                      
+                      <div className="grid grid-cols-2 gap-3 pl-5">
+                        <div>
+                          <div className="text-muted-foreground mb-1">Sexo</div>
+                          <div className="font-medium">{getTopusValue('result.sexo') || 'N/A'}</div>
                         </div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground mb-1">Estado Afiliación</div>
-                        <div className="font-medium text-[10px] leading-tight">
-                          {getTopusValue('result.estado_afiliacion') || 'N/A'}
+                        <div>
+                          <div className="text-muted-foreground mb-1">Edad</div>
+                          <div className="font-medium">{getTopusValue('result.edad')} años</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground mb-1">Fecha de Nacimiento</div>
+                          <div className="font-medium">{getTopusValue('result.fecha_nacimiento') || 'N/A'}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground mb-1">Tipo de Sangre</div>
+                          <div className="font-medium flex items-center gap-1">
+                            <Droplet className="w-3 h-3 text-red-500" />
+                            {getTopusValue('result.tipo_sangre') || getTopusValue('result.rh') || 'N/A'}
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Fila 4: EPS y Tipo Régimen */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <div className="text-muted-foreground mb-1">EPS</div>
-                        <div className="font-medium">{getTopusValue('result.eps') || 'N/A'}</div>
+                    {/* Ubicación */}
+                    <div className="space-y-3 border-t border-border/50 pt-3">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+                        <MapPin className="w-3.5 h-3.5" />
+                        <span>Ubicación</span>
                       </div>
-                      <div>
-                        <div className="text-muted-foreground mb-1">Tipo Régimen</div>
-                        <div className="font-medium text-[10px] leading-tight">
-                          {getTopusValue('result.eps_tipo') || 'N/A'}
+                      
+                      <div className="grid grid-cols-2 gap-3 pl-5">
+                        <div>
+                          <div className="text-muted-foreground mb-1">Municipio</div>
+                          <div className="font-medium">{getTopusValue('result.municipio_id') || 'N/A'}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground mb-1">Departamento</div>
+                          <div className="font-medium">{getTopusValue('result.departamento_id') || 'N/A'}</div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Fila 5: Código EPS y EPS Homologada */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <div className="text-muted-foreground mb-1">Código EPS</div>
-                        <div className="font-medium">{getTopusValue('result.eps_codigo') || 'N/A'}</div>
+                    {/* Afiliación y Salud */}
+                    <div className="space-y-3 border-t border-border/50 pt-3">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+                        <Building2 className="w-3.5 h-3.5" />
+                        <span>Afiliación y Salud</span>
                       </div>
-                      <div>
-                        <div className="text-muted-foreground mb-1">EPS Homologada</div>
-                        <div className="font-medium text-[10px] leading-tight">
-                          {getTopusValue('result.eps_homologada') || 'N/A'}
+                      
+                      <div className="grid grid-cols-2 gap-3 pl-5">
+                        <div>
+                          <div className="text-muted-foreground mb-1">Estado</div>
+                          <div className="font-medium">{getTopusValue('result.estado') || 'N/A'}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground mb-1">Estado Afiliación</div>
+                          <div className="font-medium text-[10px] leading-tight">
+                            {getTopusValue('result.estado_afiliacion') || 'N/A'}
+                          </div>
+                        </div>
+                        <div className="col-span-2">
+                          <div className="text-muted-foreground mb-1">EPS</div>
+                          <div className="font-medium">{getTopusValue('result.eps') || 'N/A'}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground mb-1">Tipo Régimen</div>
+                          <div className="font-medium text-[10px] leading-tight">
+                            {getTopusValue('result.eps_tipo') || 'N/A'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground mb-1">Código EPS</div>
+                          <div className="font-medium">{getTopusValue('result.eps_codigo') || 'N/A'}</div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Fila 6: NIT Homologado y Teléfono */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <div className="text-muted-foreground mb-1">NIT Homologado</div>
-                        <div className="font-medium">{getTopusValue('result.nit_homologado') || 'N/A'}</div>
+                    {/* Contacto */}
+                    <div className="space-y-3 border-t border-border/50 pt-3">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+                        <Phone className="w-3.5 h-3.5" />
+                        <span>Contacto</span>
                       </div>
-                      <div>
+                      
+                      <div className="pl-5">
                         <div className="text-muted-foreground mb-1">Teléfono</div>
                         {editingPhone ? (
                           <div className="flex gap-1">
