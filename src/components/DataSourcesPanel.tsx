@@ -144,8 +144,13 @@ export const DataSourcesPanel = () => {
       });
 
       if (retryError) {
+        const errorMsg = String((retryError as any)?.message || '');
+        if (errorMsg.includes('PDF_PASSWORD_REQUIRED') || errorMsg.includes('423')) {
+          toast.error('Contraseña incorrecta. Intenta nuevamente.');
+          return;
+        }
         console.error('Error reintentando procesamiento:', retryError);
-        toast.error('Contraseña incorrecta o no se pudo desbloquear el PDF');
+        toast.error('No se pudo desbloquear el PDF');
         return;
       }
 
@@ -158,6 +163,12 @@ export const DataSourcesPanel = () => {
     } catch (e) {
       console.error(e);
       toast.error('Error reintentando procesamiento');
+    }
+  };
+
+  const useIdentificationAsPassword = () => {
+    if (profile?.identification) {
+      setPdfPassword(profile.identification);
     }
   };
 
@@ -719,7 +730,7 @@ export const DataSourcesPanel = () => {
             <Card>
               <CollapsibleTrigger className="w-full p-3 flex justify-between items-center hover:bg-accent/5">
                 <h3 className="text-sm font-semibold text-foreground">
-                  Historial Consolidado ({documents.length})
+                  Mis Documentos Cargados ({documents.length})
                 </h3>
                 {documentsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </CollapsibleTrigger>
@@ -727,7 +738,7 @@ export const DataSourcesPanel = () => {
               <CollapsibleContent>
                 <div className="p-3 space-y-2">
                   {documents.length > 0 ? (
-                    <ScrollArea className="h-[250px] pr-3">
+                    <ScrollArea className="h-[300px] pr-3">
                       <div className="space-y-2">
                         {documents.map((doc) => (
                           <Card 
@@ -899,21 +910,34 @@ export const DataSourcesPanel = () => {
       <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Documento protegido</DialogTitle>
+            <DialogTitle>PDF Protegido con Contraseña</DialogTitle>
             <DialogDescription>
-              Este PDF requiere una contraseña. Ingresa la contraseña (suele ser tu número de documento).
+              Este documento está protegido. Ingresa la contraseña o intenta con tu número de documento.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <Input
-              type="password"
-              placeholder="Contraseña del PDF"
-              value={pdfPassword}
-              onChange={(e) => setPdfPassword(e.target.value)}
-            />
-            <div className="flex justify-end gap-2">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Input
+                type="text"
+                placeholder="Contraseña del PDF"
+                value={pdfPassword}
+                onChange={(e) => setPdfPassword(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && pdfPassword.trim() && confirmPassword()}
+              />
+              <p className="text-xs text-muted-foreground">
+                💡 Sugerencia: Muchos documentos médicos usan tu número de documento como contraseña
+              </p>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => setPdfPassword(profile?.identification || '')}
+                disabled={!profile?.identification}
+              >
+                Probar con mi documento
+              </Button>
               <Button variant="ghost" onClick={cancelPassword}>Cancelar</Button>
-              <Button onClick={confirmPassword}>Confirmar</Button>
+              <Button onClick={confirmPassword} disabled={!pdfPassword.trim()}>Desbloquear</Button>
             </div>
           </div>
         </DialogContent>
