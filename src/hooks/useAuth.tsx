@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
 
 // Singleton auth listener to avoid multiple subscriptions across components
 let authInitialized = false;
@@ -23,7 +22,6 @@ export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
 
   useEffect(() => {
     // Usar un único listener global y escuchar eventos en cada componente
@@ -85,7 +83,7 @@ export const useAuth = () => {
       console.error("Error al cerrar sesión:", error.message);
       throw error;
     }
-    navigate("/auth");
+    window.location.href = "/auth";
   };
 
   return {
