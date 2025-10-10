@@ -176,7 +176,14 @@ export const ClinicalNotebookPanel = () => {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "Debes iniciar sesión",
+          variant: "destructive"
+        });
+        return;
+      }
 
       const { error } = await supabase
         .from('clinical_notes')
@@ -184,10 +191,13 @@ export const ClinicalNotebookPanel = () => {
           user_id: user.id,
           type: generatedData.type,
           title: noteTitle,
-          content: generatedData.content,
+          content: JSON.parse(JSON.stringify(generatedData.content)),
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
 
       toast({
         title: "Nota guardada",
@@ -199,9 +209,10 @@ export const ClinicalNotebookPanel = () => {
       loadSavedNotes();
     } catch (error) {
       console.error('Error saving note:', error);
+      const errorMessage = error instanceof Error ? error.message : "No se pudo guardar la nota";
       toast({
         title: "Error",
-        description: "No se pudo guardar la nota",
+        description: errorMessage,
         variant: "destructive"
       });
     }
