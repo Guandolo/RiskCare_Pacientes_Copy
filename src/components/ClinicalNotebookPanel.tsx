@@ -3,6 +3,16 @@ import { Network, FlaskConical, ScanSearch, Pill, Activity, Loader2, Trash2, Edi
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -67,6 +77,7 @@ export const ClinicalNotebookPanel = () => {
   const [editingNote, setEditingNote] = useState<any>(null);
   const [noteTitle, setNoteTitle] = useState("");
   const [savedNotes, setSavedNotes] = useState<any[]>([]);
+  const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -242,12 +253,14 @@ export const ClinicalNotebookPanel = () => {
     }
   };
 
-  const handleDeleteNote = async (noteId: string) => {
+  const handleDeleteNote = async () => {
+    if (!noteToDelete) return;
+    
     try {
       const { error } = await supabase
         .from('clinical_notes')
         .delete()
-        .eq('id', noteId);
+        .eq('id', noteToDelete);
 
       if (error) throw error;
 
@@ -256,6 +269,7 @@ export const ClinicalNotebookPanel = () => {
         description: "El análisis se eliminó correctamente",
       });
 
+      setNoteToDelete(null);
       await loadSavedNotes();
     } catch (error) {
       console.error('Error deleting note:', error);
@@ -401,12 +415,10 @@ export const ClinicalNotebookPanel = () => {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-7 w-7 text-destructive"
+                          className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (confirm('¿Estás seguro de eliminar esta bitácora?')) {
-                              handleDeleteNote(note.id);
-                            }
+                            setNoteToDelete(note.id);
                           }}
                         >
                           <Trash2 className="w-3 h-3" />
@@ -473,6 +485,27 @@ export const ClinicalNotebookPanel = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!noteToDelete} onOpenChange={(open) => !open && setNoteToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta acción no se puede deshacer. El análisis guardado será eliminado permanentemente de tu historial.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleDeleteNote}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </TooltipProvider>
   );
