@@ -1,5 +1,8 @@
 project_id = "mixunsevvfenajctpdfq"
 
+[functions.extract-document-data]
+verify_jwt = false
+
 [functions.fetch-topus-data]
 verify_jwt = true
 
