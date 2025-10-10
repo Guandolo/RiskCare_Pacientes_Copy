@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useOnboardingTour } from "@/components/OnboardingTour";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -146,18 +147,30 @@ const Index = () => {
             <MobileNavigation activeTab={mobileTab} onTabChange={setMobileTab} />
           </>
         ) : (
-          // Vista de escritorio con paneles colapsables
-          <div className="flex-1 overflow-hidden flex">
-            {/* Left Panel - Data Sources (Collapsible) */}
-            <CollapsibleDataPanel />
+          // Vista de escritorio con tres paneles redimensionables
+          <div className="flex-1 overflow-hidden">
+            <ResizablePanelGroup direction="horizontal">
+              {/* Left Panel - Data Sources (Collapsible) */}
+              <ResizablePanel defaultSize={25} minSize={5} maxSize={40}>
+                <CollapsibleDataPanel />
+              </ResizablePanel>
 
-            {/* Center Panel - Chat Assistant (Fixed) */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <ChatPanel />
-            </div>
+              <ResizableHandle withHandle />
 
-            {/* Right Panel - Clinical Notebook (Collapsible) */}
-            <CollapsibleNotebookPanel />
+              {/* Center Panel - Chat Assistant (Fixed, no collapsible) */}
+              <ResizablePanel defaultSize={50} minSize={30}>
+                <div className="h-full flex flex-col overflow-hidden border-x border-border">
+                  <ChatPanel />
+                </div>
+              </ResizablePanel>
+
+              <ResizableHandle withHandle />
+
+              {/* Right Panel - Clinical Notebook (Collapsible) */}
+              <ResizablePanel defaultSize={25} minSize={5} maxSize={40}>
+                <CollapsibleNotebookPanel />
+              </ResizablePanel>
+            </ResizablePanelGroup>
           </div>
         )}
       </div>

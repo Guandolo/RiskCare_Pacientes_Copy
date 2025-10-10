@@ -7,10 +7,10 @@ export const CollapsibleDataPanel = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
-    <div className={`h-full transition-all duration-300 ${isCollapsed ? 'w-14' : 'w-full'}`}>
+    <div className="h-full relative">
       {isCollapsed ? (
         // Vista colapsada - solo iconos
-        <div className="h-full border-r border-border bg-card flex flex-col items-center py-4 gap-4">
+        <div className="h-full bg-card flex flex-col items-center py-4 gap-6">
           <Button
             size="icon"
             variant="ghost"
@@ -20,14 +20,13 @@ export const CollapsibleDataPanel = () => {
           >
             <ChevronRight className="w-4 h-4" />
           </Button>
-          <div className="flex flex-col items-center gap-2 text-muted-foreground">
+          <div className="flex flex-col items-center gap-4 text-muted-foreground">
             <FileText className="w-5 h-5" />
-            <span className="text-xs writing-mode-vertical rotate-180">Documentos</span>
           </div>
         </div>
       ) : (
         // Vista expandida - contenido completo
-        <div className="h-full border-r border-border bg-card overflow-hidden relative">
+        <div className="h-full bg-card overflow-hidden relative">
           <Button
             size="icon"
             variant="ghost"
