@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Network, FlaskConical, ScanSearch, Pill, Activity, Loader2, Trash2, Edit2, MoreVertical, ThumbsUp, ThumbsDown, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -14,9 +14,12 @@ import {
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClinicalMapViewer } from "./ClinicalMapViewer";
@@ -80,6 +83,10 @@ export const ClinicalNotebookPanel = () => {
   const [savedNotes, setSavedNotes] = useState<any[]>([]);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   const [noteFeedback, setNoteFeedback] = useState<Record<string, 'positive' | 'negative' | null>>({});
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  const [feedbackNoteId, setFeedbackNoteId] = useState<string | null>(null);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [selectedFeedbackReasons, setSelectedFeedbackReasons] = useState<string[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -286,21 +293,73 @@ export const ClinicalNotebookPanel = () => {
   const handleNoteFeedback = async (noteId: string, feedbackType: 'positive' | 'negative') => {
     try {
       const currentFeedback = noteFeedback[noteId];
-      const newFeedback = currentFeedback === feedbackType ? null : feedbackType;
       
-      setNoteFeedback(prev => ({
-        ...prev,
-        [noteId]: newFeedback
-      }));
+      // Si es feedback positivo o toggle del mismo tipo
+      if (feedbackType === 'positive' || currentFeedback === feedbackType) {
+        const newFeedback = currentFeedback === feedbackType ? null : feedbackType;
+        
+        setNoteFeedback(prev => ({
+          ...prev,
+          [noteId]: newFeedback
+        }));
 
-      if (newFeedback) {
-        toast({
-          title: "Gracias por tu feedback",
-          description: "Tu opinión nos ayuda a mejorar",
-        });
+        if (newFeedback === 'positive') {
+          toast({
+            title: "Gracias por tu feedback",
+            description: "Tu opinión nos ayuda a mejorar",
+          });
+        }
+      } else {
+        // Feedback negativo - abrir dialog
+        setFeedbackNoteId(noteId);
+        setFeedbackDialogOpen(true);
       }
     } catch (error) {
       console.error('Error saving note feedback:', error);
+    }
+  };
+
+  const handleSubmitNegativeFeedback = async () => {
+    if (!feedbackNoteId) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      setNoteFeedback(prev => ({
+        ...prev,
+        [feedbackNoteId]: 'negative'
+      }));
+
+      // Guardar en la base de datos
+      const feedbackData = {
+        user_id: user.id,
+        note_id: feedbackNoteId,
+        feedback_type: 'negative' as const,
+        comment: selectedFeedbackReasons.length > 0 
+          ? `Razones: ${selectedFeedbackReasons.join(', ')}${feedbackComment ? `. Comentario: ${feedbackComment}` : ''}`
+          : feedbackComment || 'Sin comentario'
+      };
+
+      await supabase.from('clinical_notes_feedback').insert(feedbackData);
+
+      toast({
+        title: "Gracias por tu feedback",
+        description: "Usaremos esta información para mejorar los análisis",
+      });
+
+      // Limpiar estado
+      setFeedbackDialogOpen(false);
+      setFeedbackNoteId(null);
+      setFeedbackComment("");
+      setSelectedFeedbackReasons([]);
+    } catch (error) {
+      console.error('Error saving negative feedback:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo guardar el feedback",
+        variant: "destructive"
+      });
     }
   };
 
@@ -588,6 +647,89 @@ export const ClinicalNotebookPanel = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Feedback Dialog */}
+        <Dialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>¿Qué no te gustó de este análisis?</DialogTitle>
+              <DialogDescription>
+                Tu feedback nos ayuda a mejorar. Selecciona una o más opciones y añade comentarios adicionales si lo deseas.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              {/* Razones predefinidas */}
+              <div className="space-y-3">
+                {[
+                  { id: 'incorrect', label: 'Información incorrecta o imprecisa' },
+                  { id: 'incomplete', label: 'Análisis incompleto' },
+                  { id: 'unclear', label: 'No es claro o es confuso' },
+                  { id: 'irrelevant', label: 'No es útil para mi caso' },
+                  { id: 'formatting', label: 'Problemas de formato o visualización' },
+                ].map((reason) => (
+                  <div key={reason.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`note-${reason.id}`}
+                      checked={selectedFeedbackReasons.includes(reason.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedFeedbackReasons(prev => [...prev, reason.id]);
+                        } else {
+                          setSelectedFeedbackReasons(prev => prev.filter(r => r !== reason.id));
+                        }
+                      }}
+                    />
+                    <Label
+                      htmlFor={`note-${reason.id}`}
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      {reason.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+
+              {/* Campo de comentario */}
+              <div className="space-y-2">
+                <Label htmlFor="note-feedback-comment">
+                  Comentarios adicionales (opcional)
+                </Label>
+                <Textarea
+                  id="note-feedback-comment"
+                  placeholder="Cuéntanos más sobre tu experiencia..."
+                  value={feedbackComment}
+                  onChange={(e) => setFeedbackComment(e.target.value.slice(0, 500))}
+                  className="resize-none h-24"
+                  maxLength={500}
+                />
+                <p className="text-xs text-muted-foreground text-right">
+                  {feedbackComment.length}/500 caracteres
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setFeedbackDialogOpen(false);
+                  setFeedbackNoteId(null);
+                  setFeedbackComment("");
+                  setSelectedFeedbackReasons([]);
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSubmitNegativeFeedback}
+                disabled={selectedFeedbackReasons.length === 0 && !feedbackComment.trim()}
+              >
+                Enviar feedback
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   );

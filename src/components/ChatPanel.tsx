@@ -6,6 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
@@ -38,6 +41,10 @@ export const ChatPanel = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [progressSteps, setProgressSteps] = useState<ProgressStep[]>([]);
   const [messageFeedback, setMessageFeedback] = useState<Record<number, 'positive' | 'negative' | null>>({});
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  const [feedbackMessageIndex, setFeedbackMessageIndex] = useState<number | null>(null);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [selectedFeedbackReasons, setSelectedFeedbackReasons] = useState<string[]>([]);
   const { toast } = useToast();
 
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -545,31 +552,74 @@ export const ChatPanel = () => {
 
   const handleFeedback = async (messageIndex: number, feedbackType: 'positive' | 'negative') => {
     try {
+      const currentFeedback = messageFeedback[messageIndex];
+      
+      // Si es feedback positivo o toggle del mismo tipo
+      if (feedbackType === 'positive' || currentFeedback === feedbackType) {
+        const newFeedback = currentFeedback === feedbackType ? null : feedbackType;
+        
+        setMessageFeedback(prev => ({
+          ...prev,
+          [messageIndex]: newFeedback
+        }));
+
+        if (newFeedback === 'positive') {
+          toast({
+            title: "Gracias por tu feedback",
+            description: "Tu opinión nos ayuda a mejorar",
+          });
+        }
+      } else {
+        // Feedback negativo - abrir dialog
+        setFeedbackMessageIndex(messageIndex);
+        setFeedbackDialogOpen(true);
+      }
+    } catch (error) {
+      console.error('Error saving feedback:', error);
+    }
+  };
+
+  const handleSubmitNegativeFeedback = async () => {
+    if (feedbackMessageIndex === null) return;
+
+    try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Toggle feedback if clicking the same button
-      const currentFeedback = messageFeedback[messageIndex];
-      const newFeedback = currentFeedback === feedbackType ? null : feedbackType;
-      
       setMessageFeedback(prev => ({
         ...prev,
-        [messageIndex]: newFeedback
+        [feedbackMessageIndex]: 'negative'
       }));
 
-      if (newFeedback) {
-        toast({
-          title: "Gracias por tu feedback",
-          description: "Tu opinión nos ayuda a mejorar",
-        });
-      }
+      // Guardar en la base de datos
+      const feedbackData = {
+        user_id: user.id,
+        message_id: `msg_${feedbackMessageIndex}_${currentConversationId}`, // ID único del mensaje
+        feedback_type: 'negative' as const,
+        comment: selectedFeedbackReasons.length > 0 
+          ? `Razones: ${selectedFeedbackReasons.join(', ')}${feedbackComment ? `. Comentario: ${feedbackComment}` : ''}`
+          : feedbackComment || 'Sin comentario'
+      };
 
-      // Aquí podrías guardar el feedback en la base de datos si lo deseas
-      // const messageId = ...; // obtener el ID del mensaje desde la DB
-      // await supabase.from('chat_feedback').upsert({...});
+      await supabase.from('chat_feedback').insert(feedbackData);
 
+      toast({
+        title: "Gracias por tu feedback",
+        description: "Usaremos esta información para mejorar nuestras respuestas",
+      });
+
+      // Limpiar estado
+      setFeedbackDialogOpen(false);
+      setFeedbackMessageIndex(null);
+      setFeedbackComment("");
+      setSelectedFeedbackReasons([]);
     } catch (error) {
-      console.error('Error saving feedback:', error);
+      console.error('Error saving negative feedback:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo guardar el feedback",
+        variant: "destructive"
+      });
     }
   };
 
@@ -1009,6 +1059,89 @@ export const ChatPanel = () => {
         onOpenChange={setShowUploadModal}
         onSuccess={handleUploadSuccess}
       />
+
+      {/* Feedback Dialog */}
+      <Dialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>¿Qué no te gustó de esta respuesta?</DialogTitle>
+            <DialogDescription>
+              Tu feedback nos ayuda a mejorar. Selecciona una o más opciones y añade comentarios adicionales si lo deseas.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Razones predefinidas */}
+            <div className="space-y-3">
+              {[
+                { id: 'incorrect', label: 'Información incorrecta o imprecisa' },
+                { id: 'incomplete', label: 'Respuesta incompleta' },
+                { id: 'unclear', label: 'No es clara o es confusa' },
+                { id: 'irrelevant', label: 'No responde a mi pregunta' },
+                { id: 'unsafe', label: 'Contenido inapropiado o inseguro' },
+              ].map((reason) => (
+                <div key={reason.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={reason.id}
+                    checked={selectedFeedbackReasons.includes(reason.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedFeedbackReasons(prev => [...prev, reason.id]);
+                      } else {
+                        setSelectedFeedbackReasons(prev => prev.filter(r => r !== reason.id));
+                      }
+                    }}
+                  />
+                  <Label
+                    htmlFor={reason.id}
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    {reason.label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+
+            {/* Campo de comentario */}
+            <div className="space-y-2">
+              <Label htmlFor="feedback-comment">
+                Comentarios adicionales (opcional)
+              </Label>
+              <Textarea
+                id="feedback-comment"
+                placeholder="Cuéntanos más sobre tu experiencia..."
+                value={feedbackComment}
+                onChange={(e) => setFeedbackComment(e.target.value.slice(0, 500))}
+                className="resize-none h-24"
+                maxLength={500}
+              />
+              <p className="text-xs text-muted-foreground text-right">
+                {feedbackComment.length}/500 caracteres
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFeedbackDialogOpen(false);
+                setFeedbackMessageIndex(null);
+                setFeedbackComment("");
+                setSelectedFeedbackReasons([]);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSubmitNegativeFeedback}
+              disabled={selectedFeedbackReasons.length === 0 && !feedbackComment.trim()}
+            >
+              Enviar feedback
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
