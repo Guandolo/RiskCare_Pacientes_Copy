@@ -221,6 +221,75 @@ Si no hay suficiente información, infiere conexiones lógicas basadas en conoci
       throw new Error('Error al parsear el mapa generado');
     }
 
+    // Validar consistencia de edges vs nodes y crear fallback si falta
+    const nodeIds = new Set<string>((parsedMap.nodes || []).map((n: any) => String(n.id)));
+    parsedMap.nodes = (parsedMap.nodes || []).map((n: any) => ({ ...n, id: String(n.id) }));
+    parsedMap.edges = (parsedMap.edges || []).map((e: any, i: number) => ({
+      id: String(e.id ?? `e${i + 1}`),
+      source: String(e.source),
+      target: String(e.target),
+      label: e.label || '',
+    })).filter((e: any) => nodeIds.has(e.source) && nodeIds.has(e.target));
+
+    if (!parsedMap.edges || parsedMap.edges.length === 0) {
+      // Fallback: construir conexiones lógicas básicas
+      const patient = (parsedMap.nodes || []).find((n: any) => n.type === 'patient')?.id || 'patient';
+      const conditions = (parsedMap.nodes || []).filter((n: any) => n.type === 'condition').map((n: any) => n.id);
+      const medications = (parsedMap.nodes || []).filter((n: any) => n.type === 'medication');
+      const paraclinicals = (parsedMap.nodes || []).filter((n: any) => n.type === 'paraclinical');
+      const specialists = (parsedMap.nodes || []).filter((n: any) => n.type === 'specialist');
+
+      const edges: any[] = [];
+      let edgeIdx = 1;
+
+      // Conectar paciente a todas las condiciones
+      for (const c of conditions) {
+        edges.push({ id: `e${edgeIdx++}`, source: patient, target: c, label: 'diagnosticado con' });
+      }
+
+      // Reglas simples por palabras clave
+      const mapCond = (label: string) => {
+        const l = label.toLowerCase();
+        if (l.includes('diabet')) return 'diabetes';
+        if (l.includes('hipertens')) return 'hipertension';
+        if (l.includes('dislip') || l.includes('colesterol') || l.includes('ldl')) return 'dislipidemia';
+        if (l.includes('astigmat')) return 'astigmatismo';
+        return 'general';
+      };
+
+      const condForKey: Record<string, string[]> = {
+        diabetes: conditions.filter((cid: string) => String(cid).toLowerCase().includes('diabet') || cid.toLowerCase().includes('dm')),
+        hipertension: conditions.filter((cid: string) => cid.toLowerCase().includes('hipertens')),
+        dislipidemia: conditions.filter((cid: string) => cid.toLowerCase().includes('dislip') || cid.toLowerCase().includes('lipid')),
+        astigmatismo: conditions.filter((cid: string) => cid.toLowerCase().includes('astigmat')),
+        general: conditions,
+      };
+
+      // Meds -> Conditions
+      for (const m of medications) {
+        const key = mapCond(m.label || m.id);
+        const targets = condForKey[key]?.length ? condForKey[key] : conditions;
+        for (const c of targets) edges.push({ id: `e${edgeIdx++}`, source: c, target: m.id, label: 'tratada con' });
+      }
+
+      // Paraclinicals -> Conditions (monitoreada con)
+      for (const p of paraclinicals) {
+        const key = mapCond(p.label || p.id);
+        const targets = condForKey[key]?.length ? condForKey[key] : conditions;
+        for (const c of targets) edges.push({ id: `e${edgeIdx++}`, source: c, target: p.id, label: 'monitoreada con' });
+      }
+
+      // Specialists -> Conditions (controlada por)
+      for (const s of specialists) {
+        const key = mapCond(s.label || s.id);
+        const targets = condForKey[key]?.length ? condForKey[key] : conditions;
+        for (const c of targets) edges.push({ id: `e${edgeIdx++}`, source: c, target: s.id, label: 'controlada por' });
+      }
+
+      parsedMap.edges = edges;
+      console.log(`Fallback edges construidos: ${parsedMap.edges.length}`);
+    }
+
     return new Response(JSON.stringify({ map: parsedMap }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

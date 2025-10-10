@@ -194,8 +194,8 @@ export const ClinicalMapViewer = ({ mapData }: ClinicalMapViewerProps) => {
         color: 'hsl(var(--primary) / 0.6)',
       },
       style: {
-        strokeWidth: 2,
-        stroke: 'hsl(var(--primary) / 0.5)',
+        strokeWidth: 3,
+        stroke: 'hsl(var(--primary) / 0.85)',
       },
       labelStyle: {
         fontSize: 10,
@@ -223,6 +223,7 @@ export const ClinicalMapViewer = ({ mapData }: ClinicalMapViewerProps) => {
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         fitView
+        fitViewOptions={{ padding: 0.2 }}
         attributionPosition="bottom-left"
       >
         <Background />
