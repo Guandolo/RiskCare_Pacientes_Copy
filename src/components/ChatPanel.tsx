@@ -377,8 +377,20 @@ export const ChatPanel = () => {
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!message.trim() || !currentConversationId) return;
+  const handleSendMessage = async (overrideMessage?: string) => {
+    const text = (overrideMessage ?? message).trim();
+    if (!text) return;
+
+    // Asegurar conversación
+    let convId = currentConversationId;
+    if (!convId) {
+      await loadOrCreateConversation();
+      convId = currentConversationId;
+      if (!convId) {
+        toast({ title: 'Error', description: 'Debes iniciar sesión para usar el chat.', variant: 'destructive' });
+        return;
+      }
+    }
 
     // Inicializar pasos de progreso
     const initialSteps: ProgressStep[] = [
@@ -395,7 +407,7 @@ export const ChatPanel = () => {
         return;
       }
 
-      const userMessage = message;
+      const userMessage = text;
       const isFirstMessage = messages.length === 0;
       setMessage("");
       setMessages(prev => [...prev, { role: "user", content: userMessage }]);
@@ -423,7 +435,7 @@ export const ChatPanel = () => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ message: userMessage, conversationId: currentConversationId }),
+        body: JSON.stringify({ message: userMessage, conversationId: convId }),
       });
 
       if (!resp.ok || !resp.body) {
@@ -506,12 +518,12 @@ export const ChatPanel = () => {
       await new Promise(resolve => setTimeout(resolve, 500));
       setProgressSteps([]);
 
-      if (isFirstMessage && currentConversationId) {
+      if (isFirstMessage && convId) {
         const title = await generateTitle(userMessage);
         await supabase
           .from('conversations')
           .update({ title, updated_at: new Date().toISOString() })
-          .eq('id', currentConversationId);
+          .eq('id', convId);
         await loadConversations();
       }
 
@@ -982,10 +994,7 @@ export const ChatPanel = () => {
                       <Card
                         key={idx}
                         className="flex-shrink-0 px-3 py-1.5 bg-muted/50 hover:bg-accent hover:border-primary/30 border border-border/50 transition-all cursor-pointer shadow-sm hover-scale"
-                        onClick={() => {
-                          setMessage(question);
-                          setTimeout(() => handleSendMessage(), 100);
-                        }}
+                        onClick={() => handleSendMessage(question)}
                       >
                         <div className="flex items-center gap-1.5">
                           <Sparkles className="w-3 h-3 text-primary/70 flex-shrink-0" />
@@ -1068,7 +1077,7 @@ export const ChatPanel = () => {
                 size="icon" 
                 className="bg-primary hover:bg-primary-dark transition-all"
                 disabled={!message.trim() || isLoading}
-                onClick={handleSendMessage}
+                onClick={() => handleSendMessage()}
               >
                 <Send className="w-4 h-4" />
               </Button>
