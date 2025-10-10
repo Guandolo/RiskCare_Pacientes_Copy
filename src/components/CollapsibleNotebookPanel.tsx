@@ -1,4 +1,4 @@
-import { Network, FlaskConical, Stethoscope, Pill } from "lucide-react";
+import { Network, FlaskConical, Stethoscope, Pill, BookOpen } from "lucide-react";
 import { ClinicalNotebookPanel } from "./ClinicalNotebookPanel";
 
 interface CollapsibleNotebookPanelProps {
@@ -7,23 +7,30 @@ interface CollapsibleNotebookPanelProps {
 
 export const CollapsibleNotebookPanel = ({ isCollapsed }: CollapsibleNotebookPanelProps) => {
   const tools = [
-    { icon: Network, label: "Mapa Clínico", key: "clinical-map" },
-    { icon: FlaskConical, label: "Paraclínicos", key: "paraclinicos" },
-    { icon: Stethoscope, label: "Ayudas Diagnósticas", key: "diagnostic-aids" },
-    { icon: Pill, label: "Medicamentos", key: "medicamentos" },
+    { icon: Network, label: "Mapa", key: "clinical-map", color: "text-cyan-500" },
+    { icon: FlaskConical, label: "Laboratorios", key: "paraclinicos", color: "text-emerald-500" },
+    { icon: Stethoscope, label: "Diagnósticos", key: "diagnostic-aids", color: "text-amber-500" },
+    { icon: Pill, label: "Medicamentos", key: "medicamentos", color: "text-rose-500" },
   ];
 
   return (
     <div className="h-full relative">
       {isCollapsed ? (
-        // Vista colapsada - barra de iconos vertical
-        <div className="h-full bg-card flex flex-col items-center py-8 gap-6 px-3">
+        // Vista colapsada - barra de iconos vertical elegante
+        <div className="h-full bg-muted/30 flex flex-col items-center py-8 gap-4 px-2 border-l border-border">
+          <div className="mb-4">
+            <BookOpen className="w-6 h-6 text-primary" />
+          </div>
           {tools.map((tool) => (
-            <div key={tool.key} className="flex flex-col items-center gap-2 text-center">
-              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors cursor-pointer">
-                <tool.icon className="w-5 h-5 text-muted-foreground" />
+            <div 
+              key={tool.key} 
+              className="group relative flex flex-col items-center gap-1.5 cursor-pointer"
+              title={tool.label}
+            >
+              <div className="w-9 h-9 rounded-lg bg-background border border-border flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 group-hover:scale-110">
+                <tool.icon className={`w-4 h-4 ${tool.color}`} />
               </div>
-              <span className="text-[10px] text-muted-foreground max-w-[60px] leading-tight">
+              <span className="text-[9px] font-medium text-muted-foreground group-hover:text-foreground transition-colors text-center leading-tight max-w-[50px]">
                 {tool.label}
               </span>
             </div>
@@ -31,7 +38,7 @@ export const CollapsibleNotebookPanel = ({ isCollapsed }: CollapsibleNotebookPan
         </div>
       ) : (
         // Vista expandida - contenido completo
-        <div className="h-full bg-card overflow-hidden">
+        <div className="h-full bg-muted/30 overflow-hidden">
           <ClinicalNotebookPanel />
         </div>
       )}

@@ -317,15 +317,15 @@ const Index = () => {
               <ResizableHandle withHandle className="relative group">
                 <Button
                   size="icon"
-                  variant="ghost"
+                  variant="outline"
                   onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
-                  className="absolute -left-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-background border border-border opacity-0 group-hover:opacity-100 transition-opacity z-20"
-                  title={leftPanelCollapsed ? "Expandir" : "Colapsar"}
+                  className="absolute left-1/2 -translate-x-1/2 top-4 w-7 h-7 rounded-full bg-background shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200 z-20"
+                  title={leftPanelCollapsed ? "Expandir panel de documentos" : "Contraer panel de documentos"}
                 >
                   {leftPanelCollapsed ? (
-                    <ChevronRight className="w-3 h-3" />
+                    <ChevronRight className="w-4 h-4" />
                   ) : (
-                    <ChevronLeft className="w-3 h-3" />
+                    <ChevronLeft className="w-4 h-4" />
                   )}
                 </Button>
               </ResizableHandle>
@@ -340,15 +340,15 @@ const Index = () => {
               <ResizableHandle withHandle className="relative group">
                 <Button
                   size="icon"
-                  variant="ghost"
+                  variant="outline"
                   onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
-                  className="absolute -right-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-background border border-border opacity-0 group-hover:opacity-100 transition-opacity z-20"
-                  title={rightPanelCollapsed ? "Expandir" : "Colapsar"}
+                  className="absolute left-1/2 -translate-x-1/2 top-4 w-7 h-7 rounded-full bg-background shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200 z-20"
+                  title={rightPanelCollapsed ? "Expandir bitácora clínica" : "Contraer bitácora clínica"}
                 >
                   {rightPanelCollapsed ? (
-                    <ChevronLeft className="w-3 h-3" />
+                    <ChevronLeft className="w-4 h-4" />
                   ) : (
-                    <ChevronRight className="w-3 h-3" />
+                    <ChevronRight className="w-4 h-4" />
                   )}
                 </Button>
               </ResizableHandle>

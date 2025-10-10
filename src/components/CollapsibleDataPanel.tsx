@@ -1,4 +1,4 @@
-import { Upload, FileText, Database, Activity, User } from "lucide-react";
+import { Upload, FileText, Database, Activity, User, FolderOpen } from "lucide-react";
 import { DataSourcesPanel } from "./DataSourcesPanel";
 
 interface CollapsibleDataPanelProps {
@@ -7,32 +7,39 @@ interface CollapsibleDataPanelProps {
 
 export const CollapsibleDataPanel = ({ isCollapsed }: CollapsibleDataPanelProps) => {
   const tools = [
-    { icon: Upload, label: "Subir documentos", key: "upload" },
-    { icon: FileText, label: "Mis documentos", key: "documents" },
-    { icon: Database, label: "Topus", key: "topus" },
-    { icon: Activity, label: "HiSmart", key: "hismart" },
-    { icon: User, label: "Datos paciente", key: "patient" },
+    { icon: FolderOpen, label: "Documentos", key: "documents", color: "text-blue-500" },
+    { icon: Upload, label: "Subir", key: "upload", color: "text-green-500" },
+    { icon: Database, label: "Topus", key: "topus", color: "text-purple-500" },
+    { icon: Activity, label: "HiSmart", key: "hismart", color: "text-orange-500" },
+    { icon: User, label: "Paciente", key: "patient", color: "text-pink-500" },
   ];
 
   return (
     <div className="h-full relative">
       {isCollapsed ? (
-        // Vista colapsada - barra de iconos vertical
-        <div className="h-full bg-card flex flex-col items-center py-8 gap-6 px-3">
+        // Vista colapsada - barra de iconos vertical elegante
+        <div className="h-full bg-muted/30 flex flex-col items-center py-8 gap-4 px-2 border-r border-border">
+          <div className="mb-4">
+            <FileText className="w-6 h-6 text-primary" />
+          </div>
           {tools.map((tool) => (
-            <div key={tool.key} className="flex flex-col items-center gap-2 text-center">
-              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors cursor-pointer">
-                <tool.icon className="w-5 h-5 text-muted-foreground" />
+            <div 
+              key={tool.key} 
+              className="group relative flex flex-col items-center gap-1.5 cursor-pointer"
+              title={tool.label}
+            >
+              <div className="w-9 h-9 rounded-lg bg-background border border-border flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 group-hover:scale-110">
+                <tool.icon className={`w-4 h-4 ${tool.color}`} />
               </div>
-              <span className="text-[10px] text-muted-foreground max-w-[60px] leading-tight">
-                {tool.label}
+              <span className="text-[9px] font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+                {tool.label.split(' ')[0]}
               </span>
             </div>
           ))}
         </div>
       ) : (
         // Vista expandida - contenido completo
-        <div className="h-full bg-card overflow-hidden">
+        <div className="h-full bg-muted/30 overflow-hidden">
           <DataSourcesPanel />
         </div>
       )}
