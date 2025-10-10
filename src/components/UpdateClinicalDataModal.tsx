@@ -19,7 +19,7 @@ interface UpdateClinicalDataModalProps {
 
 // Componente recursivo para renderizar árbol de datos
 const DataTree = ({ data, level = 0 }: { data: any; level?: number }) => {
-  const [isOpen, setIsOpen] = useState(level === 0);
+  const [isOpen, setIsOpen] = useState(false); // Cerrado por defecto
 
   if (data === null || data === undefined) {
     return <span className="text-muted-foreground italic">null</span>;
@@ -155,18 +155,18 @@ export const UpdateClinicalDataModal = ({ open, onOpenChange, profile, onSuccess
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-7xl h-[85vh] p-0 flex flex-col">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
+          <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
             <RefreshCw className="w-5 h-5 text-primary" />
             Actualizar Datos Clínicos
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm text-muted-foreground mt-1">
             Consulta y visualiza tus datos clínicos desde el sistema de Historia Clínica
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col h-[70vh]">
+        <div className="flex-1 flex flex-col overflow-hidden">
           {!displayData && !error && (
             <div className="flex-1 flex items-center justify-center p-6">
               <div className="text-center space-y-4 max-w-md">
