@@ -1,4 +1,4 @@
-import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw, Trash2, Download, User, CreditCard, MapPin, Building2, Phone, Droplet, FolderOpen } from "lucide-react";
+import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw, Trash2, Download, User, CreditCard, MapPin, Building2, Phone, Droplet, FolderOpen, Activity, FilePlus2, Pill } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { SecureUploadModal } from "./SecureUploadModal";
 import { DocumentLibraryModal } from "./DocumentLibraryModal";
 import { ClinicalRecordsModal } from "./ClinicalRecordsModal";
+import { UpdateClinicalDataModal } from "./UpdateClinicalDataModal";
 
 interface PatientProfile {
   full_name: string | null;
@@ -51,6 +52,7 @@ export const DataSourcesPanel = () => {
   const [showDocumentLibrary, setShowDocumentLibrary] = useState(false);
   const [showClinicalRecords, setShowClinicalRecords] = useState(false);
   const [showPrescriptions, setShowPrescriptions] = useState(false);
+  const [showUpdateClinicalData, setShowUpdateClinicalData] = useState(false);
 
   useEffect(() => {
     loadProfileAndData();
@@ -244,66 +246,10 @@ export const DataSourcesPanel = () => {
     }
   };
 
-  const handleFetchHismart = async () => {
-    if (!profile) return;
-    
-    setLoadingHismart(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase.functions.invoke('fetch-hismart-data', {
-        body: {
-          documentType: profile.document_type,
-          identification: profile.identification
-        }
-      });
-
-      if (error) throw error;
-
-      console.log('Datos de HiSmart:', data);
-      if (data.success && data.data?.result?.data) {
-        const hismartInfo = data.data.result.data;
-        setHismartData(hismartInfo);
-        
-        const fetchDate = new Date().toLocaleString('es-CO', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-        setHismartLastFetch(fetchDate);
-        
-        // Guardar datos de HiSmart en la base de datos
-        const { error: updateError } = await supabase
-          .from('patient_profiles')
-          .update({
-            topus_data: {
-              ...profile.topus_data,
-              hismart_data: hismartInfo,
-              hismart_last_fetch: fetchDate
-            }
-          })
-          .eq('user_id', user.id);
-
-        if (updateError) {
-          console.error('Error guardando datos de HiSmart:', updateError);
-        }
-
-        // Disparar evento para actualizar sugerencias
-        window.dispatchEvent(new CustomEvent('documentsUpdated'));
-
-        toast.success('Datos clínicos consultados exitosamente');
-      } else {
-        toast.error('No se encontraron datos clínicos');
-      }
-    } catch (error) {
-      console.error('Error consultando HiSmart:', error);
-      toast.error('Error consultando datos clínicos');
-    } finally {
-      setLoadingHismart(false);
-    }
+  const handleUpdateSuccess = (data: any, fetchDate: string) => {
+    setHismartData(data);
+    setHismartLastFetch(fetchDate);
+    loadProfile(); // Recargar perfil para actualizar los datos
   };
 
   const handleDeleteDocument = async (docId: string, fileName: string) => {
@@ -567,31 +513,40 @@ export const DataSourcesPanel = () => {
             </Card>
           </Collapsible>
 
-          {/* Botón consultar HiSmart */}
+          {/* Mis Documentos Cargados - Botón tipo tarjeta */}
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
+            onClick={() => setShowDocumentLibrary(true)}
+          >
+            <div className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                <FolderOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-foreground">
+                  Mis Documentos Cargados
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {documents.length} {documents.length === 1 ? 'documento' : 'documentos'}
+                </p>
+              </div>
+              <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
+            </div>
+          </Card>
+
+          {/* Upload Section */}
           <div className="space-y-2">
             <Button 
-              className="w-full gap-2 bg-secondary hover:bg-secondary/80 transition-all" 
+              className="w-full gap-2 bg-primary hover:bg-primary-dark transition-all" 
               size="lg"
-              onClick={handleFetchHismart}
-              disabled={loadingHismart || !profile}
+              onClick={() => setShowUploadModal(true)}
             >
-              {loadingHismart ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Consultando...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-4 h-4" />
-                  {hismartLastFetch ? 'Actualizar Datos Clínicos' : 'Consultar Datos Clínicos en HC'}
-                </>
-              )}
+              <FilePlus2 className="w-4 h-4" />
+              Subir Documentos
             </Button>
-            {hismartLastFetch && (
-              <p className="text-xs text-muted-foreground text-center">
-                Última consulta: {hismartLastFetch}
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground text-center">
+              PDF, JPG, PNG - Máx 20MB con verificación de identidad
+            </p>
           </div>
 
           {/* Datos de HiSmart - Botones tipo tarjeta */}
@@ -604,8 +559,8 @@ export const DataSourcesPanel = () => {
                   onClick={() => setShowClinicalRecords(true)}
                 >
                   <div className="p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-5 h-5 text-primary" />
+                    <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                      <Activity className="w-5 h-5 text-green-600 dark:text-green-400" />
                     </div>
                     <div className="flex-1">
                       <h4 className="text-sm font-semibold text-foreground">Registros Clínicos</h4>
@@ -625,8 +580,8 @@ export const DataSourcesPanel = () => {
                   onClick={() => setShowPrescriptions(true)}
                 >
                   <div className="p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center flex-shrink-0">
-                      <Calendar className="w-5 h-5 text-secondary" />
+                    <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                      <Pill className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                     </div>
                     <div className="flex-1">
                       <h4 className="text-sm font-semibold text-foreground">Prescripciones</h4>
@@ -641,41 +596,35 @@ export const DataSourcesPanel = () => {
             </div>
           )}
 
-          {/* Upload Section */}
+          {/* Botón consultar/actualizar HiSmart */}
           <div className="space-y-2">
-            <Button 
-              className="w-full gap-2 bg-primary hover:bg-primary-dark transition-all" 
-              size="lg"
-              onClick={() => setShowUploadModal(true)}
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
+              onClick={() => setShowUpdateClinicalData(true)}
             >
-              <Upload className="w-4 h-4" />
-              Subir Documentos
-            </Button>
-            <p className="text-xs text-muted-foreground text-center">
-              PDF, JPG, PNG - Máx 20MB con verificación de identidad
-            </p>
+              <div className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center flex-shrink-0">
+                  <RefreshCw className="w-5 h-5 text-secondary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {hismartLastFetch ? 'Actualizar Datos Clínicos' : 'Consultar Datos Clínicos'}
+                  </h3>
+                  {hismartLastFetch && (
+                    <p className="text-xs text-muted-foreground">
+                      Última consulta: {hismartLastFetch}
+                    </p>
+                  )}
+                  {!hismartLastFetch && (
+                    <p className="text-xs text-muted-foreground">
+                      Obtener datos de Historia Clínica
+                    </p>
+                  )}
+                </div>
+                <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
+              </div>
+            </Card>
           </div>
-
-          {/* Mis Documentos Cargados - Botón tipo tarjeta */}
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
-            onClick={() => setShowDocumentLibrary(true)}
-          >
-            <div className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
-                <FolderOpen className="w-5 h-5 text-accent-foreground" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-foreground">
-                  Mis Documentos Cargados
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  {documents.length} {documents.length === 1 ? 'documento' : 'documentos'}
-                </p>
-              </div>
-              <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
-            </div>
-          </Card>
         </div>
       </ScrollArea>
 
@@ -818,6 +767,14 @@ export const DataSourcesPanel = () => {
           records={hismartData.prescription_records}
         />
       )}
+
+      {/* Update Clinical Data Modal */}
+      <UpdateClinicalDataModal
+        open={showUpdateClinicalData}
+        onOpenChange={setShowUpdateClinicalData}
+        profile={profile}
+        onSuccess={handleUpdateSuccess}
+      />
     </div>
   );
 };
