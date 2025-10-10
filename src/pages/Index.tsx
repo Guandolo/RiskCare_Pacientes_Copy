@@ -19,6 +19,7 @@ const Index = () => {
   const [showIdentificationModal, setShowIdentificationModal] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [mobileTab, setMobileTab] = useState<"documents" | "chat" | "notebook">("chat");
+  const [profileChecked, setProfileChecked] = useState(false);
   
   useOnboardingTour();
 
@@ -31,6 +32,12 @@ const Index = () => {
   useEffect(() => {
     const checkProfile = async () => {
       if (!user) {
+        setCheckingProfile(false);
+        return;
+      }
+      
+      // Si ya verificamos el perfil en esta sesión, no volver a verificar
+      if (profileChecked) {
         setCheckingProfile(false);
         return;
       }
@@ -55,6 +62,9 @@ const Index = () => {
           // Profile exists - asegurarse que el modal esté cerrado
           setShowIdentificationModal(false);
         }
+        
+        // Marcar que ya verificamos el perfil
+        setProfileChecked(true);
       } catch (error) {
         console.error("Error in checkProfile:", error);
       } finally {
@@ -62,15 +72,16 @@ const Index = () => {
       }
     };
 
-    if (user) {
+    if (user && !profileChecked) {
       checkProfile();
     }
-  }, [user]);
+  }, [user, profileChecked]);
 
   // Listener para cerrar el modal cuando se complete el perfil
   useEffect(() => {
     const handleProfileComplete = () => {
       setShowIdentificationModal(false);
+      setProfileChecked(true);
     };
     
     window.addEventListener('profileUpdated', handleProfileComplete);
