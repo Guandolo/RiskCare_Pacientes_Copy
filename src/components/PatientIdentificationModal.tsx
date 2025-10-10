@@ -111,54 +111,67 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
       setDocumentType(data.data.tipoDocumento || 'CC');
       setIdentification(data.data.numeroDocumento || '');
       
-      // Guardar las imágenes en el storage para referencia futura
+      // Guardar ambas imágenes del documento en el storage
       try {
         const timestamp = Date.now();
+        const docNumber = data.data.numeroDocumento || 'sin_numero';
         
-        // Convertir base64 a blob
+        // Convertir base64 a blob - FRENTE
         const frontBlob = await fetch(frontImage).then(r => r.blob());
-        const frontFile = new File([frontBlob], `documento_frente_${timestamp}.jpg`, { type: 'image/jpeg' });
+        const frontFile = new File([frontBlob], `documento_identidad_frente_${docNumber}_${timestamp}.jpg`, { type: 'image/jpeg' });
         
-        // Subir imagen del frente
+        // Subir imagen del FRENTE
         const { data: uploadFrontData, error: uploadFrontError } = await supabase.storage
           .from('clinical-documents')
-          .upload(`${userId}/documento_identidad_frente_${timestamp}.jpg`, frontFile);
+          .upload(`${userId}/documento_identidad_frente_${docNumber}_${timestamp}.jpg`, frontFile);
 
         if (uploadFrontError) throw uploadFrontError;
 
-        // Subir imagen del reverso si existe
-        let backPath = null;
-        if (backImage) {
-          const backBlob = await fetch(backImage).then(r => r.blob());
-          const backFile = new File([backBlob], `documento_reverso_${timestamp}.jpg`, { type: 'image/jpeg' });
-          
-          const { data: uploadBackData, error: uploadBackError } = await supabase.storage
-            .from('clinical-documents')
-            .upload(`${userId}/documento_identidad_reverso_${timestamp}.jpg`, backFile);
+        // Convertir base64 a blob - REVERSO
+        const backBlob = await fetch(backImage).then(r => r.blob());
+        const backFile = new File([backBlob], `documento_identidad_reverso_${docNumber}_${timestamp}.jpg`, { type: 'image/jpeg' });
+        
+        // Subir imagen del REVERSO
+        const { data: uploadBackData, error: uploadBackError } = await supabase.storage
+          .from('clinical-documents')
+          .upload(`${userId}/documento_identidad_reverso_${docNumber}_${timestamp}.jpg`, backFile);
 
-          if (uploadBackError) throw uploadBackError;
-          backPath = uploadBackData.path;
-        }
+        if (uploadBackError) throw uploadBackError;
 
-        // Crear registro en la tabla clinical_documents
-        const { error: dbError } = await supabase
-          .from('clinical_documents')
-          .insert({
+        // Crear DOS registros en la tabla clinical_documents (uno por cada cara)
+        const documentsToInsert = [
+          {
             user_id: userId,
-            file_name: uploadFrontData.path,
+            file_name: `Documento de Identidad - Frente (${docNumber})`,
             file_type: 'image/jpeg',
-            document_type: 'Documento de Identidad',
+            document_type: 'Documento de Identidad - Frente',
             file_url: uploadFrontData.path,
             structured_data: {
               ...data.data,
-              backImagePath: backPath
+              lado: 'frente'
             }
-          });
+          },
+          {
+            user_id: userId,
+            file_name: `Documento de Identidad - Reverso (${docNumber})`,
+            file_type: 'image/jpeg',
+            document_type: 'Documento de Identidad - Reverso',
+            file_url: uploadBackData.path,
+            structured_data: {
+              ...data.data,
+              lado: 'reverso'
+            }
+          }
+        ];
+
+        const { error: dbError } = await supabase
+          .from('clinical_documents')
+          .insert(documentsToInsert);
 
         if (dbError) {
-          console.error('Error guardando documento en BD:', dbError);
+          console.error('Error guardando documentos en BD:', dbError);
         } else {
-          console.log('Documento de identidad guardado exitosamente');
+          console.log('Ambas caras del documento guardadas exitosamente');
         }
       } catch (storageError) {
         console.error('Error guardando imágenes del documento:', storageError);
