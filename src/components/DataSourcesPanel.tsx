@@ -1,4 +1,4 @@
-import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw, Trash2, Download, User, CreditCard, MapPin, Building2, Phone, Droplet } from "lucide-react";
+import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw, Trash2, Download, User, CreditCard, MapPin, Building2, Phone, Droplet, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SecureUploadModal } from "./SecureUploadModal";
 import { DocumentLibraryModal } from "./DocumentLibraryModal";
+import { ClinicalRecordsModal } from "./ClinicalRecordsModal";
 
 interface PatientProfile {
   full_name: string | null;
@@ -48,6 +49,8 @@ export const DataSourcesPanel = () => {
   const [pendingProcessing, setPendingProcessing] = useState<any | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showDocumentLibrary, setShowDocumentLibrary] = useState(false);
+  const [showClinicalRecords, setShowClinicalRecords] = useState(false);
+  const [showPrescriptions, setShowPrescriptions] = useState(false);
 
   useEffect(() => {
     loadProfileAndData();
@@ -591,100 +594,49 @@ export const DataSourcesPanel = () => {
             )}
           </div>
 
-          {/* Datos de HiSmart */}
+          {/* Datos de HiSmart - Botones tipo tarjeta */}
           {hismartData && (
             <div className="space-y-2">
               {/* Registros Clínicos */}
               {hismartData.clinical_records && hismartData.clinical_records.length > 0 && (
-                <Collapsible defaultOpen={false}>
-                  <Card>
-                    <CollapsibleTrigger className="w-full p-3 flex justify-between items-center hover:bg-accent/5">
-                      <h4 className="text-sm font-semibold text-foreground">Registros Clínicos ({hismartData.clinical_records.length})</h4>
-                      <ChevronDown className="w-4 h-4" />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="px-3 pb-3 space-y-2">
-                        {hismartData.clinical_records.map((record: any, idx: number) => (
-                          <Card key={idx} className="p-3 bg-accent/5">
-                            <div className="text-xs space-y-2">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Fecha:</span>
-                                <span className="font-medium">{record.registration_date || record.date_of_attention}</span>
-                              </div>
-                              {record.diagnoses && (
-                                <div>
-                                  <span className="text-muted-foreground">Diagnóstico:</span>
-                                  <p className="font-medium mt-1">{record.diagnoses}</p>
-                                </div>
-                              )}
-                              {record.id_company && (
-                                <div>
-                                  <span className="text-muted-foreground">ID Compañía:</span> {record.id_company}
-                                </div>
-                              )}
-                              {record.details && record.details.length > 0 && (
-                                <Collapsible>
-                                  <CollapsibleTrigger className="text-primary text-xs hover:underline">
-                                    Ver detalles ({record.details.length})
-                                  </CollapsibleTrigger>
-                                  <CollapsibleContent className="mt-2 p-2 bg-background rounded">
-                                    <pre className="text-[10px] overflow-x-auto whitespace-pre-wrap">
-                                      {JSON.stringify(record.details[0], null, 2)}
-                                    </pre>
-                                  </CollapsibleContent>
-                                </Collapsible>
-                              )}
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
+                <Card 
+                  className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
+                  onClick={() => setShowClinicalRecords(true)}
+                >
+                  <div className="p-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-semibold text-foreground">Registros Clínicos</h4>
+                      <p className="text-xs text-muted-foreground">
+                        {hismartData.clinical_records.length} {hismartData.clinical_records.length === 1 ? 'registro' : 'registros'}
+                      </p>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
+                  </div>
+                </Card>
               )}
 
-              {/* Registros de Prescripciones */}
+              {/* Prescripciones */}
               {hismartData.prescription_records && hismartData.prescription_records.length > 0 && (
-                <Collapsible defaultOpen={false}>
-                  <Card>
-                    <CollapsibleTrigger className="w-full p-3 flex justify-between items-center hover:bg-accent/5">
-                      <h4 className="text-sm font-semibold text-foreground">Prescripciones ({hismartData.prescription_records.length})</h4>
-                      <ChevronDown className="w-4 h-4" />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="px-3 pb-3 space-y-2">
-                        {hismartData.prescription_records.map((record: any, idx: number) => (
-                          <Card key={idx} className="p-3 bg-accent/5">
-                            <div className="text-xs space-y-2">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Fecha:</span>
-                                <span className="font-medium">{record.registration_date}</span>
-                              </div>
-                              {record.diagnoses && (
-                                <div>
-                                  <span className="text-muted-foreground">Diagnóstico:</span>
-                                  <p className="font-medium mt-1">{record.diagnoses}</p>
-                                </div>
-                              )}
-                              {record.details && record.details.length > 0 && (
-                                <Collapsible>
-                                  <CollapsibleTrigger className="text-primary text-xs hover:underline">
-                                    Ver detalles médicos
-                                  </CollapsibleTrigger>
-                                  <CollapsibleContent className="mt-2 p-2 bg-background rounded">
-                                    <pre className="text-[10px] overflow-x-auto whitespace-pre-wrap">
-                                      {JSON.stringify(record.details[0], null, 2)}
-                                    </pre>
-                                  </CollapsibleContent>
-                                </Collapsible>
-                              )}
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
+                <Card 
+                  className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
+                  onClick={() => setShowPrescriptions(true)}
+                >
+                  <div className="p-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center flex-shrink-0">
+                      <Calendar className="w-5 h-5 text-secondary" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-semibold text-foreground">Prescripciones</h4>
+                      <p className="text-xs text-muted-foreground">
+                        {hismartData.prescription_records.length} {hismartData.prescription_records.length === 1 ? 'prescripción' : 'prescripciones'}
+                      </p>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
+                  </div>
+                </Card>
               )}
             </div>
           )}
@@ -704,16 +656,24 @@ export const DataSourcesPanel = () => {
             </p>
           </div>
 
-          {/* Documents List - Clickeable para abrir modal */}
+          {/* Mis Documentos Cargados - Botón tipo tarjeta */}
           <Card 
-            className="cursor-pointer hover:bg-accent/5 transition-colors"
+            className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
             onClick={() => setShowDocumentLibrary(true)}
           >
-            <div className="w-full p-3 flex justify-between items-center">
-              <h3 className="text-sm font-semibold text-foreground">
-                Mis Documentos Cargados ({documents.length})
-              </h3>
-              <FileText className="w-4 h-4 text-muted-foreground" />
+            <div className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                <FolderOpen className="w-5 h-5 text-accent-foreground" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-foreground">
+                  Mis Documentos Cargados
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {documents.length} {documents.length === 1 ? 'documento' : 'documentos'}
+                </p>
+              </div>
+              <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
             </div>
           </Card>
         </div>
@@ -840,6 +800,24 @@ export const DataSourcesPanel = () => {
         open={showDocumentLibrary}
         onOpenChange={setShowDocumentLibrary}
       />
+
+      {/* Clinical Records Modal */}
+      {hismartData?.clinical_records && (
+        <ClinicalRecordsModal
+          open={showClinicalRecords}
+          onOpenChange={setShowClinicalRecords}
+          records={hismartData.clinical_records}
+        />
+      )}
+
+      {/* Prescriptions Modal */}
+      {hismartData?.prescription_records && (
+        <ClinicalRecordsModal
+          open={showPrescriptions}
+          onOpenChange={setShowPrescriptions}
+          records={hismartData.prescription_records}
+        />
+      )}
     </div>
   );
 };
