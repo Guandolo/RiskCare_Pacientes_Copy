@@ -13,6 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useOnboardingTour } from "@/components/OnboardingTour";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -22,6 +24,8 @@ const Index = () => {
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [mobileTab, setMobileTab] = useState<"documents" | "chat" | "notebook">("chat");
   const [profileChecked, setProfileChecked] = useState(false);
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   
   useOnboardingTour();
 
@@ -151,24 +155,68 @@ const Index = () => {
           <div className="flex-1 overflow-hidden">
             <ResizablePanelGroup direction="horizontal">
               {/* Left Panel - Data Sources (Collapsible) */}
-              <ResizablePanel defaultSize={25} minSize={5} maxSize={40}>
-                <CollapsibleDataPanel />
+              <ResizablePanel 
+                defaultSize={25} 
+                minSize={leftPanelCollapsed ? 5 : 15} 
+                maxSize={40}
+                collapsedSize={5}
+                collapsible
+                onCollapse={() => setLeftPanelCollapsed(true)}
+                onExpand={() => setLeftPanelCollapsed(false)}
+              >
+                <CollapsibleDataPanel isCollapsed={leftPanelCollapsed} />
               </ResizablePanel>
 
-              <ResizableHandle withHandle />
+              <ResizableHandle withHandle className="relative group">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
+                  className="absolute -left-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-background border border-border opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                  title={leftPanelCollapsed ? "Expandir" : "Colapsar"}
+                >
+                  {leftPanelCollapsed ? (
+                    <ChevronRight className="w-3 h-3" />
+                  ) : (
+                    <ChevronLeft className="w-3 h-3" />
+                  )}
+                </Button>
+              </ResizableHandle>
 
               {/* Center Panel - Chat Assistant (Fixed, no collapsible) */}
               <ResizablePanel defaultSize={50} minSize={30}>
-                <div className="h-full flex flex-col overflow-hidden border-x border-border">
+                <div className="h-full flex flex-col overflow-hidden">
                   <ChatPanel />
                 </div>
               </ResizablePanel>
 
-              <ResizableHandle withHandle />
+              <ResizableHandle withHandle className="relative group">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+                  className="absolute -right-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-background border border-border opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                  title={rightPanelCollapsed ? "Expandir" : "Colapsar"}
+                >
+                  {rightPanelCollapsed ? (
+                    <ChevronLeft className="w-3 h-3" />
+                  ) : (
+                    <ChevronRight className="w-3 h-3" />
+                  )}
+                </Button>
+              </ResizableHandle>
 
               {/* Right Panel - Clinical Notebook (Collapsible) */}
-              <ResizablePanel defaultSize={25} minSize={5} maxSize={40}>
-                <CollapsibleNotebookPanel />
+              <ResizablePanel 
+                defaultSize={25} 
+                minSize={rightPanelCollapsed ? 5 : 15} 
+                maxSize={40}
+                collapsedSize={5}
+                collapsible
+                onCollapse={() => setRightPanelCollapsed(true)}
+                onExpand={() => setRightPanelCollapsed(false)}
+              >
+                <CollapsibleNotebookPanel isCollapsed={rightPanelCollapsed} />
               </ResizablePanel>
             </ResizablePanelGroup>
           </div>

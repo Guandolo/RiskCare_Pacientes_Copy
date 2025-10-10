@@ -1,41 +1,38 @@
-import { useState } from "react";
-import { ChevronLeft, ChevronRight, FileText } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Upload, FileText, Database, Activity, User } from "lucide-react";
 import { DataSourcesPanel } from "./DataSourcesPanel";
 
-export const CollapsibleDataPanel = () => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+interface CollapsibleDataPanelProps {
+  isCollapsed: boolean;
+}
+
+export const CollapsibleDataPanel = ({ isCollapsed }: CollapsibleDataPanelProps) => {
+  const tools = [
+    { icon: Upload, label: "Subir documentos", key: "upload" },
+    { icon: FileText, label: "Mis documentos", key: "documents" },
+    { icon: Database, label: "Topus", key: "topus" },
+    { icon: Activity, label: "HiSmart", key: "hismart" },
+    { icon: User, label: "Datos paciente", key: "patient" },
+  ];
 
   return (
     <div className="h-full relative">
       {isCollapsed ? (
-        // Vista colapsada - solo iconos
-        <div className="h-full bg-card flex flex-col items-center py-4 gap-6">
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => setIsCollapsed(false)}
-            className="w-8 h-8"
-            title="Expandir panel"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-          <div className="flex flex-col items-center gap-4 text-muted-foreground">
-            <FileText className="w-5 h-5" />
-          </div>
+        // Vista colapsada - barra de iconos vertical
+        <div className="h-full bg-card flex flex-col items-center py-8 gap-6 px-3">
+          {tools.map((tool) => (
+            <div key={tool.key} className="flex flex-col items-center gap-2 text-center">
+              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors cursor-pointer">
+                <tool.icon className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <span className="text-[10px] text-muted-foreground max-w-[60px] leading-tight">
+                {tool.label}
+              </span>
+            </div>
+          ))}
         </div>
       ) : (
         // Vista expandida - contenido completo
-        <div className="h-full bg-card overflow-hidden relative">
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => setIsCollapsed(true)}
-            className="absolute top-2 right-2 z-10 w-8 h-8"
-            title="Colapsar panel"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
+        <div className="h-full bg-card overflow-hidden">
           <DataSourcesPanel />
         </div>
       )}
