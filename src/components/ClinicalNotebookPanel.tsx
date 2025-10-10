@@ -185,18 +185,35 @@ export const ClinicalNotebookPanel = () => {
         return;
       }
 
-      const { error } = await supabase
+      // Sanitizar el contenido por si existen valores no serializables (NaN/Infinity/undefined)
+      const sanitizedContent = JSON.parse(
+        JSON.stringify(generatedData.content, (_k, v) => {
+          if (typeof v === 'number' && !Number.isFinite(v)) return null;
+          if (v === undefined) return null;
+          return v;
+        })
+      );
+
+      if (sanitizedContent == null) {
+        throw new Error('El contenido generado está vacío o no es válido');
+      }
+
+      const { data, error } = await supabase
         .from('clinical_notes')
         .insert({
           user_id: user.id,
           type: generatedData.type,
           title: noteTitle,
-          content: JSON.parse(JSON.stringify(generatedData.content)),
-        });
+          content: sanitizedContent,
+        })
+        .select('*')
+        .maybeSingle();
 
       if (error) {
         console.error('Database error:', error);
-        throw error;
+        const anyErr = error as any;
+        const detail = anyErr?.details || anyErr?.hint || anyErr?.message || 'Error desconocido';
+        throw new Error(detail);
       }
 
       toast({
@@ -206,13 +223,13 @@ export const ClinicalNotebookPanel = () => {
 
       setSaveNoteOpen(false);
       setNoteTitle("");
-      loadSavedNotes();
+      await loadSavedNotes();
     } catch (error) {
       console.error('Error saving note:', error);
-      const errorMessage = error instanceof Error ? error.message : "No se pudo guardar la nota";
+      const errMsg = (error as any)?.message || (error as any)?.details || 'No se pudo guardar la nota';
       toast({
         title: "Error",
-        description: errorMessage,
+        description: errMsg,
         variant: "destructive"
       });
     }

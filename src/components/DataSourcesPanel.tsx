@@ -119,12 +119,16 @@ export const DataSourcesPanel = () => {
 
   const handleViewDocument = async (doc: any) => {
     try {
-      // Obtener la URL pública correcta del documento
-      const { data: { publicUrl } } = supabase.storage
-        .from('clinical-documents')
-        .getPublicUrl(doc.file_url);
-      
-      // Actualizar el documento con la URL válida
+      // Determinar URL pública válida
+      let publicUrl = doc.file_url as string | undefined;
+      if (!publicUrl || !/^https?:\/\//.test(publicUrl)) {
+        const { data } = supabase.storage
+          .from('clinical-documents')
+          .getPublicUrl(doc.file_url);
+        publicUrl = data.publicUrl;
+      }
+
+      // Guardar doc con URL resuelta
       const docWithUrl = { ...doc, publicUrl };
       setSelectedDocPreview(docWithUrl);
       setPreviewDialogOpen(true);
