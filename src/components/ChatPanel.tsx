@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check, Mic, MicOff, Paperclip, Clock, CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
+import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check, Mic, MicOff, Paperclip, Clock, CheckCircle2, Loader2, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,6 +41,8 @@ export const ChatPanel = () => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [hasLoadedInitialSuggestions, setHasLoadedInitialSuggestions] = useState(false);
+  const [currentSuggestionIndex, setCurrentSuggestionIndex] = useState(0);
+  const suggestionsScrollRef = useRef<HTMLDivElement>(null);
   
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -510,6 +512,19 @@ export const ChatPanel = () => {
     window.dispatchEvent(new CustomEvent('documentsUpdated'));
   };
 
+  const scrollSuggestions = (direction: 'left' | 'right') => {
+    if (!suggestionsScrollRef.current) return;
+    const scrollAmount = 300;
+    const newScroll = direction === 'left' 
+      ? suggestionsScrollRef.current.scrollLeft - scrollAmount
+      : suggestionsScrollRef.current.scrollLeft + scrollAmount;
+    
+    suggestionsScrollRef.current.scrollTo({
+      left: newScroll,
+      behavior: 'smooth'
+    });
+  };
+
   return (
     <div className="flex flex-col h-full bg-background" data-tour="chat-panel">
       {/* Header */}
@@ -661,8 +676,8 @@ export const ChatPanel = () => {
                 </div>
               </Card>
 
-              {/* Suggested Questions */}
-              <div className="space-y-2">
+              {/* Suggested Questions - Horizontal Carousel */}
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Lightbulb className="w-4 h-4" />
@@ -679,31 +694,60 @@ export const ChatPanel = () => {
                     {suggestionsLoading ? 'Generando...' : 'Ver más preguntas'}
                   </Button>
                 </div>
-                <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-1">
-                  {suggestionsLoading ? (
-                    Array.from({ length: 4 }).map((_, idx) => (
-                      <Button key={idx} variant="outline" disabled className="justify-start text-left h-auto py-3 px-4 whitespace-normal">
-                        <span className="text-sm text-muted-foreground">Cargando sugerencias...</span>
-                      </Button>
-                    ))
-                  ) : (
-                    (suggestions.length ? suggestions : [
-                      "¿Qué significa hipertensión arterial esencial?",
-                      "¿Cuáles fueron los resultados de mi último examen de sangre?",
-                      "¿Cuándo fue mi última consulta de cardiología?",
-                      "¿Qué medicamentos me han formulado recientemente?",
-                    ]).map((question, idx) => (
-                      <Button
-                        key={idx}
-                        variant="outline"
-                        className="justify-start text-left h-auto py-3 px-4 bg-card hover:bg-accent hover:border-primary/50 border-border transition-all text-foreground font-medium whitespace-normal break-words"
-                        onClick={() => setMessage(question)}
-                        disabled={isLoading}
-                      >
-                        <span className="text-sm leading-relaxed">{question}</span>
-                      </Button>
-                    ))
-                  )}
+                
+                {/* Horizontal Carousel Container */}
+                <div className="relative group">
+                  {/* Left Arrow */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => scrollSuggestions('left')}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+
+                  {/* Scrollable Suggestions */}
+                  <div 
+                    ref={suggestionsScrollRef}
+                    className="flex gap-3 overflow-x-auto scrollbar-hide scroll-smooth pb-2"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  >
+                    {suggestionsLoading ? (
+                      Array.from({ length: 3 }).map((_, idx) => (
+                        <Card key={idx} className="flex-shrink-0 w-[280px] p-4 bg-muted/50 animate-pulse">
+                          <div className="h-12 bg-muted rounded"></div>
+                        </Card>
+                      ))
+                    ) : (
+                      (suggestions.length ? suggestions : [
+                        "¿Qué significa hipertensión arterial esencial?",
+                        "¿Cuáles fueron los resultados de mi último examen de sangre?",
+                        "¿Cuándo fue mi última consulta de cardiología?",
+                        "¿Qué medicamentos me han formulado recientemente?",
+                      ]).map((question, idx) => (
+                        <Card
+                          key={idx}
+                          className="flex-shrink-0 w-[280px] p-4 bg-card hover:bg-accent hover:border-primary/50 border-border transition-all cursor-pointer group/card"
+                          onClick={() => setMessage(question)}
+                        >
+                          <p className="text-sm text-foreground leading-relaxed line-clamp-3 group-hover/card:text-primary transition-colors">
+                            {question}
+                          </p>
+                        </Card>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Right Arrow */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => scrollSuggestions('right')}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
             </>

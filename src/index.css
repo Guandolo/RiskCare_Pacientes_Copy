@@ -191,3 +191,13 @@ All colors MUST be HSL.
 .shepherd-modal-overlay-container {
   @apply opacity-50;
 }
+
+/* Hide scrollbar for horizontal carousel */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
