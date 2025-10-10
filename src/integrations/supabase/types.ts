@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_feedback: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          feedback_type: string
+          id: string
+          message_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          feedback_type: string
+          id?: string
+          message_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          feedback_type?: string
+          id?: string
+          message_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -120,6 +150,36 @@ export type Database = {
           title?: string
           type?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      clinical_notes_feedback: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          feedback_type: string
+          id: string
+          note_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          feedback_type: string
+          id?: string
+          note_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          feedback_type?: string
+          id?: string
+          note_id?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []

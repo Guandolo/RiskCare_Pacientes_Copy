@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Network, FlaskConical, ScanSearch, Pill, Activity, Loader2, Trash2, Edit2 } from "lucide-react";
+import { Network, FlaskConical, ScanSearch, Pill, Activity, Loader2, Trash2, Edit2, MoreVertical, ThumbsUp, ThumbsDown, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClinicalMapViewer } from "./ClinicalMapViewer";
@@ -78,6 +79,7 @@ export const ClinicalNotebookPanel = () => {
   const [noteTitle, setNoteTitle] = useState("");
   const [savedNotes, setSavedNotes] = useState<any[]>([]);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
+  const [noteFeedback, setNoteFeedback] = useState<Record<string, 'positive' | 'negative' | null>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -281,6 +283,27 @@ export const ClinicalNotebookPanel = () => {
     }
   };
 
+  const handleNoteFeedback = async (noteId: string, feedbackType: 'positive' | 'negative') => {
+    try {
+      const currentFeedback = noteFeedback[noteId];
+      const newFeedback = currentFeedback === feedbackType ? null : feedbackType;
+      
+      setNoteFeedback(prev => ({
+        ...prev,
+        [noteId]: newFeedback
+      }));
+
+      if (newFeedback) {
+        toast({
+          title: "Gracias por tu feedback",
+          description: "Tu opinión nos ayuda a mejorar",
+        });
+      }
+    } catch (error) {
+      console.error('Error saving note feedback:', error);
+    }
+  };
+
   return (
     <TooltipProvider>
       <div className="flex flex-col h-full bg-background" data-tour="notebook-panel">
@@ -344,84 +367,143 @@ export const ClinicalNotebookPanel = () => {
             </div>
 
 
-            {/* Saved Notes History */}
+            {/* Saved Notes History - NotebookLM Style */}
             {savedNotes.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Historial
-                </h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Bitácoras guardadas
+                  </h3>
+                  <span className="text-xs text-muted-foreground">{savedNotes.length}</span>
+                </div>
                 {savedNotes.map((note) => (
                   <Card 
                     key={note.id} 
-                    className="p-3 hover:shadow-md transition-shadow group"
+                    className="group hover:shadow-lg transition-all border-border/50"
                   >
-                    <div className="flex items-start gap-2">
-                      <div 
-                        className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 cursor-pointer ${
-                          note.type === 'mapa_clinico' ? 'bg-purple-50 dark:bg-purple-950/30' :
-                          note.type === 'paraclinicos' ? 'bg-blue-50 dark:bg-blue-950/30' :
-                          note.type === 'ayudas_diagnosticas' ? 'bg-amber-50 dark:bg-amber-950/30' :
-                          note.type === 'analisis_corporal' ? 'bg-pink-50 dark:bg-pink-950/30' :
-                          'bg-green-50 dark:bg-green-950/30'
-                        }`}
-                        onClick={() => {
-                          setGeneratedData({
-                            type: note.type,
-                            title: note.title,
-                            content: note.content,
-                          });
-                          setFullscreenOpen(true);
-                        }}
-                      >
-                        {note.type === 'mapa_clinico' && <Network className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
-                        {note.type === 'paraclinicos' && <FlaskConical className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
-                        {note.type === 'ayudas_diagnosticas' && <ScanSearch className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
-                        {note.type === 'medicamentos' && <Pill className="w-4 h-4 text-green-600 dark:text-green-400" />}
-                        {note.type === 'analisis_corporal' && <Activity className="w-4 h-4 text-pink-600 dark:text-pink-400" />}
-                      </div>
-                      <div 
-                        className="flex-1 min-w-0 cursor-pointer"
-                        onClick={() => {
-                          setGeneratedData({
-                            type: note.type,
-                            title: note.title,
-                            content: note.content,
-                          });
-                          setFullscreenOpen(true);
-                        }}
-                      >
-                        <p className="text-xs font-medium text-foreground truncate">{note.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(note.created_at).toLocaleDateString('es-CO', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                          })}
-                        </p>
-                      </div>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingNote(note);
-                            setNoteTitle(note.title);
+                    <div className="p-3">
+                      <div className="flex items-start gap-3 mb-2">
+                        <div 
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 cursor-pointer ${
+                            note.type === 'mapa_clinico' ? 'bg-purple-100 dark:bg-purple-950/50' :
+                            note.type === 'paraclinicos' ? 'bg-blue-100 dark:bg-blue-950/50' :
+                            note.type === 'ayudas_diagnosticas' ? 'bg-amber-100 dark:bg-amber-950/50' :
+                            note.type === 'analisis_corporal' ? 'bg-pink-100 dark:bg-pink-950/50' :
+                            'bg-green-100 dark:bg-green-950/50'
+                          }`}
+                          onClick={() => {
+                            setGeneratedData({
+                              type: note.type,
+                              title: note.title,
+                              content: note.content,
+                            });
+                            setFullscreenOpen(true);
                           }}
                         >
-                          <Edit2 className="w-3 h-3" />
+                          {note.type === 'mapa_clinico' && <Network className="w-5 h-5 text-purple-700 dark:text-purple-400" />}
+                          {note.type === 'paraclinicos' && <FlaskConical className="w-5 h-5 text-blue-700 dark:text-blue-400" />}
+                          {note.type === 'ayudas_diagnosticas' && <ScanSearch className="w-5 h-5 text-amber-700 dark:text-amber-400" />}
+                          {note.type === 'medicamentos' && <Pill className="w-5 h-5 text-green-700 dark:text-green-400" />}
+                          {note.type === 'analisis_corporal' && <Activity className="w-5 h-5 text-pink-700 dark:text-pink-400" />}
+                        </div>
+                        <div 
+                          className="flex-1 min-w-0 cursor-pointer"
+                          onClick={() => {
+                            setGeneratedData({
+                              type: note.type,
+                              title: note.title,
+                              content: note.content,
+                            });
+                            setFullscreenOpen(true);
+                          }}
+                        >
+                          <p className="text-sm font-semibold text-foreground mb-0.5 line-clamp-1">
+                            {note.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            1 fuente · Hace {(() => {
+                              const now = new Date();
+                              const created = new Date(note.created_at);
+                              const diffHours = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60));
+                              if (diffHours < 1) return 'menos de 1 h';
+                              if (diffHours < 24) return `${diffHours} h`;
+                              const diffDays = Math.floor(diffHours / 24);
+                              return `${diffDays} día${diffDays > 1 ? 's' : ''}`;
+                            })()}
+                          </p>
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingNote(note);
+                                setNoteTitle(note.title);
+                              }}
+                            >
+                              <Edit2 className="w-4 h-4 mr-2" />
+                              Cambiar nombre
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toast({
+                                  title: "Compartir",
+                                  description: "Funcionalidad próximamente",
+                                });
+                              }}
+                            >
+                              <Share2 className="w-4 h-4 mr-2" />
+                              Compartir
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setNoteToDelete(note.id);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Borrar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      {/* Feedback buttons */}
+                      <div className="flex items-center gap-1 pt-2 border-t border-border/30">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-7 px-2 ${noteFeedback[note.id] === 'positive' ? 'text-green-600 bg-green-50 dark:bg-green-950/30' : 'text-muted-foreground'}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleNoteFeedback(note.id, 'positive');
+                          }}
+                        >
+                          <ThumbsUp className="w-3 h-3" />
                         </Button>
                         <Button
-                          size="icon"
                           variant="ghost"
-                          className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          size="sm"
+                          className={`h-7 px-2 ${noteFeedback[note.id] === 'negative' ? 'text-red-600 bg-red-50 dark:bg-red-950/30' : 'text-muted-foreground'}`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setNoteToDelete(note.id);
+                            handleNoteFeedback(note.id, 'negative');
                           }}
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <ThumbsDown className="w-3 h-3" />
                         </Button>
                       </div>
                     </div>

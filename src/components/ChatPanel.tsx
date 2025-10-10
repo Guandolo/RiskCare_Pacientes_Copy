@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check, Mic, MicOff, Paperclip, Clock, CheckCircle2, Loader2, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check, Mic, MicOff, Paperclip, Clock, CheckCircle2, Loader2, ShieldCheck, ChevronLeft, ChevronRight, Copy, ThumbsUp, ThumbsDown, MoreVertical, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +12,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { SecureUploadModal } from "./SecureUploadModal";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface Message {
   role: "user" | "assistant";
@@ -36,6 +37,7 @@ export const ChatPanel = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [progressSteps, setProgressSteps] = useState<ProgressStep[]>([]);
+  const [messageFeedback, setMessageFeedback] = useState<Record<number, 'positive' | 'negative' | null>>({});
   const { toast } = useToast();
 
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -535,6 +537,44 @@ export const ChatPanel = () => {
     window.dispatchEvent(new CustomEvent('documentsUpdated'));
   };
 
+  const handleCopyMessage = (content: string) => {
+    navigator.clipboard.writeText(content);
+    toast({
+      title: "Copiado",
+      description: "Mensaje copiado al portapapeles",
+    });
+  };
+
+  const handleFeedback = async (messageIndex: number, feedbackType: 'positive' | 'negative') => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Toggle feedback if clicking the same button
+      const currentFeedback = messageFeedback[messageIndex];
+      const newFeedback = currentFeedback === feedbackType ? null : feedbackType;
+      
+      setMessageFeedback(prev => ({
+        ...prev,
+        [messageIndex]: newFeedback
+      }));
+
+      if (newFeedback) {
+        toast({
+          title: "Gracias por tu feedback",
+          description: "Tu opinión nos ayuda a mejorar",
+        });
+      }
+
+      // Aquí podrías guardar el feedback en la base de datos si lo deseas
+      // const messageId = ...; // obtener el ID del mensaje desde la DB
+      // await supabase.from('chat_feedback').upsert({...});
+
+    } catch (error) {
+      console.error('Error saving feedback:', error);
+    }
+  };
+
   const scrollSuggestions = (direction: 'left' | 'right') => {
     if (!suggestionsScrollRef.current) return;
     const scrollAmount = 300;
@@ -705,7 +745,7 @@ export const ChatPanel = () => {
                         <Sparkles className="w-4 h-4 text-primary" />
                       </div>
                     )}
-                    <div className="flex-1">
+                     <div className="flex-1">
                       <div className="prose prose-sm max-w-none dark:prose-invert prose-p:leading-relaxed prose-pre:bg-muted prose-pre:text-foreground">
                         <ReactMarkdown 
                           remarkPlugins={[remarkGfm]}
@@ -726,25 +766,69 @@ export const ChatPanel = () => {
                         </ReactMarkdown>
                       </div>
                       
-                      {/* Sello de Respuesta Verificada */}
-                      {msg.role === 'assistant' && !isLoading && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50">
-                                <ShieldCheck className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      {/* Action Buttons for Assistant Messages */}
+                      {msg.role === 'assistant' && (
+                        <div className="flex items-center gap-1 mt-3 pt-3 border-t border-border/50">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => handleCopyMessage(msg.content)}
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p className="text-xs">Copiar</p></TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={`h-7 w-7 ${messageFeedback[idx] === 'positive' ? 'text-green-600 bg-green-50 dark:bg-green-950/30' : ''}`}
+                                  onClick={() => handleFeedback(idx, 'positive')}
+                                >
+                                  <ThumbsUp className="w-3.5 h-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p className="text-xs">Útil</p></TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={`h-7 w-7 ${messageFeedback[idx] === 'negative' ? 'text-red-600 bg-red-50 dark:bg-red-950/30' : ''}`}
+                                  onClick={() => handleFeedback(idx, 'negative')}
+                                >
+                                  <ThumbsDown className="w-3.5 h-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p className="text-xs">No útil</p></TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+
+                          {!isLoading && (
+                            <>
+                              <div className="flex-1" />
+                              <div className="flex items-center gap-2">
+                                <ShieldCheck className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
                                 <span className="text-xs font-medium text-green-600 dark:text-green-400">
-                                  Respuesta Verificada
+                                  Verificada
                                 </span>
                               </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" className="max-w-xs">
-                              <p className="text-xs">
-                                Esta respuesta fue verificada por nuestro sistema de auditoría para asegurar que la información es fiel a tus documentos cargados.
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                            </>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
