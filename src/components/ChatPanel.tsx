@@ -545,8 +545,9 @@ export const ChatPanel = () => {
   const handleCopyMessage = (content: string) => {
     navigator.clipboard.writeText(content);
     toast({
-      title: "Copiado",
-      description: "Mensaje copiado al portapapeles",
+      description: "✓ Copiado",
+      duration: 1500,
+      className: "bg-background border-primary/20",
     });
   };
 

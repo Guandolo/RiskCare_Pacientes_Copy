@@ -517,13 +517,15 @@ export const ClinicalNotebookPanel = () => {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toast({
-                                  title: "Compartir",
-                                  description: "Funcionalidad próximamente",
+                                  description: "Compartir - Próximamente",
+                                  duration: 2000,
+                                  className: "bg-background border-muted-foreground/20",
                                 });
                               }}
                             >
                               <Share2 className="w-4 h-4 mr-2" />
                               Compartir
+                              <span className="ml-auto text-xs text-muted-foreground">Próximamente</span>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
