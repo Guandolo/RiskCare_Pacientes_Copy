@@ -55,11 +55,11 @@ const Index = () => {
           return;
         }
 
+        // Solo mostrar modal si definitivamente NO hay perfil
         if (!data) {
-          // No profile found - mostrar modal de identificación
           setShowIdentificationModal(true);
         } else {
-          // Profile exists - asegurarse que el modal esté cerrado
+          // Perfil existe - asegurar que modal esté cerrado
           setShowIdentificationModal(false);
         }
         
@@ -74,6 +74,8 @@ const Index = () => {
 
     if (user && !profileChecked) {
       checkProfile();
+    } else if (!user) {
+      setCheckingProfile(false);
     }
   }, [user, profileChecked]);
 
