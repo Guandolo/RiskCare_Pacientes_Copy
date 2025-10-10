@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check, Mic, MicOff, Paperclip } from "lucide-react";
+import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check, Mic, MicOff, Paperclip, Clock, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,10 +23,17 @@ interface Conversation {
   updated_at: string;
 }
 
+type ProgressStep = {
+  id: string;
+  label: string;
+  status: 'pending' | 'in-progress' | 'completed';
+};
+
 export const ChatPanel = () => {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [progressSteps, setProgressSteps] = useState<ProgressStep[]>([]);
   const { toast } = useToast();
 
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -344,6 +351,14 @@ export const ChatPanel = () => {
   const handleSendMessage = async () => {
     if (!message.trim() || !currentConversationId) return;
 
+    // Inicializar pasos de progreso
+    const initialSteps: ProgressStep[] = [
+      { id: 'analyzing', label: 'Analizando tu pregunta', status: 'pending' },
+      { id: 'searching', label: 'Buscando en tus documentos', status: 'pending' },
+      { id: 'drafting', label: 'Redactando la respuesta', status: 'pending' },
+      { id: 'verifying', label: 'Verificando la precisión', status: 'pending' }
+    ];
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -356,16 +371,21 @@ export const ChatPanel = () => {
       setMessage("");
       setMessages(prev => [...prev, { role: "user", content: userMessage }]);
       setIsLoading(true);
+      setProgressSteps(initialSteps);
 
-      // Generar título si es el primer mensaje
-      if (isFirstMessage && currentConversationId) {
-        const title = await generateTitle(userMessage);
-        await supabase
-          .from('conversations')
-          .update({ title, updated_at: new Date().toISOString() })
-          .eq('id', currentConversationId);
-        await loadConversations();
-      }
+      // Paso 1: Analizando
+      setProgressSteps(prev => prev.map(step => 
+        step.id === 'analyzing' ? { ...step, status: 'in-progress' as const } : step
+      ));
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setProgressSteps(prev => prev.map(step => 
+        step.id === 'analyzing' ? { ...step, status: 'completed' as const } : step
+      ));
+
+      // Paso 2: Buscando
+      setProgressSteps(prev => prev.map(step => 
+        step.id === 'searching' ? { ...step, status: 'in-progress' as const } : step
+      ));
 
       const CHAT_URL = `https://mixunsevvfenajctpdfq.functions.supabase.co/functions/v1/chat-stream`;
       const resp = await fetch(CHAT_URL, {
@@ -378,17 +398,29 @@ export const ChatPanel = () => {
       });
 
       if (!resp.ok || !resp.body) {
+        setProgressSteps([]);
         if (resp.status === 401) throw new Error('No autenticado');
         if (resp.status === 429) throw new Error('Límite de solicitudes alcanzado, intenta luego.');
         if (resp.status === 402) throw new Error('Se requieren créditos para AI.');
         throw new Error('No se pudo iniciar el stream');
       }
 
+      // Completar búsqueda al obtener respuesta
+      setProgressSteps(prev => prev.map(step => 
+        step.id === 'searching' ? { ...step, status: 'completed' as const } : step
+      ));
+
+      // Paso 3: Redactando
+      setProgressSteps(prev => prev.map(step => 
+        step.id === 'drafting' ? { ...step, status: 'in-progress' as const } : step
+      ));
+
       // Stream SSE token a token
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
       let assistantSoFar = '';
+      let hasStartedStreaming = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -409,6 +441,17 @@ export const ChatPanel = () => {
             const parsed = JSON.parse(jsonStr);
             const delta: string | undefined = parsed.choices?.[0]?.delta?.content;
             if (delta) {
+              // Primera vez que llega contenido
+              if (!hasStartedStreaming) {
+                setProgressSteps(prev => prev.map(step => 
+                  step.id === 'drafting' ? { ...step, status: 'completed' as const } : step
+                ));
+                setProgressSteps(prev => prev.map(step => 
+                  step.id === 'verifying' ? { ...step, status: 'in-progress' as const } : step
+                ));
+                hasStartedStreaming = true;
+              }
+
               assistantSoFar += delta;
               setMessages(prev => {
                 const last = prev[prev.length - 1];
@@ -424,6 +467,24 @@ export const ChatPanel = () => {
           }
         }
       }
+
+      // Completar verificación
+      setProgressSteps(prev => prev.map(step => 
+        step.id === 'verifying' ? { ...step, status: 'completed' as const } : step
+      ));
+      
+      // Esperar antes de limpiar
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setProgressSteps([]);
+
+      if (isFirstMessage && currentConversationId) {
+        const title = await generateTitle(userMessage);
+        await supabase
+          .from('conversations')
+          .update({ title, updated_at: new Date().toISOString() })
+          .eq('id', currentConversationId);
+        await loadConversations();
+      }
     } catch (error) {
       console.error('Error al enviar mensaje:', error);
       const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
@@ -433,8 +494,9 @@ export const ChatPanel = () => {
         variant: "destructive"
       });
       setMessages(prev => prev.slice(0, -1));
+      setProgressSteps([]);
     } finally {
-      setIsLoading(false);
+      setProgressSteps([]);
     }
   };
 
@@ -674,14 +736,33 @@ export const ChatPanel = () => {
                   </div>
                 </Card>
               ))}
-              {isLoading && (
+              {isLoading && progressSteps.length > 0 && (
                 <Card className="p-4 bg-gradient-card border-primary/20">
                   <div className="flex gap-3">
                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                       <Sparkles className="w-4 h-4 text-primary animate-pulse" />
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-muted-foreground">Pensando...</p>
+                    <div className="flex-1 space-y-3">
+                      {progressSteps.map((step) => (
+                        <div key={step.id} className="flex items-center gap-3">
+                          {step.status === 'pending' && (
+                            <Clock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          )}
+                          {step.status === 'in-progress' && (
+                            <Loader2 className="w-4 h-4 text-primary animate-spin flex-shrink-0" />
+                          )}
+                          {step.status === 'completed' && (
+                            <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                          )}
+                          <span className={`text-sm ${
+                            step.status === 'completed' ? 'text-green-600 dark:text-green-400 line-through' :
+                            step.status === 'in-progress' ? 'text-primary font-medium' :
+                            'text-muted-foreground'
+                          }`}>
+                            {step.label}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </Card>
