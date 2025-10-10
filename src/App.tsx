@@ -1,4 +1,4 @@
-import { Toaster } from "@/components/ui/toaster";
+// Removed shadcn Toaster to avoid hook init issues
 import { Toaster as Sonner } from "@/components/ui/sonner";
 // removed TooltipProvider to avoid Radix hook issue on /auth
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -12,7 +12,6 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
-      <Toaster />
       <Sonner />
       <Routes>
         <Route path="/" element={<Index />} />
