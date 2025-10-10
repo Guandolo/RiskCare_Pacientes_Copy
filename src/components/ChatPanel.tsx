@@ -70,34 +70,23 @@ export const ChatPanel = () => {
 
   // Reaccionar a cambios de autenticación
   useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN') {
-        // Defer state updates to prevent React context issues
-        setTimeout(() => {
-          setMessages([]);
-          setConversations([]);
-          setCurrentConversationId(null);
-          setSuggestions([]);
-          setHasLoadedInitialSuggestions(false);
-          
-          loadOrCreateConversation();
-          loadConversations();
-          loadSuggestions();
-          setHasLoadedInitialSuggestions(true);
-        }, 0);
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' && !hasLoadedInitialSuggestions) {
+        loadOrCreateConversation();
+        loadConversations();
+        loadSuggestions(); // Solo cuando inicia sesión por primera vez
+        setHasLoadedInitialSuggestions(true);
       }
       if (event === 'SIGNED_OUT') {
-        setTimeout(() => {
-          setMessages([]);
-          setSuggestions([]);
-          setCurrentConversationId(null);
-          setConversations([]);
-          setHasLoadedInitialSuggestions(false);
-        }, 0);
+        setMessages([]);
+        setSuggestions([]);
+        setCurrentConversationId(null);
+        setConversations([]);
+        setHasLoadedInitialSuggestions(false);
       }
     });
     return () => listener.subscription.unsubscribe();
-  }, []);
+  }, [hasLoadedInitialSuggestions]);
 
   const loadSuggestions = async () => {
     try {
@@ -748,6 +737,7 @@ export const ChatPanel = () => {
                       
                       {/* Sello de Respuesta Verificada */}
                       {msg.role === 'assistant' && !isLoading && (
+                        <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50">
@@ -763,6 +753,7 @@ export const ChatPanel = () => {
                               </p>
                             </TooltipContent>
                           </Tooltip>
+                        </TooltipProvider>
                       )}
                     </div>
                   </div>

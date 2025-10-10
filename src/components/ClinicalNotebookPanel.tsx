@@ -71,27 +71,6 @@ export const ClinicalNotebookPanel = () => {
 
   useEffect(() => {
     loadSavedNotes();
-    
-    // Clear state on auth changes
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
-        // Defer state updates to prevent React context issues
-        setTimeout(() => {
-          setSavedNotes([]);
-          setGeneratedData(null);
-          setGeneratingModule(null);
-          loadSavedNotes();
-        }, 0);
-      }
-      if (event === 'SIGNED_OUT') {
-        setTimeout(() => {
-          setSavedNotes([]);
-          setGeneratedData(null);
-        }, 0);
-      }
-    });
-    
-    return () => listener.subscription.unsubscribe();
   }, []);
 
   const loadSavedNotes = async () => {
@@ -257,6 +236,7 @@ export const ClinicalNotebookPanel = () => {
   };
 
   return (
+    <TooltipProvider>
       <div className="flex flex-col h-full bg-background">
         {/* Header */}
         <div className="p-4 border-b border-border">
@@ -467,5 +447,6 @@ export const ClinicalNotebookPanel = () => {
           </DialogContent>
         </Dialog>
       </div>
-   );
+    </TooltipProvider>
+  );
 };

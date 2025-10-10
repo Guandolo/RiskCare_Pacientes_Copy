@@ -27,33 +27,25 @@ const Index = () => {
 
   useEffect(() => {
     const checkProfile = async () => {
-      if (!user) {
-        setShowIdentificationModal(false);
-        setCheckingProfile(false);
-        return;
-      }
-      
-      setCheckingProfile(true);
+      if (!user) return;
       
       const { data, error } = await supabase
         .from("patient_profiles")
-        .select("id")
+        .select("*")
         .eq("user_id", user.id)
-        .maybeSingle();
+        .single();
 
-      if (error) {
-        console.error("Error checking profile:", error);
-        // No forzar identificación en caso de error de red/servidor
-        setShowIdentificationModal(false);
-      } else {
-        // Abrir modal solo si NO hay perfil
-        setShowIdentificationModal(!data);
+      if (error && error.code === "PGRST116") {
+        // No profile found
+        setShowIdentificationModal(true);
       }
       setCheckingProfile(false);
     };
 
-    checkProfile();
-  }, [user?.id]);
+    if (user) {
+      checkProfile();
+    }
+  }, [user]);
 
   if (loading || checkingProfile) {
     return (

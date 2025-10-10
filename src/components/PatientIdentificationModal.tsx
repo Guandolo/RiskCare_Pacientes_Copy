@@ -53,23 +53,6 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
 
     setLoading(true);
     try {
-      // 0) Verificar si ya existe un perfil y omitir creación
-      const { data: existing, error: checkError } = await supabase
-        .from('patient_profiles')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (checkError) {
-        console.warn('No se pudo verificar perfil existente:', checkError.message);
-      }
-      if (existing) {
-        toast.success('Tu perfil ya está verificado');
-        window.dispatchEvent(new CustomEvent('profileUpdated'));
-        onComplete();
-        return;
-      }
-
       // Consultar API de Topus
       const topusData = await fetchTopusData();
       
@@ -96,10 +79,7 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
       onComplete();
     } catch (error: any) {
       console.error("Error al crear perfil:", error);
-      const msg = error?.message?.includes('row-level security')
-        ? 'No se pudo crear el perfil por una validación de seguridad. Si ya tienes perfil, recarga la página.'
-        : (error.message || "Error al crear el perfil. Por favor intenta de nuevo.");
-      toast.error(msg);
+      toast.error(error.message || "Error al crear el perfil. Por favor intenta de nuevo.");
     } finally {
       setLoading(false);
     }

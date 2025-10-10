@@ -75,18 +75,9 @@ export const DataSourcesPanel = () => {
         .from('patient_profiles')
         .select('*')
         .eq('user_id', user.id)
-        .maybeSingle();
+        .single();
 
-      if (error) {
-        console.error('Error consultando perfil:', error);
-        setProfile(null);
-        return;
-      }
-      
-      if (!data) {
-        setProfile(null);
-        return;
-      }
+      if (error) throw error;
       
       setProfile(data);
       setPhoneValue(data.phone || "");
