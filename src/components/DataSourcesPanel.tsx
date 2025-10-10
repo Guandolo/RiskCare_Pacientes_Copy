@@ -452,7 +452,9 @@ export const DataSourcesPanel = () => {
                           <div className="text-muted-foreground mb-1">Tipo de Sangre</div>
                           <div className="font-medium flex items-center gap-1">
                             <Droplet className="w-3 h-3 text-red-500" />
-                            {getTopusValue('result.tipo_sangre') || getTopusValue('result.rh') || 'N/A'}
+                            {profile.topus_data?.document_data?.tipoSangre && profile.topus_data?.document_data?.rh 
+                              ? `${profile.topus_data.document_data.tipoSangre}${profile.topus_data.document_data.rh}`
+                              : 'N/A'}
                           </div>
                         </div>
                       </div>
