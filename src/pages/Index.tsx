@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useOnboardingTour } from "@/components/OnboardingTour";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -18,6 +19,8 @@ const Index = () => {
   const [showIdentificationModal, setShowIdentificationModal] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [mobileTab, setMobileTab] = useState<"documents" | "chat" | "notebook">("chat");
+  
+  useOnboardingTour();
 
   useEffect(() => {
     if (!loading && !user) {

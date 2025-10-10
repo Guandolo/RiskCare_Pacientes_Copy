@@ -508,7 +508,7 @@ export const ChatPanel = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background" data-tour="chat-panel">
       {/* Header */}
       <div className="p-4 border-b border-border bg-card">
         <div className="flex items-center justify-between">

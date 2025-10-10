@@ -35,11 +35,12 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
   const [loading, setLoading] = useState(false);
   
   // Estados para escaneo de documento
-  const [scanMode, setScanMode] = useState<'select' | 'capture' | 'review'>('select');
+  const [scanMode, setScanMode] = useState<'select' | 'capture' | 'review' | 'topus'>('select');
   const [frontImage, setFrontImage] = useState<string | null>(null);
   const [backImage, setBackImage] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<any>(null);
   const [editableData, setEditableData] = useState<any>(null);
+  const [topusData, setTopusData] = useState<any>(null);
   
   const frontInputRef = useRef<HTMLInputElement>(null);
   const backInputRef = useRef<HTMLInputElement>(null);
@@ -114,17 +115,30 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!identification.trim()) {
-      toast.error("Por favor ingresa tu número de documento");
+  const handleDocumentConfirm = async () => {
+    if (!editableData?.numeroDocumento) {
+      toast.error("Por favor verifica el número de documento");
       return;
     }
 
     setLoading(true);
     try {
-      // Primero verificar si ya existe un perfil para este usuario
+      // Verificar si ya existe un perfil con este documento (cualquier usuario)
+      const { data: existingByDoc, error: docCheckError } = await supabase
+        .from("patient_profiles")
+        .select("user_id")
+        .eq("identification", editableData.numeroDocumento)
+        .maybeSingle();
+
+      if (docCheckError) throw docCheckError;
+
+      if (existingByDoc && existingByDoc.user_id !== userId) {
+        toast.error("Este número de documento ya está registrado con otra cuenta. Si crees que es un error, por favor contacta a soporte.");
+        setLoading(false);
+        return;
+      }
+
+      // Verificar si ya existe un perfil para este usuario
       const { data: existingProfile, error: checkError } = await supabase
         .from("patient_profiles")
         .select("id")
@@ -137,15 +151,38 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
         toast.success("Perfil ya existe, cargando...");
         window.dispatchEvent(new CustomEvent('profileUpdated'));
         onComplete();
+        setLoading(false);
         return;
       }
 
-      // Consultar API de Topus
-      const topusData = await fetchTopusData();
+      // Actualizar estado para consulta TOPUS
+      setDocumentType(editableData.tipoDocumento);
+      setIdentification(editableData.numeroDocumento);
+
+      // Pasar al paso de TOPUS
+      setScanMode('topus');
       
-      // Preparar nombre completo desde datos escaneados o TOPUS
-      let fullName = topusData?.nombre_completo || null;
-      if (editableData && editableData.nombres && editableData.apellidos) {
+      // Consultar API de Topus
+      const topusResult = await fetchTopusData();
+      setTopusData(topusResult);
+      
+      toast.success("Datos consultados exitosamente");
+    } catch (error: any) {
+      console.error("Error al verificar documento:", error);
+      toast.error(error.message || "Error al verificar el documento. Por favor intenta de nuevo.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFinalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    setLoading(true);
+    try {
+      // Preparar nombre completo
+      let fullName = topusData?.result?.nombre_completo || null;
+      if (editableData?.nombres && editableData?.apellidos) {
         fullName = `${editableData.nombres} ${editableData.apellidos}`.trim();
       }
       
@@ -154,30 +191,34 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
         .from("patient_profiles")
         .insert({
           user_id: userId,
-          document_type: documentType,
-          identification: identification,
+          document_type: editableData.tipoDocumento,
+          identification: editableData.numeroDocumento,
           topus_data: {
             ...topusData,
-            ...(editableData || {})
+            document_data: editableData
           },
           full_name: fullName,
-          age: topusData?.edad || null,
-          eps: topusData?.eps || null,
+          age: topusData?.result?.edad || null,
+          eps: topusData?.result?.eps || null,
         });
 
       if (error) {
-        // Si el error es por duplicado de user_id, informar al usuario
-        if (error.code === '23505' && error.message.includes('unique_user_id')) {
-          toast.error("Ya existe un perfil asociado a esta cuenta");
+        if (error.code === '23505') {
+          if (error.message.includes('unique_user_id')) {
+            toast.error("Ya existe un perfil asociado a esta cuenta");
+          } else if (error.message.includes('identification')) {
+            toast.error("Este número de documento ya está registrado");
+          }
           return;
         }
         throw error;
       }
 
-      toast.success("Perfil creado exitosamente");
+      toast.success("¡Perfil creado exitosamente!");
       
       // Disparar evento para actualizar la vista del panel
       window.dispatchEvent(new CustomEvent('profileUpdated'));
+      window.dispatchEvent(new CustomEvent('startOnboarding'));
       
       onComplete();
     } catch (error: any) {
@@ -204,7 +245,8 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
           <DialogDescription>
             {scanMode === 'select' && "Elige cómo deseas registrarte: escaneando tu documento o ingresando los datos manualmente."}
             {scanMode === 'capture' && "Captura fotos claras del frente y reverso de tu documento de identidad."}
-            {scanMode === 'review' && "Revisa y confirma que tu información es correcta. Puedes editar cualquier campo si es necesario."}
+            {scanMode === 'review' && "Paso 1/2: Revisa y confirma la información de tu documento. Puedes editar cualquier campo si es necesario."}
+            {scanMode === 'topus' && "Paso 2/2: Revisión final de tus datos consolidados. Verifica que toda la información sea correcta antes de continuar."}
           </DialogDescription>
         </DialogHeader>
 
@@ -233,7 +275,49 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
               </TabsContent>
               
               <TabsContent value="manual" className="mt-4">
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!identification.trim()) {
+                    toast.error("Por favor ingresa tu número de documento");
+                    return;
+                  }
+                  setLoading(true);
+                  try {
+                    // Verificar si ya existe un perfil con este documento
+                    const { data: existingByDoc } = await supabase
+                      .from("patient_profiles")
+                      .select("user_id")
+                      .eq("identification", identification)
+                      .maybeSingle();
+
+                    if (existingByDoc && existingByDoc.user_id !== userId) {
+                      toast.error("Este número de documento ya está registrado con otra cuenta. Si crees que es un error, por favor contacta a soporte.");
+                      setLoading(false);
+                      return;
+                    }
+
+                    // Simular datos extraídos para ingreso manual
+                    setEditableData({
+                      nombres: '',
+                      apellidos: '',
+                      numeroDocumento: identification,
+                      tipoDocumento: documentType,
+                      fechaNacimiento: '',
+                      tipoSangre: '',
+                      rh: '',
+                    });
+                    
+                    setScanMode('topus');
+                    const topusResult = await fetchTopusData();
+                    setTopusData(topusResult);
+                    toast.success("Datos consultados exitosamente");
+                  } catch (error: any) {
+                    console.error("Error:", error);
+                    toast.error(error.message || "Error al verificar el documento");
+                  } finally {
+                    setLoading(false);
+                  }
+                }} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="documentType">Tipo de Documento</Label>
                     <Select value={documentType} onValueChange={setDocumentType}>
@@ -363,7 +447,7 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
               Volver a escanear
             </Button>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={(e) => { e.preventDefault(); handleDocumentConfirm(); }} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="nombres">Nombres</Label>
@@ -388,10 +472,7 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
                   <Label htmlFor="tipoDocumento">Tipo de Documento</Label>
                   <Select 
                     value={editableData.tipoDocumento} 
-                    onValueChange={(v) => {
-                      setEditableData({...editableData, tipoDocumento: v});
-                      setDocumentType(v);
-                    }}
+                    onValueChange={(v) => setEditableData({...editableData, tipoDocumento: v})}
                   >
                     <SelectTrigger id="tipoDocumento">
                       <SelectValue />
@@ -410,10 +491,7 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
                   <Input
                     id="numeroDocumento"
                     value={editableData.numeroDocumento}
-                    onChange={(e) => {
-                      setEditableData({...editableData, numeroDocumento: e.target.value});
-                      setIdentification(e.target.value);
-                    }}
+                    onChange={(e) => setEditableData({...editableData, numeroDocumento: e.target.value})}
                     required
                   />
                 </div>
@@ -450,14 +528,85 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
               </div>
 
               <div className="bg-primary/5 p-4 rounded-lg">
-                <p className="text-sm font-medium mb-2">⚠️ Importante</p>
+                <p className="text-sm font-medium mb-2">📋 Paso 1 de 2</p>
                 <p className="text-xs text-muted-foreground">
-                  Por favor revisa cuidadosamente que todos tus datos sean correctos antes de continuar.
+                  Revisa cuidadosamente los datos extraídos de tu documento. Al continuar, consultaremos información adicional en ADRES.
                 </p>
               </div>
 
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Verificando y guardando..." : "Confirmar y Continuar"}
+                {loading ? "Verificando..." : "Continuar al Paso 2"}
+              </Button>
+            </form>
+          </div>
+        )}
+
+        {scanMode === 'topus' && topusData && editableData && (
+          <div className="space-y-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setScanMode('review')}
+              className="mb-2"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Volver al paso anterior
+            </Button>
+
+            <form onSubmit={handleFinalSubmit} className="space-y-4">
+              <div className="bg-primary/10 p-4 rounded-lg space-y-3">
+                <h3 className="font-semibold text-sm">Información del Documento</h3>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-muted-foreground">Nombres:</span>
+                    <p className="font-medium">{editableData.nombres}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Apellidos:</span>
+                    <p className="font-medium">{editableData.apellidos}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Documento:</span>
+                    <p className="font-medium">{editableData.tipoDocumento} {editableData.numeroDocumento}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Fecha Nacimiento:</span>
+                    <p className="font-medium">{editableData.fechaNacimiento || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-secondary/10 p-4 rounded-lg space-y-3">
+                <h3 className="font-semibold text-sm">Información de ADRES</h3>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-muted-foreground">EPS:</span>
+                    <p className="font-medium">{topusData?.result?.eps || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Régimen:</span>
+                    <p className="font-medium">{topusData?.result?.eps_tipo || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Estado Afiliación:</span>
+                    <p className="font-medium text-[10px] leading-tight">{topusData?.result?.estado_afiliacion || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Ubicación:</span>
+                    <p className="font-medium text-[10px] leading-tight">{topusData?.result?.municipio_id}, {topusData?.result?.departamento_id}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-primary/5 p-4 rounded-lg">
+                <p className="text-sm font-medium mb-2">✅ Paso 2 de 2</p>
+                <p className="text-xs text-muted-foreground">
+                  Revisa que toda la información consolidada sea correcta. Los datos de tu documento tienen prioridad sobre los de ADRES.
+                </p>
+              </div>
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Guardando perfil..." : "Confirmar y Crear Perfil"}
               </Button>
             </form>
           </div>

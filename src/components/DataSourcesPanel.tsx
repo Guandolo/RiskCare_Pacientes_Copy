@@ -350,7 +350,7 @@ export const DataSourcesPanel = () => {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" data-tour="documents-panel">
       <div className="p-4 border-b border-border">
         <h2 className="text-sm font-semibold text-foreground mb-1">Mis Documentos Clínicos</h2>
         <p className="text-xs text-muted-foreground">Fuentes de datos consolidadas</p>

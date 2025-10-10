@@ -237,7 +237,7 @@ export const ClinicalNotebookPanel = () => {
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col h-full bg-background">
+      <div className="flex flex-col h-full bg-background" data-tour="notebook-panel">
         {/* Header */}
         <div className="p-4 border-b border-border">
           <h2 className="text-sm font-semibold text-foreground">Bitácora Clínica</h2>
