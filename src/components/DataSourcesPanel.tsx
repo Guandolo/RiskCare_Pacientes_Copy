@@ -46,7 +46,6 @@ export const DataSourcesPanel = () => {
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [pdfPassword, setPdfPassword] = useState('');
   const [pendingProcessing, setPendingProcessing] = useState<any | null>(null);
-  const [showUploadModal, setShowUploadModal] = useState(false);
   const [showDocumentLibrary, setShowDocumentLibrary] = useState(false);
 
   useEffect(() => {
@@ -676,7 +675,7 @@ export const DataSourcesPanel = () => {
             <Button 
               className="w-full gap-2 bg-primary hover:bg-primary-dark transition-all" 
               size="lg"
-              onClick={() => setShowUploadModal(true)}
+              onClick={() => setShowDocumentLibrary(true)}
             >
               <Upload className="w-4 h-4" />
               Subir Documentos
@@ -809,13 +808,6 @@ export const DataSourcesPanel = () => {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Upload Modal */}
-      <SecureUploadModal
-        open={showUploadModal}
-        onOpenChange={setShowUploadModal}
-        onSuccess={handleUploadSuccess}
-      />
 
       {/* Document Library Modal */}
       <DocumentLibraryModal
