@@ -1,4 +1,4 @@
-import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw, Trash2 } from "lucide-react";
+import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw, Trash2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -330,6 +330,38 @@ export const DataSourcesPanel = () => {
   const handleUploadSuccess = () => {
     toast.success('Documento cargado y verificado correctamente');
     loadDocuments();
+  };
+
+  const handleDownloadDocument = async (doc: any) => {
+    try {
+      // Obtener URL pública del documento
+      let publicUrl = doc.file_url as string | undefined;
+      if (!publicUrl || !/^https?:\/\//.test(publicUrl)) {
+        const { data } = supabase.storage
+          .from('clinical-documents')
+          .getPublicUrl(doc.file_url);
+        publicUrl = data.publicUrl;
+      }
+
+      // Descargar el archivo
+      const response = await fetch(publicUrl);
+      const blob = await response.blob();
+      
+      // Crear un enlace temporal y hacer clic para descargar
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.file_name || 'documento.jpg';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success('Documento descargado');
+    } catch (error) {
+      console.error('Error descargando documento:', error);
+      toast.error('Error al descargar el documento');
+    }
   };
 
   // Extraer datos relevantes de topus_data
@@ -693,17 +725,33 @@ export const DataSourcesPanel = () => {
                                   </div>
                                 </div>
                               </div>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteDocument(doc.id, doc.file_name);
-                                }}
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
+                              <div className="flex gap-1 flex-shrink-0">
+                                {(doc.document_type?.includes('Documento de Identidad') || doc.file_name?.includes('documento_identidad')) && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 text-primary hover:text-primary hover:bg-primary/10"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDownloadDocument(doc);
+                                    }}
+                                    title="Descargar documento"
+                                  >
+                                    <Download className="w-3 h-3" />
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteDocument(doc.id, doc.file_name);
+                                  }}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
                             </div>
                           </Card>
                         ))}
