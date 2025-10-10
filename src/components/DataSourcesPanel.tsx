@@ -95,8 +95,9 @@ export const DataSourcesPanel = () => {
       }
 
       if (!data) {
-        // Aún no hay perfil: no mostramos error para evitar falsa alarma
+        // No hay perfil: notificar a la app para que muestre el modal
         setProfile(null);
+        window.dispatchEvent(new CustomEvent('profileMissing'));
         return;
       }
       

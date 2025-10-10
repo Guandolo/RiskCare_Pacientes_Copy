@@ -35,62 +35,12 @@ const Index = () => {
     }
   }, [user, loading, navigate]);
 
+  // Evitar spinner prolongado: dejamos que el panel izquierdo decida
   useEffect(() => {
-    const checkProfile = async () => {
-      if (!user) {
-        setCheckingProfile(false);
-        return;
-      }
-      
-      // Si ya verificamos el perfil en esta sesión, no volver a verificar
-      if (profileChecked) {
-        setCheckingProfile(false);
-        return;
-      }
-      
-      try {
-        // Esperar un poco para que DataSourcesPanel cargue primero
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const { data, error } = await supabase
-          .from("patient_profiles")
-          .select("*")
-          .eq("user_id", user.id)
-          .maybeSingle();
+    if (user) setCheckingProfile(false);
+  }, [user]);
 
-        if (error && error.code !== 'PGRST116') {
-          console.error("Error checking profile:", error);
-          setCheckingProfile(false);
-          return;
-        }
-
-        // Solo mostrar modal si definitivamente NO hay perfil
-        if (!data) {
-          console.log("No profile found, showing identification modal");
-          setShowIdentificationModal(true);
-        } else {
-          console.log("Profile found, NOT showing modal");
-          setShowIdentificationModal(false);
-        }
-        
-        // Marcar que ya verificamos el perfil
-        setProfileChecked(true);
-      } catch (error) {
-        console.error("Error in checkProfile:", error);
-        setShowIdentificationModal(false);
-      } finally {
-        setCheckingProfile(false);
-      }
-    };
-
-    if (user && !profileChecked) {
-      checkProfile();
-    } else if (!user) {
-      setCheckingProfile(false);
-    }
-  }, [user, profileChecked]);
-
-  // Listener para cerrar el modal cuando se complete o cargue el perfil
+  // Listener para cerrar/abrir el modal según eventos del panel izquierdo
   useEffect(() => {
     const handleProfileComplete = () => {
       setShowIdentificationModal(false);
@@ -99,13 +49,18 @@ const Index = () => {
     const handleProfileLoaded = () => {
       setShowIdentificationModal(false);
     };
+    const handleProfileMissing = () => {
+      setShowIdentificationModal(true);
+    };
     
     window.addEventListener('profileUpdated', handleProfileComplete);
     window.addEventListener('profileLoaded', handleProfileLoaded);
+    window.addEventListener('profileMissing', handleProfileMissing);
     
     return () => {
       window.removeEventListener('profileUpdated', handleProfileComplete);
       window.removeEventListener('profileLoaded', handleProfileLoaded);
+      window.removeEventListener('profileMissing', handleProfileMissing);
     };
   }, []);
 
