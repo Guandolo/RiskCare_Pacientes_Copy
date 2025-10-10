@@ -98,7 +98,23 @@ export const SecureUploadModal = ({ open, onOpenChange, onSuccess }: SecureUploa
       if (error) {
         console.error('Processing error:', error);
         await cleanupTempFile(fileName);
-        toast.error('Error al procesar el documento');
+        
+        // Detectar tipo de error específico
+        const errorMessage = error.message || '';
+        if (errorMessage.includes('contraseña') || errorMessage.includes('password')) {
+          toast.error('El documento está protegido con contraseña y no puede ser procesado. Por favor, elimina la protección del PDF e intenta nuevamente.', {
+            duration: 6000
+          });
+        } else if (errorMessage.includes('PDF')) {
+          toast.error('Error al procesar el PDF. Verifica que el archivo no esté corrupto o protegido.', {
+            duration: 5000
+          });
+        } else {
+          toast.error('Error al procesar el documento. Por favor, intenta nuevamente.', {
+            duration: 4000
+          });
+        }
+        
         resetModal();
         return;
       }
@@ -119,10 +135,22 @@ export const SecureUploadModal = ({ open, onOpenChange, onSuccess }: SecureUploa
         }, 2000);
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error en procesamiento:', error);
       if (tempFileUrl) await cleanupTempFile(tempFileUrl);
-      toast.error('Error al procesar el documento');
+      
+      // Mostrar error específico
+      const errorMessage = error?.message || '';
+      if (errorMessage.includes('contraseña') || errorMessage.includes('password')) {
+        toast.error('El documento está protegido con contraseña. Por favor, elimina la protección del PDF e intenta nuevamente.', {
+          duration: 6000
+        });
+      } else {
+        toast.error('Error al procesar el documento. Verifica el formato del archivo e intenta nuevamente.', {
+          duration: 5000
+        });
+      }
+      
       resetModal();
     }
   };
@@ -159,9 +187,18 @@ export const SecureUploadModal = ({ open, onOpenChange, onSuccess }: SecureUploa
         onOpenChange(false);
       }, 2000);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al confirmar carga:', error);
-      toast.error('Error al cargar el documento');
+      
+      // Mostrar error específico
+      const errorMessage = error?.message || '';
+      toast.error(
+        errorMessage.includes('contraseña') || errorMessage.includes('password')
+          ? 'El documento está protegido con contraseña y no puede ser procesado.'
+          : 'Error al cargar el documento. Por favor, intenta nuevamente.',
+        { duration: 5000 }
+      );
+      
       resetModal();
     }
   };
