@@ -30,31 +30,55 @@ const Index = () => {
 
   useEffect(() => {
     const checkProfile = async () => {
-      if (!user) return;
-      
-      const { data, error } = await supabase
-        .from("patient_profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error("Error checking profile:", error);
+      if (!user) {
         setCheckingProfile(false);
         return;
       }
+      
+      try {
+        const { data, error } = await supabase
+          .from("patient_profiles")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
 
-      if (!data) {
-        // No profile found - mostrar modal de identificación
-        setShowIdentificationModal(true);
+        if (error) {
+          console.error("Error checking profile:", error);
+          setCheckingProfile(false);
+          return;
+        }
+
+        if (!data) {
+          // No profile found - mostrar modal de identificación
+          setShowIdentificationModal(true);
+        } else {
+          // Profile exists - asegurarse que el modal esté cerrado
+          setShowIdentificationModal(false);
+        }
+      } catch (error) {
+        console.error("Error in checkProfile:", error);
+      } finally {
+        setCheckingProfile(false);
       }
-      setCheckingProfile(false);
     };
 
     if (user) {
       checkProfile();
     }
   }, [user]);
+
+  // Listener para cerrar el modal cuando se complete el perfil
+  useEffect(() => {
+    const handleProfileComplete = () => {
+      setShowIdentificationModal(false);
+    };
+    
+    window.addEventListener('profileUpdated', handleProfileComplete);
+    
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileComplete);
+    };
+  }, []);
 
   if (loading || checkingProfile) {
     return (

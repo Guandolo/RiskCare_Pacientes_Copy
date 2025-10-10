@@ -400,11 +400,11 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
                 }} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="documentType">Tipo de Documento</Label>
-                    <Select value={documentType} onValueChange={setDocumentType}>
+                    <Select value={documentType} onValueChange={setDocumentType} required>
                       <SelectTrigger id="documentType">
-                        <SelectValue />
+                        <SelectValue placeholder="Selecciona tipo de documento" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-50 bg-popover">
                         {DOCUMENT_TYPES.map((type) => (
                           <SelectItem key={type.value} value={type.value}>
                             {type.label}
@@ -555,9 +555,13 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
                     onValueChange={(v) => setEditableData({...editableData, tipoDocumento: v})}
                   >
                     <SelectTrigger id="tipoDocumento">
-                      <SelectValue />
+                      <SelectValue placeholder="Selecciona tipo de documento">
+                        {editableData.tipoDocumento ? 
+                          DOCUMENT_TYPES.find(t => t.value === editableData.tipoDocumento)?.label 
+                          : "Selecciona tipo de documento"}
+                      </SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-50 bg-popover">
                       {DOCUMENT_TYPES.map((type) => (
                         <SelectItem key={type.value} value={type.value}>
                           {type.label}
