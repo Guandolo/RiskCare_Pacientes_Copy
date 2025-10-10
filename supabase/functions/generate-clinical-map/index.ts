@@ -77,78 +77,28 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY no configurado');
     }
 
-    const prompt = `Analiza la siguiente información clínica del paciente y crea un mapa clínico interactivo que muestre las relaciones entre condiciones, tratamientos, estudios y especialistas.
+    const systemPrompt = `Eres un experto médico que crea mapas clínicos interactivos. 
+Analiza la información del paciente y crea un mapa que muestre:
+- Condiciones médicas del paciente
+- Medicamentos que toma
+- Resultados de exámenes relevantes
+- Especialistas que lo atienden
+- IMPORTANTE: Las CONEXIONES entre estos elementos (qué medicamento trata qué condición, etc.)`;
 
-INFORMACIÓN CLÍNICA:
+    const userPrompt = `Crea un mapa clínico completo para este paciente:
+
 ${clinicalContext}
 
-INSTRUCCIONES PARA GENERAR EL MAPA:
+REGLAS IMPORTANTES:
+1. El paciente DEBE conectarse a TODAS sus condiciones
+2. Cada condición DEBE conectarse a los medicamentos que la tratan
+3. Cada condición DEBE conectarse a los exámenes que la monitorean
+4. Cada condición DEBE conectarse al especialista que la controla
+5. TODOS los nodos DEBEN estar conectados (no crear nodos aislados)
 
-1. NODOS A CREAR:
-   a) UN nodo "patient" (id: "patient") con el nombre completo del paciente
-   b) Nodos "condition" para CADA diagnóstico o condición de salud identificada
-   c) Nodos "medication" para TODOS los medicamentos mencionados
-   d) Nodos "paraclinical" para estudios y resultados de laboratorio clave
-   e) Nodos "specialist" para especialidades médicas involucradas
+Si no hay suficiente información, infiere conexiones lógicas basadas en conocimiento médico general.`;
 
-2. CONEXIONES REQUERIDAS (MUY IMPORTANTE):
-   
-   TIPO 1 - Del PACIENTE a sus CONDICIONES:
-   - source: "patient"
-   - target: id de cada condición
-   - label: "diagnosticado con"
-   
-   TIPO 2 - De CONDICIONES a MEDICAMENTOS:
-   - source: id de condición
-   - target: id de medicamento que la trata
-   - label: "tratada con"
-   
-   TIPO 3 - De CONDICIONES a PARACLÍNICOS:
-   - source: id de condición
-   - target: id de estudio/resultado
-   - label: "monitoreada con"
-   
-   TIPO 4 - De CONDICIONES a ESPECIALISTAS:
-   - source: id de condición
-   - target: id de especialista
-   - label: "controlada por"
-
-3. REGLAS CRÍTICAS:
-   - TODOS los nodos DEBEN estar conectados de alguna forma
-   - Si un medicamento trata múltiples condiciones, crear múltiples edges
-   - Asegurar que cada condición tenga al menos 2 conexiones (medicamentos, estudios o especialistas)
-   - NO crear nodos huérfanos (sin conexiones)
-
-FORMATO DE RESPUESTA (JSON puro):
-{
-  "nodes": [
-    {"id": "patient", "type": "patient", "label": "NOMBRE COMPLETO PACIENTE"},
-    {"id": "cond_diabetes", "type": "condition", "label": "Diabetes Mellitus Tipo 2"},
-    {"id": "cond_hta", "type": "condition", "label": "Hipertensión Arterial"},
-    {"id": "med_metformina", "type": "medication", "label": "Metformina 850mg"},
-    {"id": "med_losartan", "type": "medication", "label": "Losartán 50mg"},
-    {"id": "para_glucosa", "type": "paraclinical", "label": "Glucosa: 130 mg/dL"},
-    {"id": "para_hba1c", "type": "paraclinical", "label": "HbA1c: 7.5%"},
-    {"id": "para_presion", "type": "paraclinical", "label": "Presión: 145/90 mmHg"},
-    {"id": "spec_cardio", "type": "specialist", "label": "Cardiología"},
-    {"id": "spec_medint", "type": "specialist", "label": "Medicina Interna"}
-  ],
-  "edges": [
-    {"id": "e1", "source": "patient", "target": "cond_diabetes", "label": "diagnosticado con"},
-    {"id": "e2", "source": "patient", "target": "cond_hta", "label": "diagnosticado con"},
-    {"id": "e3", "source": "cond_diabetes", "target": "med_metformina", "label": "tratada con"},
-    {"id": "e4", "source": "cond_diabetes", "target": "para_glucosa", "label": "monitoreada con"},
-    {"id": "e5", "source": "cond_diabetes", "target": "para_hba1c", "label": "monitoreada con"},
-    {"id": "e6", "source": "cond_hta", "target": "med_losartan", "label": "tratada con"},
-    {"id": "e7", "source": "cond_hta", "target": "para_presion", "label": "monitoreada con"},
-    {"id": "e8", "source": "cond_hta", "target": "spec_cardio", "label": "controlada por"},
-    {"id": "e9", "source": "cond_diabetes", "target": "spec_medint", "label": "controlada por"}
-  ]
-}
-
-RESPONDE ÚNICAMENTE CON EL JSON. Sin comentarios, sin markdown, sin explicaciones.`;
-
-    console.log('Calling Lovable AI...');
+    console.log('Calling Lovable AI with tool calling...');
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -157,18 +107,81 @@ RESPONDE ÚNICAMENTE CON EL JSON. Sin comentarios, sin markdown, sin explicacion
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
+        model: 'google/gemini-2.5-flash',
         messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        tools: [
           {
-            role: 'system',
-            content: 'Eres un experto en crear mapas conceptuales clínicos. Siempre respondes ÚNICAMENTE con JSON válido, sin markdown ni explicaciones.'
-          },
-          {
-            role: 'user',
-            content: prompt
+            type: 'function',
+            function: {
+              name: 'create_clinical_map',
+              description: 'Crea un mapa clínico con nodos (paciente, condiciones, medicamentos, estudios, especialistas) y sus conexiones',
+              parameters: {
+                type: 'object',
+                properties: {
+                  nodes: {
+                    type: 'array',
+                    description: 'Lista de nodos del mapa',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        id: { 
+                          type: 'string',
+                          description: 'ID único del nodo (ej: patient, cond_diabetes, med_metformina)'
+                        },
+                        type: { 
+                          type: 'string',
+                          enum: ['patient', 'condition', 'medication', 'paraclinical', 'specialist'],
+                          description: 'Tipo de nodo'
+                        },
+                        label: { 
+                          type: 'string',
+                          description: 'Texto a mostrar en el nodo'
+                        },
+                        description: {
+                          type: 'string',
+                          description: 'Descripción adicional (opcional)'
+                        }
+                      },
+                      required: ['id', 'type', 'label']
+                    }
+                  },
+                  edges: {
+                    type: 'array',
+                    description: 'Lista de conexiones entre nodos. CRÍTICO: Debe haber múltiples conexiones.',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        id: {
+                          type: 'string',
+                          description: 'ID único del edge'
+                        },
+                        source: {
+                          type: 'string',
+                          description: 'ID del nodo origen'
+                        },
+                        target: {
+                          type: 'string',
+                          description: 'ID del nodo destino'
+                        },
+                        label: {
+                          type: 'string',
+                          description: 'Etiqueta de la relación (ej: diagnosticado con, tratada con, monitoreada con, controlada por)'
+                        }
+                      },
+                      required: ['id', 'source', 'target', 'label']
+                    }
+                  }
+                },
+                required: ['nodes', 'edges']
+              }
+            }
           }
         ],
-        temperature: 0.2,
+        tool_choice: { type: 'function', function: { name: 'create_clinical_map' } },
+        temperature: 0.3,
       }),
     });
 
@@ -179,18 +192,32 @@ RESPONDE ÚNICAMENTE CON EL JSON. Sin comentarios, sin markdown, sin explicacion
     }
 
     const aiData = await aiResponse.json();
-    let mapData = aiData.choices?.[0]?.message?.content?.trim() || '{}';
-
-    // Limpiar el contenido para extraer solo el JSON
-    mapData = mapData.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-
-    console.log('Generated map data:', mapData.substring(0, 500));
+    
+    // Extraer el mapa de la respuesta de tool calling
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall || toolCall.function.name !== 'create_clinical_map') {
+      console.error('No tool call found in response');
+      throw new Error('Error al generar mapa con IA');
+    }
 
     let parsedMap;
     try {
-      parsedMap = JSON.parse(mapData);
+      parsedMap = JSON.parse(toolCall.function.arguments);
+      
+      // Validar que tiene nodos y edges
+      if (!parsedMap.nodes || !Array.isArray(parsedMap.nodes)) {
+        throw new Error('Mapa sin nodos');
+      }
+      if (!parsedMap.edges || !Array.isArray(parsedMap.edges)) {
+        console.warn('Mapa sin edges, creando conexiones predeterminadas');
+        parsedMap.edges = [];
+      }
+      
+      console.log(`Mapa generado: ${parsedMap.nodes.length} nodos, ${parsedMap.edges.length} conexiones`);
+      
     } catch (e) {
-      console.error('Failed to parse map JSON:', e);
+      console.error('Failed to parse map from tool call:', e);
+      console.error('Tool call arguments:', toolCall.function.arguments);
       throw new Error('Error al parsear el mapa generado');
     }
 
