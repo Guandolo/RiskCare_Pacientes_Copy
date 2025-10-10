@@ -32,19 +32,29 @@ export const useAuth = () => {
   }, []);
 
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/`,
         queryParams: {
           prompt: 'select_account',
         },
+        skipBrowserRedirect: true,
       },
     });
     
     if (error) {
       console.error("Error al iniciar sesión con Google:", error.message);
       throw error;
+    }
+
+    if (data?.url) {
+      // Redirige en el contexto top para evitar el bloqueo de Google dentro del iframe del preview
+      if (window.top) {
+        (window.top as Window).location.href = data.url;
+      } else {
+        window.location.href = data.url;
+      }
     }
   };
 
