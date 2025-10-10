@@ -3,12 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { DataSourcesPanel } from "@/components/DataSourcesPanel";
 import { ChatPanel } from "@/components/ChatPanel";
 import { ClinicalNotebookPanel } from "@/components/ClinicalNotebookPanel";
+import { CollapsibleDataPanel } from "@/components/CollapsibleDataPanel";
+import { CollapsibleNotebookPanel } from "@/components/CollapsibleNotebookPanel";
 import { Header } from "@/components/Header";
 import { PatientIdentificationModal } from "@/components/PatientIdentificationModal";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useOnboardingTour } from "@/components/OnboardingTour";
 
@@ -145,46 +146,18 @@ const Index = () => {
             <MobileNavigation activeTab={mobileTab} onTabChange={setMobileTab} />
           </>
         ) : (
-          // Vista de escritorio con paneles redimensionables
-          <div className="flex-1 overflow-hidden">
-            <ResizablePanelGroup direction="horizontal" className="h-full">
-              {/* Left Panel - Data Sources */}
-              <ResizablePanel 
-                defaultSize={22} 
-                minSize={15} 
-                maxSize={35}
-                collapsible={true}
-                collapsedSize={0}
-              >
-                <div className="h-full border-r border-border bg-card overflow-hidden">
-                  <DataSourcesPanel />
-                </div>
-              </ResizablePanel>
+          // Vista de escritorio con paneles colapsables
+          <div className="flex-1 overflow-hidden flex">
+            {/* Left Panel - Data Sources (Collapsible) */}
+            <CollapsibleDataPanel />
 
-              <ResizableHandle withHandle />
+            {/* Center Panel - Chat Assistant (Fixed) */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <ChatPanel />
+            </div>
 
-              {/* Center Panel - Chat Assistant */}
-              <ResizablePanel defaultSize={48} minSize={30}>
-                <div className="h-full flex flex-col overflow-hidden">
-                  <ChatPanel />
-                </div>
-              </ResizablePanel>
-
-              <ResizableHandle withHandle />
-
-              {/* Right Panel - Clinical Notebook */}
-              <ResizablePanel 
-                defaultSize={30} 
-                minSize={20} 
-                maxSize={40}
-                collapsible={true}
-                collapsedSize={0}
-              >
-                <div className="h-full border-l border-border bg-card overflow-hidden">
-                  <ClinicalNotebookPanel />
-                </div>
-              </ResizablePanel>
-            </ResizablePanelGroup>
+            {/* Right Panel - Clinical Notebook (Collapsible) */}
+            <CollapsibleNotebookPanel />
           </div>
         )}
       </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check, Mic, MicOff, Paperclip, Clock, CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -808,17 +809,28 @@ export const ChatPanel = () => {
             >
               <Paperclip className="w-4 h-4" />
             </Button>
-            <Input
+            <Textarea
               placeholder="Escribe tu pregunta sobre tu historial médico..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyPress={(e) => {
-                if (e.key === "Enter" && !isLoading) {
+                if (e.key === "Enter" && !e.shiftKey && !isLoading) {
+                  e.preventDefault();
                   handleSendMessage();
                 }
               }}
-              className="flex-1"
+              className="flex-1 min-h-[44px] max-h-[200px] resize-none"
               disabled={isLoading}
+              rows={1}
+              style={{
+                height: 'auto',
+                minHeight: '44px',
+              }}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = 'auto';
+                target.style.height = Math.min(target.scrollHeight, 200) + 'px';
+              }}
             />
             <Button
               size="icon"

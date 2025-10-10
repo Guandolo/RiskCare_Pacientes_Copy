@@ -71,11 +71,12 @@ export default {
         card: "var(--shadow-card)",
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 4px)",
-        sm: "calc(var(--radius) - 6px)",
-        xl: "calc(var(--radius) + 4px)",
-        "2xl": "calc(var(--radius) + 8px)",
+        DEFAULT: "10px",
+        lg: "10px",
+        md: "8px",
+        sm: "6px",
+        xl: "12px",
+        "2xl": "14px",
       },
       keyframes: {
         "accordion-down": {

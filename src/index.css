@@ -59,7 +59,7 @@ All colors MUST be HSL.
     --input: 220 15% 94%;
     --ring: 240 100% 26%;
 
-    --radius: 1rem;
+    --radius: 10px;
 
     /* RiskCare Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(240, 100%, 26%), hsl(181, 100%, 43%));
