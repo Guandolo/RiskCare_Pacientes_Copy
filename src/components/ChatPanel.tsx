@@ -906,7 +906,7 @@ export const ChatPanel = () => {
                       {/* Action Buttons for Assistant Messages */}
                       {msg.role === 'assistant' && (
                         <div className="flex items-center gap-1 mt-3 pt-3 border-t border-border/50">
-                          <TooltipProvider>
+                          <> 
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button
@@ -920,9 +920,9 @@ export const ChatPanel = () => {
                               </TooltipTrigger>
                               <TooltipContent><p className="text-xs">Copiar</p></TooltipContent>
                             </Tooltip>
-                          </TooltipProvider>
+                          </>
 
-                          <TooltipProvider>
+                          <> 
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button
@@ -936,9 +936,9 @@ export const ChatPanel = () => {
                               </TooltipTrigger>
                               <TooltipContent><p className="text-xs">Útil</p></TooltipContent>
                             </Tooltip>
-                          </TooltipProvider>
+                          </>
 
-                          <TooltipProvider>
+                          <> 
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button
@@ -952,7 +952,7 @@ export const ChatPanel = () => {
                               </TooltipTrigger>
                               <TooltipContent><p className="text-xs">No útil</p></TooltipContent>
                             </Tooltip>
-                          </TooltipProvider>
+                          </>
 
                           {!isLoading && (
                             <>

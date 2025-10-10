@@ -337,7 +337,7 @@ export const DataSourcesPanel = () => {
   };
 
   return (
-    <TooltipProvider>
+    <>
       <div className="flex flex-col h-full bg-muted/30" data-tour="documents-panel">
         <div className="p-4 border-b border-border bg-background shadow-sm">
           <div className="flex items-center gap-3">
@@ -743,6 +743,6 @@ export const DataSourcesPanel = () => {
         hismartData={hismartData}
       />
       </div>
-    </TooltipProvider>
+    </>
   );
 };
