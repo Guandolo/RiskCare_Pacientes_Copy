@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { SecureUploadModal } from "./SecureUploadModal";
 
 interface PatientProfile {
   full_name: string | null;
@@ -44,7 +45,7 @@ export const DataSourcesPanel = () => {
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [pdfPassword, setPdfPassword] = useState('');
   const [pendingProcessing, setPendingProcessing] = useState<any | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   useEffect(() => {
     loadProfileAndData();
@@ -291,99 +292,9 @@ export const DataSourcesPanel = () => {
     }
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast.error('Debes iniciar sesión');
-      return;
-    }
-
-    setUploading(true);
-    
-    try {
-      for (const file of Array.from(files)) {
-        // Validar tamaño (10MB)
-        if (file.size > 10 * 1024 * 1024) {
-          toast.error(`${file.name} es muy grande (máx 10MB)`);
-          continue;
-        }
-
-        // Validar tipo
-        const validTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-        if (!validTypes.includes(file.type)) {
-          toast.error(`${file.name} no es un tipo válido (PDF, JPG, PNG)`);
-          continue;
-        }
-
-        // Subir a storage (crear bucket si no existe)
-        const fileName = `${user.id}/${Date.now()}_${file.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('clinical-documents')
-          .upload(fileName, file);
-
-        if (uploadError) {
-          console.error('Error subiendo archivo:', uploadError);
-          toast.error(`Error subiendo ${file.name}`);
-          continue;
-        }
-
-        // Obtener URL pública
-        const { data: { publicUrl } } = supabase.storage
-          .from('clinical-documents')
-          .getPublicUrl(fileName);
-
-        // Procesar documento con Gemini
-        toast.info(`Procesando ${file.name}...`);
-        const { data: processData, error: processError } = await supabase.functions.invoke('process-document', {
-          body: {
-            fileUrl: publicUrl,
-            fileName: file.name,
-            fileType: file.type,
-            userId: user.id,
-            userIdentification: profile?.identification // Enviar documento para PDFs protegidos
-          }
-        });
-
-        if (processError) {
-          const msg = String((processError as any)?.message || '');
-          if (msg.includes('PDF_PASSWORD_REQUIRED') || msg.includes('423') || msg.toLowerCase().includes('protegido')) {
-            startPasswordFlow({
-              publicUrl,
-              fileName: file.name,
-              fileType: file.type,
-              userId: user.id,
-              identification: profile?.identification || null,
-            });
-            toast.message(`Se requiere contraseña para ${file.name}`);
-            // Salimos para permitir que el usuario ingrese la contraseña antes de continuar
-            return;
-          }
-          console.error('Error procesando documento:', processError);
-          toast.error(`Error procesando ${file.name}`);
-          continue;
-        }
-
-        toast.success(`${file.name} cargado exitosamente`);
-      }
-
-      // Recargar documentos
-      await loadDocuments();
-      
-      // Disparar evento personalizado para actualizar sugerencias en ChatPanel
-      window.dispatchEvent(new CustomEvent('documentsUpdated'));
-      
-    } catch (error) {
-      console.error('Error en carga de archivos:', error);
-      toast.error('Error cargando archivos');
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
+  const handleUploadSuccess = () => {
+    toast.success('Documento cargado y verificado correctamente');
+    loadDocuments();
   };
 
   // Extraer datos relevantes de topus_data
@@ -694,34 +605,16 @@ export const DataSourcesPanel = () => {
 
           {/* Upload Section */}
           <div className="space-y-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,image/jpeg,image/png"
-              multiple
-              onChange={handleFileUpload}
-              className="hidden"
-            />
             <Button 
               className="w-full gap-2 bg-primary hover:bg-primary-dark transition-all" 
               size="lg"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
+              onClick={() => setShowUploadModal(true)}
             >
-              {uploading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Subiendo...
-                </>
-              ) : (
-                <>
-                  <Upload className="w-4 h-4" />
-                  Subir Documentos
-                </>
-              )}
+              <Upload className="w-4 h-4" />
+              Subir Documentos
             </Button>
             <p className="text-xs text-muted-foreground text-center">
-              PDF, JPG, PNG - Máx 10MB
+              PDF, JPG, PNG - Máx 20MB con verificación de identidad
             </p>
           </div>
 
@@ -942,6 +835,13 @@ export const DataSourcesPanel = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Upload Modal */}
+      <SecureUploadModal
+        open={showUploadModal}
+        onOpenChange={setShowUploadModal}
+        onSuccess={handleUploadSuccess}
+      />
     </div>
   );
 };

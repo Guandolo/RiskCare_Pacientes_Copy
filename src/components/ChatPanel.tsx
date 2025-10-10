@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { SecureUploadModal } from "./SecureUploadModal";
 
 interface Message {
   role: "user" | "assistant";
@@ -41,8 +42,7 @@ export const ChatPanel = () => {
   
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   useEffect(() => {
     loadOrCreateConversation();
@@ -438,82 +438,9 @@ export const ChatPanel = () => {
     }
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast({ title: 'Error', description: 'Debes iniciar sesión', variant: 'destructive' });
-      return;
-    }
-
-    setUploading(true);
-    
-    try {
-      for (const file of Array.from(files)) {
-        // Validar tamaño (10MB)
-        if (file.size > 10 * 1024 * 1024) {
-          toast({ title: 'Error', description: `${file.name} es muy grande (máx 10MB)`, variant: 'destructive' });
-          continue;
-        }
-
-        // Validar tipo
-        const validTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-        if (!validTypes.includes(file.type)) {
-          toast({ title: 'Error', description: `${file.name} no es un tipo válido (PDF, JPG, PNG)`, variant: 'destructive' });
-          continue;
-        }
-
-        // Subir a storage
-        const fileName = `${user.id}/${Date.now()}_${file.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('clinical-documents')
-          .upload(fileName, file);
-
-        if (uploadError) {
-          console.error('Error subiendo archivo:', uploadError);
-          toast({ title: 'Error', description: `Error subiendo ${file.name}`, variant: 'destructive' });
-          continue;
-        }
-
-        // Obtener URL pública
-        const { data: { publicUrl } } = supabase.storage
-          .from('clinical-documents')
-          .getPublicUrl(fileName);
-
-        // Procesar documento
-        toast({ title: 'Procesando', description: `Procesando ${file.name}...` });
-        const { error: processError } = await supabase.functions.invoke('process-document', {
-          body: {
-            fileUrl: publicUrl,
-            fileName: file.name,
-            fileType: file.type,
-            userId: user.id
-          }
-        });
-
-        if (processError) {
-          console.error('Error procesando documento:', processError);
-          toast({ title: 'Error', description: `Error procesando ${file.name}`, variant: 'destructive' });
-          continue;
-        }
-
-        toast({ title: 'Éxito', description: `${file.name} cargado exitosamente` });
-      }
-
-      // Disparar evento para actualizar la lista de documentos
-      window.dispatchEvent(new CustomEvent('documentsUpdated'));
-      
-    } catch (error) {
-      console.error('Error en carga de archivos:', error);
-      toast({ title: 'Error', description: 'Error cargando archivos', variant: 'destructive' });
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
+  const handleUploadSuccess = () => {
+    toast({ title: 'Éxito', description: 'Documento cargado y verificado correctamente' });
+    window.dispatchEvent(new CustomEvent('documentsUpdated'));
   };
 
   return (
@@ -766,21 +693,13 @@ export const ChatPanel = () => {
 
       {/* Input Area */}
       <div className="p-4 border-t border-border bg-card">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="application/pdf,image/jpeg,image/png"
-          multiple
-          onChange={handleFileUpload}
-          className="hidden"
-        />
         <div className="max-w-3xl mx-auto">
           <div className="flex gap-2">
             <Button
               size="icon"
               variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading || isLoading}
+              onClick={() => setShowUploadModal(true)}
+              disabled={isLoading}
               title="Adjuntar documento"
             >
               <Paperclip className="w-4 h-4" />
@@ -790,18 +709,18 @@ export const ChatPanel = () => {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyPress={(e) => {
-                if (e.key === "Enter" && !isLoading && !uploading) {
+                if (e.key === "Enter" && !isLoading) {
                   handleSendMessage();
                 }
               }}
               className="flex-1"
-              disabled={isLoading || uploading}
+              disabled={isLoading}
             />
             <Button
               size="icon"
               variant={isListening ? "default" : "outline"}
               onClick={toggleVoiceRecognition}
-              disabled={isLoading || uploading}
+              disabled={isLoading}
               className={isListening ? "bg-destructive hover:bg-destructive/90 animate-pulse" : ""}
             >
               {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
@@ -809,23 +728,24 @@ export const ChatPanel = () => {
             <Button 
               size="icon" 
               className="bg-primary hover:bg-primary-dark transition-all"
-              disabled={!message.trim() || isLoading || uploading}
+              disabled={!message.trim() || isLoading}
               onClick={handleSendMessage}
             >
               <Send className="w-4 h-4" />
             </Button>
           </div>
-          {uploading ? (
-            <p className="text-xs text-muted-foreground mt-2 text-center">
-              Cargando archivo(s)...
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground mt-2 text-center">
-              Las respuestas están basadas exclusivamente en tus documentos cargados
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground mt-2 text-center">
+            Las respuestas están basadas exclusivamente en tus documentos cargados
+          </p>
         </div>
       </div>
+
+      {/* Upload Modal */}
+      <SecureUploadModal
+        open={showUploadModal}
+        onOpenChange={setShowUploadModal}
+        onSuccess={handleUploadSuccess}
+      />
     </div>
   );
 };
