@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,21 +43,6 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
     return data.data;
   };
 
-  // Si el usuario ya tiene perfil, cerrar el modal inmediatamente
-  useEffect(() => {
-    if (!open || !userId) return;
-    const checkExisting = async () => {
-      const { data } = await supabase
-        .from('patient_profiles')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle();
-      if (data) {
-        onComplete();
-      }
-    };
-    checkExisting();
-  }, [open, userId]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
