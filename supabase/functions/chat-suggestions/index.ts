@@ -94,25 +94,36 @@ serve(async (req) => {
 
     console.log('Context length:', contextInfo.length);
 
-    const systemPrompt = `Eres un asistente que genera preguntas útiles basadas en información clínica real del paciente.
+    const systemPrompt = `Eres un asistente que genera preguntas EXPLORATORIAS para ayudar al paciente a COMPRENDER su información médica existente.
 
-INSTRUCCIONES:
+REGLAS FUNDAMENTALES - NO NEGOCIABLES:
 - Genera EXACTAMENTE 4 preguntas en español
-- Basa las preguntas SOLO en la información real que se te proporciona
-- Si hay documentos específicos, pregunta sobre ellos
-- Si hay datos de historia clínica, pregunta sobre resultados o fechas
-- Si NO hay documentos, genera preguntas genéricas sobre términos médicos comunes
+- Las preguntas NUNCA deben solicitar diagnósticos, recomendaciones o consejos médicos
+- Las preguntas SOLO deben buscar EXPLORAR y ENTENDER los datos ya disponibles
+- ENFÓCATE en aclarar términos médicos, fechas, resultados y contenido de documentos
+- Si NO hay documentos, pregunta sobre términos médicos comunes para educar al paciente
 - NO inventes información que no esté en el contexto
-- Las preguntas deben ayudar al paciente a entender su información médica
 
-Ejemplos de buenas preguntas según contexto:
-- Si hay documento de laboratorio: "¿Qué significan los resultados de mi último examen de sangre?"
-- Si hay múltiples consultas: "¿Cuándo fue mi última consulta de cardiología?"
-- Si hay medicamentos: "¿Qué medicamentos me han formulado recientemente?"
-- Si NO hay documentos: "¿Qué significa hipertensión arterial esencial?"`;
+TIPOS DE PREGUNTAS PERMITIDAS (Enfoque: Exploración de Datos):
+✓ "¿Qué significa [término médico] que aparece en mi documento?"
+✓ "¿Cuáles fueron los resultados de [examen específico] en mi documento del [fecha]?"
+✓ "¿Cuándo fue mi última consulta de [especialidad] según mis documentos?"
+✓ "¿Qué medicamentos aparecen formulados en mi historial?"
+✓ "¿Qué estudios de imagenología tengo registrados?"
+✓ "¿Cuál es la tendencia de mi [parámetro] en los últimos exámenes?"
+
+TIPOS DE PREGUNTAS PROHIBIDAS (Inducen a consejos médicos):
+✗ "¿Qué debo hacer con...?"
+✗ "¿Es normal que...?"
+✗ "¿Debería preocuparme por...?"
+✗ "¿Qué tratamiento necesito para...?"
+✗ "¿Es grave mi condición de...?"
+✗ Cualquier pregunta que espere una opinión clínica o recomendación
+
+OBJETIVO: El paciente debe poder explorar y comprender sus datos sin inducir al asistente a actuar como médico.`;
 
     const body: any = {
-      model: "google/gemini-2.5-pro",
+      model: "google/gemini-flash-latest",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: contextInfo },
@@ -122,7 +133,7 @@ Ejemplos de buenas preguntas según contexto:
           type: "function",
           function: {
             name: "suggest_questions",
-            description: "Devuelve exactamente 4 preguntas sugeridas en español basadas en los datos clínicos del paciente",
+            description: "Devuelve exactamente 4 preguntas EXPLORATORIAS en español basadas en los datos clínicos del paciente, enfocadas en ENTENDER su información, NO en obtener consejos médicos",
             parameters: {
               type: "object",
               properties: {
@@ -130,7 +141,7 @@ Ejemplos de buenas preguntas según contexto:
                   type: "array",
                   items: { 
                     type: "string",
-                    description: "Una pregunta en español sobre la información clínica del paciente"
+                    description: "Una pregunta exploratoria en español sobre la información clínica del paciente que busque COMPRENDER datos existentes, NO obtener diagnósticos o consejos"
                   },
                   minItems: 4,
                   maxItems: 4,
