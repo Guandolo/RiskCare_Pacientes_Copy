@@ -113,7 +113,7 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
 
       setSelectedDoc({ ...doc, file_url: publicUrl });
       setViewerOpen(true);
-      onOpenChange(false); // Cerrar el modal de biblioteca
+      // NO cerramos el modal de biblioteca aquí
     } catch (error) {
       console.error('Error viewing document:', error);
       toast.error('Error al visualizar documento');
@@ -382,72 +382,87 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
 
       {/* Visor de documentos */}
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
-        <DialogContent className="max-w-4xl h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle>{selectedDoc?.file_name}</DialogTitle>
+        <DialogContent className="max-w-5xl h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="p-6 pb-3 border-b border-border">
+            <DialogTitle className="text-lg font-bold">{selectedDoc?.file_name}</DialogTitle>
           </DialogHeader>
           
           {selectedDoc && (
-            <div className="flex-1 overflow-auto space-y-4">
-              {/* Previsualización del archivo */}
-              <div className="bg-muted rounded-lg p-4">
-                <h4 className="text-sm font-semibold mb-2">Vista Previa</h4>
-                {selectedDoc.file_type?.includes('image') ? (
-                  <img 
-                    src={selectedDoc.file_url}
-                    alt={selectedDoc.file_name}
-                    className="w-full rounded border"
-                  />
-                ) : selectedDoc.file_type?.includes('pdf') ? (
-                  <iframe
-                    src={selectedDoc.file_url}
-                    className="w-full h-[400px] rounded border"
-                    title={selectedDoc.file_name}
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground">Previsualización no disponible</p>
+            <ScrollArea className="flex-1 px-6 py-4">
+              <div className="space-y-4">
+                {/* Previsualización del archivo */}
+                <div className="bg-muted/30 rounded-lg p-4 border border-border">
+                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Eye className="w-4 h-4" />
+                    Vista Previa
+                  </h4>
+                  {selectedDoc.file_type?.includes('image') ? (
+                    <div className="bg-background rounded-lg overflow-hidden border border-border">
+                      <img 
+                        src={selectedDoc.file_url}
+                        alt={selectedDoc.file_name}
+                        className="w-full h-auto"
+                      />
+                    </div>
+                  ) : selectedDoc.file_type?.includes('pdf') ? (
+                    <iframe
+                      src={selectedDoc.file_url}
+                      className="w-full h-[500px] rounded-lg border border-border bg-background"
+                      title={selectedDoc.file_name}
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground py-8 text-center">Previsualización no disponible</p>
+                  )}
+                </div>
+
+                {/* Información Detectada */}
+                <div className="bg-muted/30 rounded-lg p-4 border border-border">
+                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Información Detectada
+                  </h4>
+                  <div className="space-y-3 text-sm bg-background rounded-lg p-4 border border-border">
+                    {selectedDoc.document_type && (
+                      <div className="flex justify-between items-start">
+                        <span className="text-muted-foreground font-medium">Tipo de documento:</span>
+                        <Badge variant="secondary" className="ml-2">{selectedDoc.document_type}</Badge>
+                      </div>
+                    )}
+                    {selectedDoc.document_date && (
+                      <div className="flex justify-between items-start">
+                        <span className="text-muted-foreground font-medium">Fecha:</span>
+                        <span className="font-medium">{formatDate(selectedDoc.document_date)}</span>
+                      </div>
+                    )}
+                    {selectedDoc.structured_data && Object.keys(selectedDoc.structured_data).length > 0 && (
+                      <div className="pt-2 border-t border-border">
+                        <span className="text-muted-foreground font-medium block mb-2">Datos estructurados:</span>
+                        <ScrollArea className="h-[150px] rounded border border-border">
+                          <pre className="bg-muted/50 p-3 text-xs font-mono">
+                            {JSON.stringify(selectedDoc.structured_data, null, 2)}
+                          </pre>
+                        </ScrollArea>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Texto extraído */}
+                {selectedDoc.extracted_text && (
+                  <div className="bg-muted/30 rounded-lg p-4 border border-border">
+                    <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Texto Extraído
+                    </h4>
+                    <ScrollArea className="h-[200px] rounded border border-border bg-background">
+                      <p className="text-xs text-foreground whitespace-pre-wrap p-4 font-mono">
+                        {selectedDoc.extracted_text}
+                      </p>
+                    </ScrollArea>
+                  </div>
                 )}
               </div>
-
-              {/* Información Detectada */}
-              <div className="bg-muted rounded-lg p-4">
-                <h4 className="text-sm font-semibold mb-2">Información Detectada</h4>
-                <div className="space-y-3 text-sm">
-                  {selectedDoc.document_type && (
-                    <div>
-                      <span className="text-muted-foreground">Tipo de documento: </span>
-                      <span className="font-medium">{selectedDoc.document_type}</span>
-                    </div>
-                  )}
-                  {selectedDoc.document_date && (
-                    <div>
-                      <span className="text-muted-foreground">Fecha: </span>
-                      <span className="font-medium">{formatDate(selectedDoc.document_date)}</span>
-                    </div>
-                  )}
-                  {selectedDoc.structured_data && Object.keys(selectedDoc.structured_data).length > 0 && (
-                    <div>
-                      <span className="text-muted-foreground block mb-1">Datos estructurados:</span>
-                      <pre className="bg-background p-2 rounded text-xs overflow-auto max-h-40">
-                        {JSON.stringify(selectedDoc.structured_data, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Texto extraído */}
-              {selectedDoc.extracted_text && (
-                <div className="bg-muted rounded-lg p-4">
-                  <h4 className="text-sm font-semibold mb-2">Texto Extraído</h4>
-                  <ScrollArea className="h-[200px]">
-                    <p className="text-xs text-foreground whitespace-pre-wrap">
-                      {selectedDoc.extracted_text}
-                    </p>
-                  </ScrollArea>
-                </div>
-              )}
-            </div>
+            </ScrollArea>
           )}
         </DialogContent>
       </Dialog>
