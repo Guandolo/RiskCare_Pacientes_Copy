@@ -10,7 +10,6 @@ import { PatientIdentificationModal } from "@/components/PatientIdentificationMo
 import { MobileNavigation } from "@/components/MobileNavigation";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useOnboardingTour } from "@/components/OnboardingTour";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -19,7 +18,7 @@ import { Button } from "@/components/ui/button";
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
+  const [isMobile, setIsMobile] = useState(false);
   const [showIdentificationModal, setShowIdentificationModal] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [mobileTab, setMobileTab] = useState<"documents" | "chat" | "notebook">("chat");
@@ -28,6 +27,13 @@ const Index = () => {
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   
   useOnboardingTour();
+
+  useEffect(() => {
+    const update = () => setIsMobile(window.innerWidth < 768);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) {
