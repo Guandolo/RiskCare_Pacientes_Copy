@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -7,16 +7,16 @@ import riskCareLogo from "@/assets/riskcare-logo.png";
 import { supabase } from "@/integrations/supabase/client";
 
 const Auth = () => {
-  const navigate = useNavigate();
+  
   const [authLoading, setAuthLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user);
-      if (data.user) navigate("/");
+      if (data.user) window.location.replace("/");
     });
-  }, [navigate]);
+  }, []);
 
   const handleGoogleSignIn = async () => {
     try {
