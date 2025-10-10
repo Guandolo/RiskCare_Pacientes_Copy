@@ -9,6 +9,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SecureUploadModal } from "./SecureUploadModal";
+import { DocumentLibraryModal } from "./DocumentLibraryModal";
 
 interface PatientProfile {
   full_name: string | null;
@@ -46,6 +47,7 @@ export const DataSourcesPanel = () => {
   const [pdfPassword, setPdfPassword] = useState('');
   const [pendingProcessing, setPendingProcessing] = useState<any | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showDocumentLibrary, setShowDocumentLibrary] = useState(false);
 
   useEffect(() => {
     loadProfileAndData();
@@ -685,128 +687,18 @@ export const DataSourcesPanel = () => {
             </p>
           </div>
 
-          {/* Documents List - Colapsable */}
-          <Collapsible open={documentsOpen} onOpenChange={setDocumentsOpen}>
-            <Card>
-              <CollapsibleTrigger className="w-full p-3 flex justify-between items-center hover:bg-accent/5">
-                <h3 className="text-sm font-semibold text-foreground">
-                  Mis Documentos Cargados ({documents.length})
-                </h3>
-                {documentsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </CollapsibleTrigger>
-              
-              <CollapsibleContent>
-                <div className="p-3 space-y-2">
-                  {documents.length > 0 ? (
-                    <ScrollArea className="h-[300px] pr-3">
-                      <div className="space-y-2">
-                        {documents.map((doc) => (
-                          <Card 
-                            key={doc.id} 
-                            className={`p-2.5 cursor-pointer transition-all hover:bg-accent/10 ${
-                              selectedDocPreview?.id === doc.id ? 'bg-accent/10 border-primary/50' : 'bg-accent/5'
-                            }`}
-                            onClick={() => handleViewDocument(doc)}
-                          >
-                            <div className="flex items-start gap-2">
-                              <div className="w-8 h-8 rounded bg-secondary/10 flex items-center justify-center flex-shrink-0">
-                                <FileText className="w-4 h-4 text-secondary" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-medium truncate">{doc.file_name}</p>
-                                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                                  <span className="text-[10px] text-muted-foreground truncate">{doc.document_type || 'Documento'}</span>
-                                  <span className="text-[10px] text-muted-foreground">•</span>
-                                  <div className="flex items-center gap-1">
-                                    <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                                      {formatDate(doc.document_date || doc.created_at)}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex gap-1 flex-shrink-0">
-                                {(doc.document_type?.includes('Documento de Identidad') || doc.file_name?.includes('documento_identidad')) && (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0 text-primary hover:text-primary hover:bg-primary/10"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDownloadDocument(doc);
-                                    }}
-                                    title="Descargar documento"
-                                  >
-                                    <Download className="w-3 h-3" />
-                                  </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteDocument(doc.id, doc.file_name);
-                                  }}
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  ) : (
-                    <div className="p-4 text-center">
-                      <p className="text-xs text-muted-foreground">
-                        No hay documentos cargados aún
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Document Preview */}
-                  {selectedDocPreview && (
-                    <Card className="p-3 bg-primary/5 border-primary/20">
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-start">
-                          <h4 className="text-xs font-semibold text-foreground">Vista Previa</h4>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-5 w-5 p-0"
-                            onClick={() => setSelectedDocPreview(null)}
-                          >
-                            ✕
-                          </Button>
-                        </div>
-                        <div className="text-[10px] space-y-1.5">
-                          <div>
-                            <span className="text-muted-foreground">Archivo:</span>
-                            <p className="font-medium text-foreground break-words">{selectedDocPreview.file_name}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Tipo:</span>
-                            <p className="font-medium text-foreground">{selectedDocPreview.document_type || 'No especificado'}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Fecha del documento:</span>
-                            <p className="font-medium text-foreground">
-                              {formatDate(selectedDocPreview.document_date) || 'No especificada'}
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Cargado:</span>
-                            <p className="font-medium text-foreground">{formatDate(selectedDocPreview.created_at)}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  )}
-                </div>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
+          {/* Documents List - Clickeable para abrir modal */}
+          <Card 
+            className="cursor-pointer hover:bg-accent/5 transition-colors"
+            onClick={() => setShowDocumentLibrary(true)}
+          >
+            <div className="w-full p-3 flex justify-between items-center">
+              <h3 className="text-sm font-semibold text-foreground">
+                Mis Documentos Cargados ({documents.length})
+              </h3>
+              <ChevronDown className="w-4 h-4" />
+            </div>
+          </Card>
         </div>
       </ScrollArea>
 
@@ -924,6 +816,12 @@ export const DataSourcesPanel = () => {
         open={showUploadModal}
         onOpenChange={setShowUploadModal}
         onSuccess={handleUploadSuccess}
+      />
+
+      {/* Document Library Modal */}
+      <DocumentLibraryModal
+        open={showDocumentLibrary}
+        onOpenChange={setShowDocumentLibrary}
       />
     </div>
   );
