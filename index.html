@@ -33,9 +33,47 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((registration) => console.log('SW registered:', registration))
-            .catch((error) => console.log('SW registration failed:', error));
+          navigator.serviceWorker.register('/sw.js').then((registration) => {
+            console.log('[App] Service Worker registered');
+            
+            // Detecta cuando hay una nueva versión esperando
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              console.log('[App] New Service Worker found, installing...');
+              
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // Nueva versión disponible
+                  console.log('[App] New version available! Reloading...');
+                  
+                  // Notifica al nuevo SW que tome control
+                  newWorker.postMessage({ type: 'SKIP_WAITING' });
+                  
+                  // Recarga la página automáticamente después de un breve delay
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 1000);
+                }
+              });
+            });
+
+            // Verifica actualizaciones cada 60 segundos
+            setInterval(() => {
+              registration.update();
+            }, 60000);
+          }).catch((error) => {
+            console.error('[App] Service Worker registration failed:', error);
+          });
+
+          // Recarga cuando el nuevo SW toma control
+          let refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!refreshing) {
+              refreshing = true;
+              console.log('[App] Controller changed, reloading...');
+              window.location.reload();
+            }
+          });
         });
       }
     </script>
