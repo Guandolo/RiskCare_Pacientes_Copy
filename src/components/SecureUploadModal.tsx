@@ -85,6 +85,7 @@ export const SecureUploadModal = ({ open, onOpenChange, onSuccess }: SecureUploa
       const { data, error } = await supabase.functions.invoke('process-document', {
         body: {
           fileName: file.name,
+          fileType: file.type,
           fileUrl: publicUrl,
           verifyIdentity: true,
           forceUpload: false
@@ -141,6 +142,7 @@ export const SecureUploadModal = ({ open, onOpenChange, onSuccess }: SecureUploa
       const { data, error } = await supabase.functions.invoke('process-document', {
         body: {
           fileName: selectedFile.name,
+          fileType: selectedFile.type,
           fileUrl: publicUrl,
           verifyIdentity: false,
           forceUpload: true

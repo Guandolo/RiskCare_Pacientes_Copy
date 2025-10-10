@@ -118,11 +118,31 @@ serve(async (req) => {
     }
     const base64 = btoa(binary);
 
-    // Determinar el mimeType
-    const mimeType = fileType === 'application/pdf' ? 'application/pdf' : 
-                     fileType === 'image/jpeg' ? 'image/jpeg' : 
-                     fileType === 'image/png' ? 'image/png' : 
-                     'application/octet-stream';
+    // Determinar el mimeType basándose en fileType o fileName
+    let mimeType = 'application/pdf'; // Default para PDFs
+    
+    if (fileType) {
+      // Si viene el fileType, usarlo directamente
+      if (fileType === 'image/jpeg' || fileType === 'image/jpg') {
+        mimeType = 'image/jpeg';
+      } else if (fileType === 'image/png') {
+        mimeType = 'image/png';
+      } else if (fileType === 'application/pdf') {
+        mimeType = 'application/pdf';
+      }
+    } else if (fileName) {
+      // Fallback: determinar por extensión del archivo
+      const ext = fileName.toLowerCase().split('.').pop();
+      if (ext === 'jpg' || ext === 'jpeg') {
+        mimeType = 'image/jpeg';
+      } else if (ext === 'png') {
+        mimeType = 'image/png';
+      } else if (ext === 'pdf') {
+        mimeType = 'application/pdf';
+      }
+    }
+    
+    console.log('MIME type determinado:', mimeType, 'para archivo:', fileName);
 
     // Si se requiere verificación de identidad
     let identityCheckResult = null;
