@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { fileUrl, fileName, fileType, userId } = await req.json();
+    const { fileUrl, fileName, fileType, userId, userIdentification } = await req.json();
     
     const GEMINI_API_KEY = Deno.env.get('API_GEMINI');
     if (!GEMINI_API_KEY) {
@@ -24,9 +24,37 @@ serve(async (req) => {
     // Descargar el archivo
     const fileResponse = await fetch(fileUrl);
     const fileBlob = await fileResponse.blob();
-    const arrayBuffer = await fileBlob.arrayBuffer();
+    let arrayBuffer = await fileBlob.arrayBuffer();
     
     // Convertir a base64 de forma segura para archivos grandes
+    // Si es PDF y está protegido, intentar desbloquearlo con el documento de identidad
+    if (fileType === 'application/pdf' && userIdentification) {
+      try {
+        // Importar pdf-lib para manipular PDFs
+        const { PDFDocument } = await import('https://cdn.skypack.dev/pdf-lib@^1.17.1');
+        
+        try {
+          // Intentar cargar el PDF sin contraseña primero
+          await PDFDocument.load(arrayBuffer);
+          console.log('PDF sin contraseña detectado');
+        } catch (error) {
+          console.log('PDF protegido detectado, intentando desbloquear con documento de identidad:', userIdentification);
+          // Si falla, intentar con el documento de identidad como contraseña
+          try {
+            const pdfDoc = await PDFDocument.load(arrayBuffer, { password: userIdentification });
+            arrayBuffer = await pdfDoc.save(); // Guardar sin contraseña
+            console.log('PDF desbloqueado exitosamente');
+          } catch (unlockError) {
+            console.error('No se pudo desbloquear el PDF con el documento:', unlockError);
+            throw new Error('El PDF está protegido y no se pudo desbloquear con el documento de identidad. Verifica la contraseña.');
+          }
+        }
+      } catch (error) {
+        console.error('Error procesando PDF:', error);
+        throw error;
+      }
+    }
+    
     const uint8Array = new Uint8Array(arrayBuffer);
     let binary = '';
     const chunkSize = 8192;

@@ -43,6 +43,16 @@ export const DataSourcesPanel = () => {
 
   useEffect(() => {
     loadProfileAndData();
+
+    // Listener para recargar perfil cuando se cree por primera vez
+    const handleProfileUpdate = () => {
+      loadProfile();
+    };
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
   }, []);
 
   const loadProfileAndData = async () => {
@@ -264,7 +274,8 @@ export const DataSourcesPanel = () => {
             fileUrl: publicUrl,
             fileName: file.name,
             fileType: file.type,
-            userId: user.id
+            userId: user.id,
+            userIdentification: profile?.identification // Enviar documento para PDFs protegidos
           }
         });
 

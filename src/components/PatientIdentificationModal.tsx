@@ -72,6 +72,10 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
       if (error) throw error;
 
       toast.success("Perfil creado exitosamente");
+      
+      // Disparar evento para actualizar la vista del panel
+      window.dispatchEvent(new CustomEvent('profileUpdated'));
+      
       onComplete();
     } catch (error: any) {
       console.error("Error al crear perfil:", error);
