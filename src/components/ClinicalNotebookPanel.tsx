@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Network, FlaskConical, ScanSearch, Pill, Activity, Loader2, Maximize2, Save, X } from "lucide-react";
+import { Network, FlaskConical, ScanSearch, Pill, Activity, Loader2, Trash2, Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -64,7 +64,7 @@ export const ClinicalNotebookPanel = () => {
   const [generatingModule, setGeneratingModule] = useState<string | null>(null);
   const [generatedData, setGeneratedData] = useState<any>(null);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
-  const [saveNoteOpen, setSaveNoteOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<any>(null);
   const [noteTitle, setNoteTitle] = useState("");
   const [savedNotes, setSavedNotes] = useState<any[]>([]);
   const { toast } = useToast();
@@ -143,12 +143,17 @@ export const ClinicalNotebookPanel = () => {
       }
 
       if (content) {
-        setGeneratedData({
+        const newData = {
           type: module.type,
           title: module.title,
           content: content,
-        });
+        };
+        setGeneratedData(newData);
         setNoteTitle(`${module.title} - ${new Date().toLocaleDateString('es-CO')}`);
+        
+        // Auto-guardado y abrir en fullscreen
+        await autoSaveNote(newData, `${module.title} - ${new Date().toLocaleDateString('es-CO')}`);
+        setFullscreenOpen(true);
       }
 
     } catch (error) {
@@ -164,72 +169,99 @@ export const ClinicalNotebookPanel = () => {
     }
   };
 
-  const handleSaveNote = async () => {
-    if (!generatedData || !noteTitle.trim()) {
-      toast({
-        title: "Error",
-        description: "Debes ingresar un título para la nota",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const autoSaveNote = async (data: any, title: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "Error",
-          description: "Debes iniciar sesión",
-          variant: "destructive"
-        });
-        return;
-      }
+      if (!user) return;
 
-      // Sanitizar el contenido por si existen valores no serializables (NaN/Infinity/undefined)
       const sanitizedContent = JSON.parse(
-        JSON.stringify(generatedData.content, (_k, v) => {
+        JSON.stringify(data.content, (_k, v) => {
           if (typeof v === 'number' && !Number.isFinite(v)) return null;
           if (v === undefined) return null;
           return v;
         })
       );
 
-      if (sanitizedContent == null) {
-        throw new Error('El contenido generado está vacío o no es válido');
-      }
+      if (sanitizedContent == null) return;
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('clinical_notes')
         .insert({
           user_id: user.id,
-          type: generatedData.type,
-          title: noteTitle,
+          type: data.type,
+          title: title,
           content: sanitizedContent,
-        })
-        .select('*')
-        .maybeSingle();
+        });
 
-      if (error) {
-        console.error('Database error:', error);
-        const anyErr = error as any;
-        const detail = anyErr?.details || anyErr?.hint || anyErr?.message || 'Error desconocido';
-        throw new Error(detail);
-      }
+      if (error) throw error;
 
       toast({
-        title: "Nota guardada",
-        description: "El análisis se guardó correctamente",
+        title: "Guardado automático",
+        description: "El análisis se guardó en tu historial",
       });
 
-      setSaveNoteOpen(false);
+      await loadSavedNotes();
+    } catch (error) {
+      console.error('Error auto-saving note:', error);
+    }
+  };
+
+  const handleRenameNote = async () => {
+    if (!editingNote || !noteTitle.trim()) {
+      toast({
+        title: "Error",
+        description: "Debes ingresar un título",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('clinical_notes')
+        .update({ title: noteTitle })
+        .eq('id', editingNote.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Nota renombrada",
+        description: "El título se actualizó correctamente",
+      });
+
+      setEditingNote(null);
       setNoteTitle("");
       await loadSavedNotes();
     } catch (error) {
-      console.error('Error saving note:', error);
-      const errMsg = (error as any)?.message || (error as any)?.details || 'No se pudo guardar la nota';
+      console.error('Error renaming note:', error);
       toast({
         title: "Error",
-        description: errMsg,
+        description: "No se pudo renombrar la nota",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      const { error } = await supabase
+        .from('clinical_notes')
+        .delete()
+        .eq('id', noteId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Nota eliminada",
+        description: "El análisis se eliminó correctamente",
+      });
+
+      await loadSavedNotes();
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la nota",
         variant: "destructive"
       });
     }
@@ -297,57 +329,6 @@ export const ClinicalNotebookPanel = () => {
               ))}
             </div>
 
-            {/* Generated Result Preview */}
-            {generatedData && (
-              <Card className="p-4 border-primary/50 shadow-lg animate-fade-in">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold text-sm text-foreground">{generatedData.title}</h3>
-                    <p className="text-xs text-muted-foreground">Resultado generado</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setFullscreenOpen(true)}
-                    >
-                      <Maximize2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setSaveNoteOpen(true)}
-                    >
-                      <Save className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setGeneratedData(null)}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-                <div className="h-[300px] bg-muted rounded-lg overflow-hidden">
-                  {generatedData.type === 'mapa_clinico' && (
-                    <ClinicalMapViewer mapData={generatedData.content} />
-                  )}
-                  {generatedData.type === 'ayudas_diagnosticas' && (
-                    <DiagnosticAidsViewer data={generatedData.content} />
-                  )}
-                  {generatedData.type === 'paraclinicos' && (
-                    <ParaclinicosViewer data={generatedData.content} />
-                  )}
-                  {generatedData.type === 'medicamentos' && (
-                    <MedicamentosViewer data={generatedData.content} />
-                  )}
-                  {generatedData.type === 'analisis_corporal' && (
-                    <BodyAnalysisViewer data={generatedData.content} />
-                  )}
-                </div>
-              </Card>
-            )}
 
             {/* Saved Notes History */}
             {savedNotes.length > 0 && (
@@ -358,30 +339,43 @@ export const ClinicalNotebookPanel = () => {
                 {savedNotes.map((note) => (
                   <Card 
                     key={note.id} 
-                    className="p-3 hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => {
-                      setGeneratedData({
-                        type: note.type,
-                        title: note.title,
-                        content: note.content,
-                      });
-                    }}
+                    className="p-3 hover:shadow-md transition-shadow group"
                   >
                     <div className="flex items-start gap-2">
-                      <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 ${
-                        note.type === 'mapa_clinico' ? 'bg-purple-50 dark:bg-purple-950/30' :
-                        note.type === 'paraclinicos' ? 'bg-blue-50 dark:bg-blue-950/30' :
-                        note.type === 'ayudas_diagnosticas' ? 'bg-amber-50 dark:bg-amber-950/30' :
-                        note.type === 'analisis_corporal' ? 'bg-pink-50 dark:bg-pink-950/30' :
-                        'bg-green-50 dark:bg-green-950/30'
-                      }`}>
+                      <div 
+                        className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 cursor-pointer ${
+                          note.type === 'mapa_clinico' ? 'bg-purple-50 dark:bg-purple-950/30' :
+                          note.type === 'paraclinicos' ? 'bg-blue-50 dark:bg-blue-950/30' :
+                          note.type === 'ayudas_diagnosticas' ? 'bg-amber-50 dark:bg-amber-950/30' :
+                          note.type === 'analisis_corporal' ? 'bg-pink-50 dark:bg-pink-950/30' :
+                          'bg-green-50 dark:bg-green-950/30'
+                        }`}
+                        onClick={() => {
+                          setGeneratedData({
+                            type: note.type,
+                            title: note.title,
+                            content: note.content,
+                          });
+                          setFullscreenOpen(true);
+                        }}
+                      >
                         {note.type === 'mapa_clinico' && <Network className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
                         {note.type === 'paraclinicos' && <FlaskConical className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
                         {note.type === 'ayudas_diagnosticas' && <ScanSearch className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
                         {note.type === 'medicamentos' && <Pill className="w-4 h-4 text-green-600 dark:text-green-400" />}
                         {note.type === 'analisis_corporal' && <Activity className="w-4 h-4 text-pink-600 dark:text-pink-400" />}
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div 
+                        className="flex-1 min-w-0 cursor-pointer"
+                        onClick={() => {
+                          setGeneratedData({
+                            type: note.type,
+                            title: note.title,
+                            content: note.content,
+                          });
+                          setFullscreenOpen(true);
+                        }}
+                      >
                         <p className="text-xs font-medium text-foreground truncate">{note.title}</p>
                         <p className="text-xs text-muted-foreground">
                           {new Date(note.created_at).toLocaleDateString('es-CO', {
@@ -390,6 +384,33 @@ export const ClinicalNotebookPanel = () => {
                             day: 'numeric'
                           })}
                         </p>
+                      </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingNote(note);
+                            setNoteTitle(note.title);
+                          }}
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm('¿Estás seguro de eliminar esta bitácora?')) {
+                              handleDeleteNote(note.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
                       </div>
                     </div>
                   </Card>
@@ -425,15 +446,15 @@ export const ClinicalNotebookPanel = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Save Note Dialog */}
-        <Dialog open={saveNoteOpen} onOpenChange={setSaveNoteOpen}>
+        {/* Rename Note Dialog */}
+        <Dialog open={!!editingNote} onOpenChange={(open) => !open && setEditingNote(null)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Guardar análisis como nota</DialogTitle>
+              <DialogTitle>Renombrar bitácora</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium">Título de la nota</label>
+                <label className="text-sm font-medium">Nuevo título</label>
                 <Input
                   value={noteTitle}
                   onChange={(e) => setNoteTitle(e.target.value)}
@@ -442,11 +463,11 @@ export const ClinicalNotebookPanel = () => {
                 />
               </div>
               <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setSaveNoteOpen(false)}>
+                <Button variant="outline" onClick={() => setEditingNote(null)}>
                   Cancelar
                 </Button>
-                <Button onClick={handleSaveNote}>
-                  Guardar nota
+                <Button onClick={handleRenameNote}>
+                  Renombrar
                 </Button>
               </div>
             </div>
