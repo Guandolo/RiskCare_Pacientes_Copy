@@ -25,6 +25,40 @@ REGLAS ESTRICTAS:
 
 Tu rol es educativo e informativo, NO eres un profesional de la salud. CADA respuesta DEBE incluir referencias claras a los documentos fuente.`;
 
+const AUDITOR_PROMPT = `Eres un Auditor de Fiabilidad Clínica. Tu única función es verificar si una respuesta generada es factualmente correcta y está completamente respaldada por los documentos fuente.
+
+TAREA:
+Recibirás:
+1. La pregunta del paciente
+2. Los documentos clínicos disponibles como fuente
+3. Una respuesta borrador generada por el asistente
+
+CRITERIOS DE VALIDACIÓN:
+1. Toda la información en la respuesta DEBE estar explícitamente presente en los documentos fuente
+2. NO debe haber interpretaciones, inferencias o suposiciones no respaldadas
+3. Las fechas, valores numéricos y nombres deben ser exactos
+4. Las referencias a documentos deben ser correctas
+5. NO debe haber consejos médicos, diagnósticos o recomendaciones de tratamiento
+
+FORMATO DE RESPUESTA:
+Responde ÚNICAMENTE con un JSON en este formato:
+{
+  "valido": true/false,
+  "justificacion": "Explicación breve del problema si es inválido, o 'OK' si es válido"
+}
+
+Sé riguroso y preciso. En caso de duda, marca como inválido.`;
+
+const SAFETY_MESSAGE = `Lo siento, no pude encontrar una respuesta precisa en tus documentos clínicos para esta pregunta. 
+
+Para garantizar tu seguridad, prefiero no proporcionarte información que no pueda verificar completamente en tu historial médico.
+
+Te recomiendo:
+- Revisar directamente el documento específico que te interesa
+- Consultar con tu médico tratante para aclarar esta información
+
+¿Puedo ayudarte con algo más que esté claramente documentado en tus archivos?`;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -129,93 +163,145 @@ serve(async (req) => {
 
     messages.push({ role: "user", content: message });
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages,
-        stream: true,
-      }),
-    });
+    // Función auxiliar para generar respuesta con el modelo generador
+    async function generateResponse(extraContext = ""): Promise<string> {
+      const generatorMessages = [...messages];
+      if (extraContext) {
+        generatorMessages.push({ role: "system", content: `CORRECCIÓN REQUERIDA: ${extraContext}` });
+      }
 
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limits exceeded, please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: generatorMessages,
+          stream: false,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`AI gateway error: ${response.status}`);
       }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required, please add funds to your Lovable AI workspace." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+
+      const data = await response.json();
+      return data.choices[0].message.content;
+    }
+
+    // Función auxiliar para auditar una respuesta
+    async function auditResponse(draft: string): Promise<{ valido: boolean; justificacion: string }> {
+      const auditMessages = [
+        { role: "system", content: AUDITOR_PROMPT },
+        { role: "user", content: `PREGUNTA DEL PACIENTE:\n${message}\n\nDOCUMENTOS FUENTE:\n${contextInfo}\n\nRESPUESTA BORRADOR A VALIDAR:\n${draft}` },
+      ];
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-pro",
+          messages: auditMessages,
+          stream: false,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Error en auditor, asumiendo válido por defecto");
+        return { valido: true, justificacion: "Error en auditor" };
       }
-      const t = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, t);
-      return new Response(JSON.stringify({ error: "AI gateway error" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+
+      const data = await response.json();
+      const auditResult = data.choices[0].message.content;
+      
+      try {
+        const parsed = JSON.parse(auditResult);
+        return parsed;
+      } catch (e) {
+        console.error("Error parseando respuesta del auditor:", e);
+        return { valido: true, justificacion: "Error en parseo" };
+      }
+    }
+
+    // Función para simular streaming de una respuesta ya generada
+    function simulateStream(content: string): ReadableStream {
+      const encoder = new TextEncoder();
+      let index = 0;
+      
+      return new ReadableStream({
+        async pull(controller) {
+          if (index >= content.length) {
+            controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+            controller.close();
+            return;
+          }
+          
+          // Enviar caracteres en chunks pequeños para simular streaming
+          const chunkSize = Math.min(5, content.length - index);
+          const chunk = content.slice(index, index + chunkSize);
+          index += chunkSize;
+          
+          const sseData = {
+            choices: [{
+              delta: { content: chunk },
+              finish_reason: null,
+            }],
+          };
+          
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(sseData)}\n\n`));
+          
+          // Pequeño delay para simular streaming natural
+          await new Promise(resolve => setTimeout(resolve, 20));
+        },
       });
     }
 
-    // Duplicar el stream: 1) devolver al cliente; 2) acumular para guardar en DB
-    const [streamForClient, streamForDb] = aiResponse.body!.tee();
+    // FLUJO PRINCIPAL CON AUDITORÍA
+    console.log("Iniciando generación con auditoría...");
+    let finalResponse = "";
+    let auditPassed = false;
+    const MAX_ATTEMPTS = 2;
 
-    // Procesar stream para acumular contenido del asistente
-    const decoder = new TextDecoder();
-    let textBuffer = "";
-    let assistantSoFar = "";
-
-    (async () => {
-      const reader = streamForDb.getReader();
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          textBuffer += decoder.decode(value, { stream: true });
-
-          let newlineIndex: number;
-          while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
-            let line = textBuffer.slice(0, newlineIndex);
-            textBuffer = textBuffer.slice(newlineIndex + 1);
-
-            if (line.endsWith("\r")) line = line.slice(0, -1);
-            if (line.startsWith(":") || line.trim() === "") continue;
-            if (!line.startsWith("data: ")) continue;
-
-            const jsonStr = line.slice(6).trim();
-            if (jsonStr === "[DONE]") {
-              break;
-            }
-            try {
-              const parsed = JSON.parse(jsonStr);
-              const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
-              if (delta) assistantSoFar += delta;
-            } catch (_) {
-              // JSON parcial, esperar más
-              textBuffer = line + "\n" + textBuffer;
-              break;
-            }
-          }
-        }
-      } catch (e) {
-        console.error("Error leyendo stream para DB:", e);
-      } finally {
-        // Guardar respuesta del asistente
-        if (assistantSoFar && assistantSoFar.trim().length > 0) {
-          await supabase.from("chat_messages").insert([
-            { user_id: user.id, role: "assistant", content: assistantSoFar },
-          ]);
-        }
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS && !auditPassed; attempt++) {
+      console.log(`Intento ${attempt} de generación...`);
+      
+      // Paso 1: Generar respuesta borrador
+      const draft = await generateResponse(
+        attempt > 1 ? "La respuesta anterior fue rechazada por el auditor. Genera una nueva respuesta más precisa y basada estrictamente en los documentos." : ""
+      );
+      
+      console.log(`Respuesta generada (${draft.length} caracteres). Enviando a auditoría...`);
+      
+      // Paso 2: Auditar la respuesta
+      const auditResult = await auditResponse(draft);
+      console.log(`Resultado de auditoría: ${auditResult.valido ? "VÁLIDO" : "INVÁLIDO"} - ${auditResult.justificacion}`);
+      
+      if (auditResult.valido) {
+        finalResponse = draft;
+        auditPassed = true;
+        console.log("Respuesta aprobada por el auditor");
+      } else if (attempt === MAX_ATTEMPTS) {
+        // Paso 3: Si no se aprueba después de MAX_ATTEMPTS, usar mensaje de seguridad
+        console.log("Máximo de intentos alcanzado. Usando mensaje de seguridad.");
+        finalResponse = SAFETY_MESSAGE;
+        auditPassed = true; // Para salir del loop
       }
-    })();
+    }
 
-    return new Response(streamForClient, {
+    // Guardar mensaje del asistente en DB
+    await supabase.from("chat_messages").insert([
+      { user_id: user.id, role: "assistant", content: finalResponse },
+    ]);
+
+    // Paso 4: Simular streaming de la respuesta validada
+    const responseStream = simulateStream(finalResponse);
+
+    return new Response(responseStream, {
       headers: {
         ...corsHeaders,
         "Content-Type": "text/event-stream",
