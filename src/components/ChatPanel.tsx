@@ -684,81 +684,6 @@ export const ChatPanel = () => {
                   </div>
                 </div>
               </Card>
-
-              {/* Suggested Questions - Horizontal Carousel */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Lightbulb className="w-4 h-4" />
-                    <span className="font-medium">Preguntas sugeridas:</span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => loadSuggestions()}
-                    disabled={suggestionsLoading}
-                    className="h-auto py-1 px-2 text-xs gap-1 hover:bg-primary/10 hover:text-primary"
-                  >
-                    <RotateCw className={`w-3 h-3 ${suggestionsLoading ? 'animate-spin' : ''}`} />
-                    {suggestionsLoading ? 'Generando...' : 'Ver más preguntas'}
-                  </Button>
-                </div>
-                
-                {/* Horizontal Carousel Container */}
-                <div className="relative group">
-                  {/* Left Arrow */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => scrollSuggestions('left')}
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-
-                  {/* Scrollable Suggestions */}
-                  <div 
-                    ref={suggestionsScrollRef}
-                    className="flex gap-3 overflow-x-auto scrollbar-hide scroll-smooth pb-2"
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                  >
-                    {suggestionsLoading ? (
-                      Array.from({ length: 3 }).map((_, idx) => (
-                        <Card key={idx} className="flex-shrink-0 w-[280px] p-4 bg-muted/50 animate-pulse">
-                          <div className="h-12 bg-muted rounded"></div>
-                        </Card>
-                      ))
-                    ) : (
-                      (suggestions.length ? suggestions : [
-                        "¿Qué significa hipertensión arterial esencial?",
-                        "¿Cuáles fueron los resultados de mi último examen de sangre?",
-                        "¿Cuándo fue mi última consulta de cardiología?",
-                        "¿Qué medicamentos me han formulado recientemente?",
-                      ]).map((question, idx) => (
-                        <Card
-                          key={idx}
-                          className="flex-shrink-0 w-[280px] p-4 bg-card hover:bg-accent hover:border-primary/50 border-border transition-all cursor-pointer group/card"
-                          onClick={() => setMessage(question)}
-                        >
-                          <p className="text-sm text-foreground leading-relaxed line-clamp-3 group-hover/card:text-primary transition-colors">
-                            {question}
-                          </p>
-                        </Card>
-                      ))
-                    )}
-                  </div>
-
-                  {/* Right Arrow */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => scrollSuggestions('right')}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
             </>
           ) : (
             <>
@@ -852,62 +777,115 @@ export const ChatPanel = () => {
       </ScrollArea>
 
       {/* Input Area */}
-      <div className="p-4 border-t border-border bg-card">
+      <div className="border-t border-border bg-card">
         <div className="max-w-3xl mx-auto">
-          <div className="flex gap-2">
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={() => setShowUploadModal(true)}
-              disabled={isLoading}
-              title="Adjuntar documento"
-            >
-              <Paperclip className="w-4 h-4" />
-            </Button>
-            <Textarea
-              placeholder="Escribe tu pregunta sobre tu historial médico..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && !isLoading) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              className="flex-1 min-h-[44px] max-h-[200px] resize-none"
-              disabled={isLoading}
-              rows={1}
-              style={{
-                height: 'auto',
-                minHeight: '44px',
-              }}
-              onInput={(e) => {
-                const target = e.target as HTMLTextAreaElement;
-                target.style.height = 'auto';
-                target.style.height = Math.min(target.scrollHeight, 200) + 'px';
-              }}
-            />
-            <Button
-              size="icon"
-              variant={isListening ? "default" : "outline"}
-              onClick={toggleVoiceRecognition}
-              disabled={isLoading}
-              className={isListening ? "bg-destructive hover:bg-destructive/90 animate-pulse" : ""}
-            >
-              {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-            </Button>
-            <Button 
-              size="icon" 
-              className="bg-primary hover:bg-primary-dark transition-all"
-              disabled={!message.trim() || isLoading}
-              onClick={handleSendMessage}
-            >
-              <Send className="w-4 h-4" />
-            </Button>
+          {/* Suggested Questions - Horizontal Carousel */}
+          {messages.length > 0 && suggestions.length > 0 && (
+            <div className="px-4 pt-3 pb-2">
+              <div className="relative group">
+                {/* Left Arrow */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-6 w-6 rounded-full bg-background/80 backdrop-blur-sm shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => scrollSuggestions('left')}
+                >
+                  <ChevronLeft className="w-3 h-3" />
+                </Button>
+
+                {/* Scrollable Suggestions */}
+                <div 
+                  ref={suggestionsScrollRef}
+                  className="flex gap-2 overflow-x-auto scrollbar-hide scroll-smooth"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  {suggestionsLoading ? (
+                    Array.from({ length: 3 }).map((_, idx) => (
+                      <Card key={idx} className="flex-shrink-0 w-[200px] px-3 py-2 bg-muted/50 animate-pulse">
+                        <div className="h-8 bg-muted rounded"></div>
+                      </Card>
+                    ))
+                  ) : (
+                    suggestions.map((question, idx) => (
+                      <Card
+                        key={idx}
+                        className="flex-shrink-0 w-[200px] px-3 py-2 bg-card hover:bg-accent hover:border-primary/50 border-border transition-all cursor-pointer group/card"
+                        onClick={() => setMessage(question)}
+                      >
+                        <p className="text-xs text-foreground leading-relaxed line-clamp-2 group-hover/card:text-primary transition-colors">
+                          {question}
+                        </p>
+                      </Card>
+                    ))
+                  )}
+                </div>
+
+                {/* Right Arrow */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-6 w-6 rounded-full bg-background/80 backdrop-blur-sm shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => scrollSuggestions('right')}
+                >
+                  <ChevronRight className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="p-4">
+            <div className="flex gap-2">
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => setShowUploadModal(true)}
+                disabled={isLoading}
+                title="Adjuntar documento"
+              >
+                <Paperclip className="w-4 h-4" />
+              </Button>
+              <Textarea
+                placeholder="Escribe tu pregunta sobre tu historial médico..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey && !isLoading) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                className="flex-1 min-h-[44px] max-h-[200px] resize-none"
+                disabled={isLoading}
+                rows={1}
+                style={{
+                  height: 'auto',
+                  minHeight: '44px',
+                }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = 'auto';
+                  target.style.height = Math.min(target.scrollHeight, 200) + 'px';
+                }}
+              />
+              <Button
+                size="icon"
+                variant={isListening ? "default" : "outline"}
+                onClick={toggleVoiceRecognition}
+                disabled={isLoading}
+                className={isListening ? "bg-destructive hover:bg-destructive/90 animate-pulse" : ""}
+              >
+                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </Button>
+              <Button 
+                size="icon" 
+                className="bg-primary hover:bg-primary-dark transition-all"
+                disabled={!message.trim() || isLoading}
+                onClick={handleSendMessage}
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-2 text-center">
-            Las respuestas están basadas exclusivamente en tus documentos cargados
-          </p>
         </div>
       </div>
 

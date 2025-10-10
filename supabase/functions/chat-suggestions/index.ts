@@ -113,7 +113,7 @@ serve(async (req) => {
     const systemPrompt = `Eres un asistente que genera preguntas EXPLORATORIAS para ayudar al paciente a COMPRENDER su información médica existente.
 
 REGLAS FUNDAMENTALES - NO NEGOCIABLES:
-- Genera EXACTAMENTE 4 preguntas en español
+- Genera EXACTAMENTE 3 preguntas CORTAS en español (máximo 10 palabras cada una)
 - Las preguntas NUNCA deben solicitar diagnósticos, recomendaciones o consejos médicos
 - Las preguntas SOLO deben buscar EXPLORAR y ENTENDER los datos ya disponibles
 - ENFÓCATE en aclarar términos médicos, fechas, resultados y contenido de documentos
@@ -151,7 +151,7 @@ OBJETIVO: El paciente debe poder explorar y comprender sus datos sin inducir al 
           type: "function",
           function: {
             name: "suggest_questions",
-            description: "Devuelve exactamente 4 preguntas EXPLORATORIAS en español basadas en los datos clínicos del paciente, enfocadas en ENTENDER su información, NO en obtener consejos médicos",
+            description: "Devuelve exactamente 3 preguntas CORTAS (máximo 10 palabras) EXPLORATORIAS en español basadas en los datos clínicos del paciente",
             parameters: {
               type: "object",
               properties: {
@@ -159,10 +159,10 @@ OBJETIVO: El paciente debe poder explorar y comprender sus datos sin inducir al 
                   type: "array",
                   items: { 
                     type: "string",
-                    description: "Una pregunta exploratoria en español sobre la información clínica del paciente que busque COMPRENDER datos existentes, NO obtener diagnósticos o consejos"
+                    description: "Una pregunta exploratoria CORTA (máximo 10 palabras) en español sobre la información clínica"
                   },
-                  minItems: 4,
-                  maxItems: 4,
+                  minItems: 3,
+                  maxItems: 3,
                 },
               },
               required: ["suggestions"],
@@ -188,14 +188,19 @@ OBJETIVO: El paciente debe poder explorar y comprender sus datos sin inducir al 
     });
 
     if (!response.ok) {
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Payment required, please add funds to your Lovable AI workspace." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const t = await response.text();
       console.error("AI suggestions error:", response.status, t);
       // Devolver preguntas por defecto si falla
       const defaultSuggestions = [
-        "¿Qué significa hipertensión arterial esencial?",
-        "¿Cuáles fueron los resultados de mi último examen de sangre?",
-        "¿Cuándo fue mi última consulta de cardiología?",
-        "¿Qué medicamentos me han formulado recientemente?",
+        "¿Qué significa hipertensión arterial?",
+        "¿Cuáles fueron mis últimos resultados?",
+        "¿Cuándo fue mi última consulta?",
       ];
       return new Response(JSON.stringify({ suggestions: defaultSuggestions }), {
         status: 200,
@@ -229,17 +234,16 @@ OBJETIVO: El paciente debe poder explorar y comprender sus datos sin inducir al 
         .split("\n")
         .map((s: string) => s.replace(/^[-*•0-9.)\s]+/, "").trim())
         .filter((s: string) => s.length > 10 && s.includes("?"))
-        .slice(0, 4);
+        .slice(0, 3);
     }
 
     // Si aún no hay sugerencias, usar defaults
     if (!suggestions.length) {
       console.log('No suggestions generated, using defaults');
       suggestions = [
-        "¿Qué significa hipertensión arterial esencial?",
-        "¿Cuáles fueron los resultados de mi último examen de sangre?",
-        "¿Cuándo fue mi última consulta de cardiología?",
-        "¿Qué medicamentos me han formulado recientemente?",
+        "¿Qué significa hipertensión arterial?",
+        "¿Cuáles fueron mis últimos resultados?",
+        "¿Cuándo fue mi última consulta?",
       ];
     }
 
