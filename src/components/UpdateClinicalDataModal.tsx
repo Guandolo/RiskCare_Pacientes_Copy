@@ -1,17 +1,20 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { RefreshCw, ChevronRight, CheckCircle2, AlertCircle } from "lucide-react";
+import { RefreshCw, ChevronRight, CheckCircle2, AlertCircle, Activity, Pill, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ClinicalRecordsModal } from "./ClinicalRecordsModal";
 
 interface UpdateClinicalDataModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   profile: any;
   onSuccess: (data: any, fetchDate: string) => void;
+  hismartData: any;
 }
 
 // Componente recursivo para renderizar árbol de datos
@@ -72,17 +75,22 @@ const DataTree = ({ data, level = 0 }: { data: any; level?: number }) => {
   );
 };
 
-export const UpdateClinicalDataModal = ({ open, onOpenChange, profile, onSuccess }: UpdateClinicalDataModalProps) => {
+export const UpdateClinicalDataModal = ({ open, onOpenChange, profile, onSuccess, hismartData }: UpdateClinicalDataModalProps) => {
   const [loading, setLoading] = useState(false);
-  const [hismartData, setHismartData] = useState<any>(null);
+  const [localHismartData, setLocalHismartData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showClinicalRecords, setShowClinicalRecords] = useState(false);
+  const [showPrescriptions, setShowPrescriptions] = useState(false);
+
+  // Usar los datos que ya existen si están disponibles
+  const displayData = localHismartData || hismartData;
 
   const handleFetch = async () => {
     if (!profile) return;
     
     setLoading(true);
     setError(null);
-    setHismartData(null);
+    setLocalHismartData(null);
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -100,7 +108,7 @@ export const UpdateClinicalDataModal = ({ open, onOpenChange, profile, onSuccess
       console.log('Datos de HiSmart:', data);
       if (data.success && data.data?.result?.data) {
         const hismartInfo = data.data.result.data;
-        setHismartData(hismartInfo);
+        setLocalHismartData(hismartInfo);
         
         const fetchDate = new Date().toLocaleString('es-CO', {
           year: 'numeric',
@@ -159,7 +167,7 @@ export const UpdateClinicalDataModal = ({ open, onOpenChange, profile, onSuccess
         </DialogHeader>
 
         <div className="flex flex-col h-[70vh]">
-          {!hismartData && !error && (
+          {!displayData && !error && (
             <div className="flex-1 flex items-center justify-center p-6">
               <div className="text-center space-y-4 max-w-md">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
@@ -218,17 +226,63 @@ export const UpdateClinicalDataModal = ({ open, onOpenChange, profile, onSuccess
             </div>
           )}
 
-          {hismartData && (
+          {displayData && (
             <div className="flex-1 flex flex-col">
               <div className="px-6 py-3 bg-muted/50 border-b flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
                 <span className="text-sm font-medium">Datos obtenidos exitosamente</span>
               </div>
               <ScrollArea className="flex-1">
-                <div className="p-6">
+                <div className="p-6 space-y-4">
+                  {/* Botones de acceso rápido */}
+                  <div className="space-y-2">
+                    {/* Registros Clínicos */}
+                    {displayData.clinical_records && displayData.clinical_records.length > 0 && (
+                      <Card 
+                        className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
+                        onClick={() => setShowClinicalRecords(true)}
+                      >
+                        <div className="p-4 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                            <Activity className="w-5 h-5 text-green-600 dark:text-green-400" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-semibold text-foreground">Registros Clínicos</h4>
+                            <p className="text-xs text-muted-foreground">
+                              {displayData.clinical_records.length} {displayData.clinical_records.length === 1 ? 'registro' : 'registros'}
+                            </p>
+                          </div>
+                          <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
+                        </div>
+                      </Card>
+                    )}
+
+                    {/* Prescripciones */}
+                    {displayData.prescription_records && displayData.prescription_records.length > 0 && (
+                      <Card 
+                        className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
+                        onClick={() => setShowPrescriptions(true)}
+                      >
+                        <div className="p-4 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                            <Pill className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-semibold text-foreground">Prescripciones</h4>
+                            <p className="text-xs text-muted-foreground">
+                              {displayData.prescription_records.length} {displayData.prescription_records.length === 1 ? 'prescripción' : 'prescripciones'}
+                            </p>
+                          </div>
+                          <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
+                        </div>
+                      </Card>
+                    )}
+                  </div>
+
+                  {/* Datos completos */}
                   <div className="bg-muted rounded-lg p-4">
                     <h3 className="text-sm font-semibold mb-3">Datos Completos de Historia Clínica</h3>
-                    <DataTree data={hismartData} />
+                    <DataTree data={displayData} />
                   </div>
                   
                   <div className="mt-4 flex gap-2 justify-end">
@@ -250,6 +304,24 @@ export const UpdateClinicalDataModal = ({ open, onOpenChange, profile, onSuccess
             </div>
           )}
         </div>
+
+        {/* Clinical Records Modal */}
+        {displayData?.clinical_records && (
+          <ClinicalRecordsModal
+            open={showClinicalRecords}
+            onOpenChange={setShowClinicalRecords}
+            records={displayData.clinical_records}
+          />
+        )}
+
+        {/* Prescriptions Modal */}
+        {displayData?.prescription_records && (
+          <ClinicalRecordsModal
+            open={showPrescriptions}
+            onOpenChange={setShowPrescriptions}
+            records={displayData.prescription_records}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

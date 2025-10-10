@@ -565,66 +565,6 @@ export const DataSourcesPanel = () => {
             </p>
           </div>
 
-          {/* Datos de HiSmart - Botones tipo tarjeta */}
-          {hismartData && (
-            <div className="space-y-2">
-              {/* Registros Clínicos */}
-              {hismartData.clinical_records && hismartData.clinical_records.length > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Card 
-                      className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
-                      onClick={() => setShowClinicalRecords(true)}
-                    >
-                      <div className="p-4 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
-                          <Activity className="w-5 h-5 text-green-600 dark:text-green-400" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-sm font-semibold text-foreground">Registros Clínicos</h4>
-                          <p className="text-xs text-muted-foreground">
-                            {hismartData.clinical_records.length} {hismartData.clinical_records.length === 1 ? 'registro' : 'registros'}
-                          </p>
-                        </div>
-                        <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
-                      </div>
-                    </Card>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Ver tus consultas médicas y atenciones registradas en Historia Clínica</p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-
-              {/* Prescripciones */}
-              {hismartData.prescription_records && hismartData.prescription_records.length > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Card 
-                      className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
-                      onClick={() => setShowPrescriptions(true)}
-                    >
-                      <div className="p-4 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                          <Pill className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-sm font-semibold text-foreground">Prescripciones</h4>
-                          <p className="text-xs text-muted-foreground">
-                            {hismartData.prescription_records.length} {hismartData.prescription_records.length === 1 ? 'prescripción' : 'prescripciones'}
-                          </p>
-                        </div>
-                        <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
-                      </div>
-                    </Card>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Ver las fórmulas médicas y medicamentos prescritos</p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </div>
-          )}
 
           {/* Botón consultar/actualizar HiSmart */}
           <div className="space-y-2">
@@ -787,30 +727,13 @@ export const DataSourcesPanel = () => {
         onOpenChange={setShowDocumentLibrary}
       />
 
-      {/* Clinical Records Modal */}
-      {hismartData?.clinical_records && (
-        <ClinicalRecordsModal
-          open={showClinicalRecords}
-          onOpenChange={setShowClinicalRecords}
-          records={hismartData.clinical_records}
-        />
-      )}
-
-      {/* Prescriptions Modal */}
-      {hismartData?.prescription_records && (
-        <ClinicalRecordsModal
-          open={showPrescriptions}
-          onOpenChange={setShowPrescriptions}
-          records={hismartData.prescription_records}
-        />
-      )}
-
       {/* Update Clinical Data Modal */}
       <UpdateClinicalDataModal
         open={showUpdateClinicalData}
         onOpenChange={setShowUpdateClinicalData}
         profile={profile}
         onSuccess={handleUpdateSuccess}
+        hismartData={hismartData}
       />
       </div>
     </TooltipProvider>
