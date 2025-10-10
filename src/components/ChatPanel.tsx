@@ -30,6 +30,7 @@ export const ChatPanel = () => {
 
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [hasLoadedInitialSuggestions, setHasLoadedInitialSuggestions] = useState(false);
   
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -45,15 +46,6 @@ export const ChatPanel = () => {
     loadOrCreateConversation();
     loadConversations();
     initializeSpeechRecognition();
-    
-    // Cargar sugerencias solo al montar el componente
-    const loadInitialSuggestions = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        await loadSuggestions();
-      }
-    };
-    loadInitialSuggestions();
 
     // Listener para recargar sugerencias cuando se actualicen documentos
     const handleDocumentsUpdate = () => {
@@ -69,20 +61,22 @@ export const ChatPanel = () => {
   // Reaccionar a cambios de autenticación
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
+      if (event === 'SIGNED_IN' && !hasLoadedInitialSuggestions) {
         loadOrCreateConversation();
         loadConversations();
-        loadSuggestions(); // Solo cuando inicia sesión
+        loadSuggestions(); // Solo cuando inicia sesión por primera vez
+        setHasLoadedInitialSuggestions(true);
       }
       if (event === 'SIGNED_OUT') {
         setMessages([]);
         setSuggestions([]);
         setCurrentConversationId(null);
         setConversations([]);
+        setHasLoadedInitialSuggestions(false);
       }
     });
     return () => listener.subscription.unsubscribe();
-  }, []);
+  }, [hasLoadedInitialSuggestions]);
 
   const loadSuggestions = async () => {
     try {
@@ -595,14 +589,26 @@ export const ChatPanel = () => {
 
               {/* Suggested Questions */}
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Lightbulb className="w-4 h-4" />
-                  <span className="font-medium">Preguntas sugeridas:</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Lightbulb className="w-4 h-4" />
+                    <span className="font-medium">Preguntas sugeridas:</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={loadSuggestions}
+                    disabled={suggestionsLoading}
+                    className="h-auto py-1 px-2 text-xs gap-1 hover:bg-primary/10 hover:text-primary"
+                  >
+                    <RotateCw className={`w-3 h-3 ${suggestionsLoading ? 'animate-spin' : ''}`} />
+                    {suggestionsLoading ? 'Generando...' : 'Ver más preguntas'}
+                  </Button>
                 </div>
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-1">
                   {suggestionsLoading ? (
                     Array.from({ length: 4 }).map((_, idx) => (
-                      <Button key={idx} variant="outline" disabled className="justify-start text-left h-auto py-3 px-4">
+                      <Button key={idx} variant="outline" disabled className="justify-start text-left h-auto py-3 px-4 whitespace-normal">
                         <span className="text-sm text-muted-foreground">Cargando sugerencias...</span>
                       </Button>
                     ))
@@ -616,7 +622,7 @@ export const ChatPanel = () => {
                       <Button
                         key={idx}
                         variant="outline"
-                        className="justify-start text-left h-auto py-3 px-4 bg-card hover:bg-accent hover:border-primary/50 border-border transition-all text-foreground font-medium"
+                        className="justify-start text-left h-auto py-3 px-4 bg-card hover:bg-accent hover:border-primary/50 border-border transition-all text-foreground font-medium whitespace-normal break-words"
                         onClick={() => setMessage(question)}
                         disabled={isLoading}
                       >
