@@ -55,7 +55,7 @@ const Index = () => {
           .eq("user_id", user.id)
           .maybeSingle();
 
-        if (error) {
+        if (error && error.code !== 'PGRST116') {
           console.error("Error checking profile:", error);
           setCheckingProfile(false);
           return;
@@ -63,9 +63,10 @@ const Index = () => {
 
         // Solo mostrar modal si definitivamente NO hay perfil
         if (!data) {
+          console.log("No profile found, showing identification modal");
           setShowIdentificationModal(true);
         } else {
-          // Perfil existe - asegurar que modal esté cerrado
+          console.log("Profile found, closing modal");
           setShowIdentificationModal(false);
         }
         
@@ -73,6 +74,7 @@ const Index = () => {
         setProfileChecked(true);
       } catch (error) {
         console.error("Error in checkProfile:", error);
+        setShowIdentificationModal(false);
       } finally {
         setCheckingProfile(false);
       }
