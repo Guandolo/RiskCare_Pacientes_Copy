@@ -1,4 +1,5 @@
 import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw, Trash2, Download, User, CreditCard, MapPin, Building2, Phone, Droplet, FolderOpen, Activity, FilePlus2, Pill } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -336,11 +337,12 @@ export const DataSourcesPanel = () => {
   };
 
   return (
-    <div className="flex flex-col h-full" data-tour="documents-panel">
-      <div className="p-4 border-b border-border">
-        <h2 className="text-sm font-semibold text-foreground mb-1">Mis Documentos Clínicos</h2>
-        <p className="text-xs text-muted-foreground">Fuentes de datos consolidadas</p>
-      </div>
+    <TooltipProvider>
+      <div className="flex flex-col h-full" data-tour="documents-panel">
+        <div className="p-4 border-b border-border">
+          <h2 className="text-sm font-semibold text-foreground mb-1">Mis Documentos Clínicos</h2>
+          <p className="text-xs text-muted-foreground">Fuentes de datos consolidadas</p>
+        </div>
 
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
@@ -514,36 +516,50 @@ export const DataSourcesPanel = () => {
           </Collapsible>
 
           {/* Mis Documentos Cargados - Botón tipo tarjeta */}
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
-            onClick={() => setShowDocumentLibrary(true)}
-          >
-            <div className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                <FolderOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-foreground">
-                  Mis Documentos Cargados
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  {documents.length} {documents.length === 1 ? 'documento' : 'documentos'}
-                </p>
-              </div>
-              <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
-            </div>
-          </Card>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Card 
+                className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
+                onClick={() => setShowDocumentLibrary(true)}
+              >
+                <div className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                    <FolderOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Mis Documentos Cargados
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {documents.length} {documents.length === 1 ? 'documento' : 'documentos'}
+                    </p>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
+                </div>
+              </Card>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Ver todos tus documentos médicos cargados</p>
+            </TooltipContent>
+          </Tooltip>
 
           {/* Upload Section */}
           <div className="space-y-2">
-            <Button 
-              className="w-full gap-2 bg-primary hover:bg-primary-dark transition-all" 
-              size="lg"
-              onClick={() => setShowUploadModal(true)}
-            >
-              <FilePlus2 className="w-4 h-4" />
-              Subir Documentos
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  className="w-full gap-2 bg-primary hover:bg-primary-dark transition-all" 
+                  size="lg"
+                  onClick={() => setShowUploadModal(true)}
+                >
+                  <FilePlus2 className="w-4 h-4" />
+                  Subir Documentos
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Cargar resultados de laboratorio, imágenes diagnósticas o documentos médicos</p>
+              </TooltipContent>
+            </Tooltip>
             <p className="text-xs text-muted-foreground text-center">
               PDF, JPG, PNG - Máx 20MB con verificación de identidad
             </p>
@@ -554,76 +570,97 @@ export const DataSourcesPanel = () => {
             <div className="space-y-2">
               {/* Registros Clínicos */}
               {hismartData.clinical_records && hismartData.clinical_records.length > 0 && (
-                <Card 
-                  className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
-                  onClick={() => setShowClinicalRecords(true)}
-                >
-                  <div className="p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
-                      <Activity className="w-5 h-5 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm font-semibold text-foreground">Registros Clínicos</h4>
-                      <p className="text-xs text-muted-foreground">
-                        {hismartData.clinical_records.length} {hismartData.clinical_records.length === 1 ? 'registro' : 'registros'}
-                      </p>
-                    </div>
-                    <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
-                  </div>
-                </Card>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Card 
+                      className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
+                      onClick={() => setShowClinicalRecords(true)}
+                    >
+                      <div className="p-4 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                          <Activity className="w-5 h-5 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-sm font-semibold text-foreground">Registros Clínicos</h4>
+                          <p className="text-xs text-muted-foreground">
+                            {hismartData.clinical_records.length} {hismartData.clinical_records.length === 1 ? 'registro' : 'registros'}
+                          </p>
+                        </div>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
+                      </div>
+                    </Card>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Ver tus consultas médicas y atenciones registradas en Historia Clínica</p>
+                  </TooltipContent>
+                </Tooltip>
               )}
 
               {/* Prescripciones */}
               {hismartData.prescription_records && hismartData.prescription_records.length > 0 && (
-                <Card 
-                  className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
-                  onClick={() => setShowPrescriptions(true)}
-                >
-                  <div className="p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                      <Pill className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm font-semibold text-foreground">Prescripciones</h4>
-                      <p className="text-xs text-muted-foreground">
-                        {hismartData.prescription_records.length} {hismartData.prescription_records.length === 1 ? 'prescripción' : 'prescripciones'}
-                      </p>
-                    </div>
-                    <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
-                  </div>
-                </Card>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Card 
+                      className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
+                      onClick={() => setShowPrescriptions(true)}
+                    >
+                      <div className="p-4 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                          <Pill className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-sm font-semibold text-foreground">Prescripciones</h4>
+                          <p className="text-xs text-muted-foreground">
+                            {hismartData.prescription_records.length} {hismartData.prescription_records.length === 1 ? 'prescripción' : 'prescripciones'}
+                          </p>
+                        </div>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
+                      </div>
+                    </Card>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Ver las fórmulas médicas y medicamentos prescritos</p>
+                  </TooltipContent>
+                </Tooltip>
               )}
             </div>
           )}
 
           {/* Botón consultar/actualizar HiSmart */}
           <div className="space-y-2">
-            <Card 
-              className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
-              onClick={() => setShowUpdateClinicalData(true)}
-            >
-              <div className="p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center flex-shrink-0">
-                  <RefreshCw className="w-5 h-5 text-secondary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-foreground">
-                    {hismartLastFetch ? 'Actualizar Datos Clínicos' : 'Consultar Datos Clínicos'}
-                  </h3>
-                  {hismartLastFetch && (
-                    <p className="text-xs text-muted-foreground">
-                      Última consulta: {hismartLastFetch}
-                    </p>
-                  )}
-                  {!hismartLastFetch && (
-                    <p className="text-xs text-muted-foreground">
-                      Obtener datos de Historia Clínica
-                    </p>
-                  )}
-                </div>
-                <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
-              </div>
-            </Card>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card 
+                  className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
+                  onClick={() => setShowUpdateClinicalData(true)}
+                >
+                  <div className="p-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center flex-shrink-0">
+                      <RefreshCw className="w-5 h-5 text-secondary" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-semibold text-foreground">
+                        {hismartLastFetch ? 'Actualizar Datos Clínicos' : 'Consultar Datos Clínicos'}
+                      </h3>
+                      {hismartLastFetch && (
+                        <p className="text-xs text-muted-foreground">
+                          Última consulta: {hismartLastFetch}
+                        </p>
+                      )}
+                      {!hismartLastFetch && (
+                        <p className="text-xs text-muted-foreground">
+                          Obtener datos de Historia Clínica
+                        </p>
+                      )}
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
+                  </div>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Sincronizar tus datos médicos desde el sistema de Historia Clínica</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </ScrollArea>
@@ -775,6 +812,7 @@ export const DataSourcesPanel = () => {
         profile={profile}
         onSuccess={handleUpdateSuccess}
       />
-    </div>
+      </div>
+    </TooltipProvider>
   );
 };
