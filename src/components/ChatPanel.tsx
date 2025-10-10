@@ -959,7 +959,12 @@ export const ChatPanel = () => {
                       <Card
                         key={idx}
                         className="flex-shrink-0 w-[240px] px-3 py-2.5 bg-background hover:bg-accent/70 hover:border-foreground/20 border transition-all cursor-pointer shadow-sm"
-                        onClick={() => setMessage(question)}
+                        onClick={async () => {
+                          setMessage(question);
+                          // Esperar un momento para que setMessage actualice el estado
+                          await new Promise(resolve => setTimeout(resolve, 50));
+                          handleSendMessage();
+                        }}
                       >
                         <div className="flex items-start gap-2">
                           <Sparkles className="w-3.5 h-3.5 text-foreground/60 flex-shrink-0 mt-0.5" />
