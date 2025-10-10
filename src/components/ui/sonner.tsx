@@ -1,24 +1,16 @@
-import { Toaster as Sonner, toast } from "sonner";
+// Compatibility wrapper to avoid using the external "sonner" lib directly
+// We delegate to our internal toast system (shadcn-style) and keep a similar API
+import { Toaster as ShadToaster } from "./toaster";
+import { toast as baseToast } from "@/hooks/use-toast";
 
-type ToasterProps = React.ComponentProps<typeof Sonner>;
+// Minimal shim to support toast.success / toast.error calls used across the app
+const toast: any = (opts: any) => baseToast(opts);
+toast.success = (message: string) => baseToast({ title: message });
+toast.error = (message: string) => baseToast({ title: "Error", description: message });
+toast.info = (message: string) => baseToast({ title: message });
 
-const Toaster = ({ ...props }: ToasterProps) => {
-  return (
-    <Sonner
-      theme="system"
-      className="toaster group"
-      toastOptions={{
-        classNames: {
-          toast:
-            "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
-          description: "group-[.toast]:text-muted-foreground",
-          actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
-          cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
-        },
-      }}
-      {...props}
-    />
-  );
+const Toaster = () => {
+  return <ShadToaster />;
 };
 
 export { Toaster, toast };

@@ -6,7 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { RefreshCw, ChevronRight, CheckCircle2, AlertCircle, Activity, Pill, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { ClinicalRecordsModal } from "./ClinicalRecordsModal";
 
 interface UpdateClinicalDataModalProps {

@@ -5,14 +5,14 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useState, useEffect, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { SecureUploadModal } from "./SecureUploadModal";
 import { DocumentLibraryModal } from "./DocumentLibraryModal";
 import { ClinicalRecordsModal } from "./ClinicalRecordsModal";
 import { UpdateClinicalDataModal } from "./UpdateClinicalDataModal";
+import { toast } from "@/components/ui/sonner";
+import { useState, useEffect, useRef } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PatientProfile {
   full_name: string | null;
