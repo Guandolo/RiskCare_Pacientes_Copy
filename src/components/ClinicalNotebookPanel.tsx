@@ -365,7 +365,7 @@ export const ClinicalNotebookPanel = () => {
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col h-full bg-background" data-tour="notebook-panel">
+      <div className="flex flex-col h-full bg-card/50" data-tour="notebook-panel">
         {/* Header */}
         <div className="p-4 border-b border-border bg-background shadow-sm">
           <div className="flex items-center justify-between">

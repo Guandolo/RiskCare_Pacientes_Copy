@@ -38,7 +38,7 @@ export const CollapsibleNotebookPanel = ({ isCollapsed }: CollapsibleNotebookPan
         </div>
       ) : (
         // Vista expandida - contenido completo
-        <div className="h-full bg-muted/30 overflow-hidden">
+        <div className="h-full overflow-hidden">
           <ClinicalNotebookPanel />
         </div>
       )}

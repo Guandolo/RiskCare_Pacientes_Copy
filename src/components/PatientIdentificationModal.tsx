@@ -30,7 +30,7 @@ interface PatientIdentificationModalProps {
 }
 
 export const PatientIdentificationModal = ({ open, onComplete, userId }: PatientIdentificationModalProps) => {
-  const [documentType, setDocumentType] = useState("CC");
+  const [documentType, setDocumentType] = useState("CC"); // Por defecto: Cédula de Ciudadanía
   const [identification, setIdentification] = useState("");
   const [loading, setLoading] = useState(false);
   
