@@ -41,6 +41,7 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
   const [extractedData, setExtractedData] = useState<any>(null);
   const [editableData, setEditableData] = useState<any>(null);
   const [topusData, setTopusData] = useState<any>(null);
+  const [adresData, setAdresData] = useState<any>(null);
   
   const frontInputRef = useRef<HTMLInputElement>(null);
   const backInputRef = useRef<HTMLInputElement>(null);
@@ -99,6 +100,7 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
         fechaNacimiento: data.data.fechaNacimiento || '',
         tipoSangre: data.data.tipoSangre || '',
         rh: data.data.rh || '',
+        sexo: data.data.sexo || ''
       });
       
       // Precargar datos en el formulario
@@ -174,6 +176,10 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
       toast.error("Por favor verifica el número de documento");
       return;
     }
+    if (!editableData?.tipoDocumento) {
+      toast.error("Selecciona el tipo de documento");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -219,6 +225,13 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
       // Consultar API de Topus
       const topusResult = await fetchTopusData();
       setTopusData(topusResult);
+      setAdresData({
+        eps: topusResult?.result?.eps || '',
+        eps_tipo: topusResult?.result?.eps_tipo || '',
+        estado_afiliacion: topusResult?.result?.estado_afiliacion || '',
+        municipio: topusResult?.result?.municipio_id || '',
+        departamento: topusResult?.result?.departamento_id || ''
+      });
       
       toast.success("Datos consultados exitosamente");
     } catch (error: any) {
@@ -234,6 +247,14 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
     
     setLoading(true);
     try {
+      // Confirmar sesión y obtener user id desde el backend de auth
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Debes iniciar sesión nuevamente.');
+        setLoading(false);
+        return;
+      }
+
       // Preparar nombre completo
       let fullName = topusData?.result?.nombre_completo || null;
       if (editableData?.nombres && editableData?.apellidos) {
@@ -244,16 +265,17 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
       const { error } = await supabase
         .from("patient_profiles")
         .insert({
-          user_id: userId,
+          user_id: user.id,
           document_type: editableData.tipoDocumento,
           identification: editableData.numeroDocumento,
           topus_data: {
             ...topusData,
-            document_data: editableData
+            document_data: editableData,
+            adres_overrides: adresData
           },
           full_name: fullName,
           age: topusData?.result?.edad || null,
-          eps: topusData?.result?.eps || null,
+          eps: (adresData?.eps || topusData?.result?.eps) || null,
         });
 
       if (error) {
