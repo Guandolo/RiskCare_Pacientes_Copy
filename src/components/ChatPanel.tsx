@@ -691,10 +691,6 @@ export const ChatPanel = () => {
                       en tus documentos médicos. Pregúntame sobre términos médicos, resultados de exámenes, 
                       consultas anteriores o medicamentos.
                     </p>
-                    <p className="text-xs text-muted-foreground mt-3 p-3 bg-warning/10 rounded-lg border border-warning/20">
-                      <strong>Importante:</strong> No ofrezco diagnósticos ni recomendaciones médicas. 
-                      Solo te ayudo a comprender tu información clínica existente.
-                    </p>
                   </div>
                 </div>
               </Card>
@@ -910,6 +906,11 @@ export const ChatPanel = () => {
                 <Send className="w-4 h-4" />
               </Button>
             </div>
+            
+            {/* Disclaimer pequeño */}
+            <p className="text-[10px] text-muted-foreground/60 text-center mt-2 px-4">
+              Asistente informativo. No reemplaza el consejo de tu médico.
+            </p>
           </div>
         </div>
       </div>
