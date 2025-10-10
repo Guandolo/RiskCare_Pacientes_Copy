@@ -53,6 +53,22 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
 
     setLoading(true);
     try {
+      // Primero verificar si ya existe un perfil para este usuario
+      const { data: existingProfile, error: checkError } = await supabase
+        .from("patient_profiles")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+
+      if (existingProfile) {
+        toast.success("Perfil ya existe, cargando...");
+        window.dispatchEvent(new CustomEvent('profileUpdated'));
+        onComplete();
+        return;
+      }
+
       // Consultar API de Topus
       const topusData = await fetchTopusData();
       
@@ -69,7 +85,14 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
           eps: topusData?.eps || null,
         });
 
-      if (error) throw error;
+      if (error) {
+        // Si el error es por duplicado de user_id, informar al usuario
+        if (error.code === '23505' && error.message.includes('unique_user_id')) {
+          toast.error("Ya existe un perfil asociado a esta cuenta");
+          return;
+        }
+        throw error;
+      }
 
       toast.success("Perfil creado exitosamente");
       

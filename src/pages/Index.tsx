@@ -33,10 +33,16 @@ const Index = () => {
         .from("patient_profiles")
         .select("*")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code === "PGRST116") {
-        // No profile found
+      if (error) {
+        console.error("Error checking profile:", error);
+        setCheckingProfile(false);
+        return;
+      }
+
+      if (!data) {
+        // No profile found - mostrar modal de identificación
         setShowIdentificationModal(true);
       }
       setCheckingProfile(false);
