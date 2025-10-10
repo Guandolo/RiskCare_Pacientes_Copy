@@ -1,4 +1,4 @@
-import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw, Trash2, Download, User, CreditCard, MapPin, Building2, Phone, Droplet, FolderOpen, Activity, FilePlus2, Pill } from "lucide-react";
+import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw, Trash2, Download, User, CreditCard, MapPin, Building2, Phone, Droplet, FolderOpen, Activity, FilePlus2, Pill, Check } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -338,8 +338,8 @@ export const DataSourcesPanel = () => {
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col h-full" data-tour="documents-panel">
-        <div className="p-4 border-b border-border">
+      <div className="flex flex-col h-full bg-muted/30" data-tour="documents-panel">{/* Fondo gris claro */}
+        <div className="p-4 border-b border-border bg-background shadow-sm">{/* Header blanco */}
           <h2 className="text-sm font-semibold text-foreground mb-1">Mis Documentos Clínicos</h2>
           <p className="text-xs text-muted-foreground">Fuentes de datos consolidadas</p>
         </div>
@@ -519,7 +519,7 @@ export const DataSourcesPanel = () => {
           <Tooltip>
             <TooltipTrigger asChild>
               <Card 
-                className="cursor-pointer hover:shadow-md transition-all bg-gradient-card"
+                className="cursor-pointer hover:shadow-md transition-all bg-background border"
                 onClick={() => setShowDocumentLibrary(true)}
               >
                 <div className="p-4 flex items-center gap-3">

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check, Mic, MicOff, Paperclip, Clock, CheckCircle2, Loader2, ShieldCheck, ChevronLeft, ChevronRight, Copy, ThumbsUp, ThumbsDown, MoreVertical, Share2 } from "lucide-react";
+import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check, Mic, MicOff, Paperclip, Clock, CheckCircle2, Loader2, ShieldCheck, ChevronLeft, ChevronRight, Copy, ThumbsUp, ThumbsDown, MoreVertical, Share2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,11 +61,14 @@ export const ChatPanel = () => {
     const init = async () => {
       await loadOrCreateConversation();
       await loadConversations();
+      loadSuggestions();
     };
     init();
     initializeSpeechRecognition();
 
-    const handleDocumentsUpdate = () => {};
+    const handleDocumentsUpdate = () => {
+      loadSuggestions();
+    };
     window.addEventListener('documentsUpdated', handleDocumentsUpdate);
 
     return () => {
@@ -80,6 +83,7 @@ export const ChatPanel = () => {
       if (event === 'SIGNED_IN' && !hasLoadedInitialSuggestions) {
         loadOrCreateConversation();
         loadConversations();
+        loadSuggestions();
         setHasLoadedInitialSuggestions(true);
       }
       if (event === 'SIGNED_OUT') {
@@ -208,7 +212,6 @@ export const ChatPanel = () => {
         setCurrentConversationId(data.id);
         setMessages([]);
         await loadConversations();
-        // Cargar sugerencias para nueva conversación
         loadSuggestions([]);
       }
     } catch (error) {
@@ -504,6 +507,11 @@ export const ChatPanel = () => {
         await loadConversations();
       }
 
+      // Generar nuevas sugerencias
+      setTimeout(() => {
+        loadSuggestions([...messages, { role: "user", content: userMessage }, { role: "assistant", content: assistantSoFar }]);
+      }, 1000);
+
 
     } catch (error) {
       console.error('Error al enviar mensaje:', error);
@@ -524,6 +532,7 @@ export const ChatPanel = () => {
   const handleUploadSuccess = () => {
     toast({ title: 'Éxito', description: 'Documento cargado y verificado correctamente' });
     window.dispatchEvent(new CustomEvent('documentsUpdated'));
+    loadSuggestions();
   };
 
   const handleCopyMessage = (content: string) => {
@@ -578,9 +587,9 @@ export const ChatPanel = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background" data-tour="chat-panel">
+    <div className="flex flex-col h-full bg-muted/30" data-tour="chat-panel">{/* Fondo gris claro */}
       {/* Header */}
-      <div className="p-4 border-b border-border bg-card">
+      <div className="p-4 border-b border-border bg-background shadow-sm">{/* Fondo blanco header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
@@ -709,10 +718,10 @@ export const ChatPanel = () => {
           {messages.length === 0 ? (
             <>
               {/* Welcome Message */}
-              <Card className="p-4 bg-gradient-card shadow-card border-primary/20">
+              <Card className="p-4 bg-background shadow-sm border">
                 <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="w-4 h-4 text-primary" />
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-5 h-5 text-primary" />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm text-foreground leading-relaxed">
@@ -727,14 +736,19 @@ export const ChatPanel = () => {
           ) : (
             <>
               {messages.map((msg, idx) => (
-                <Card key={idx} className={`p-4 ${msg.role === 'assistant' ? 'bg-gradient-card border-primary/20' : 'bg-muted/50'}`}>
-                  <div className="flex gap-3">
-                    {msg.role === 'assistant' && (
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Sparkles className="w-4 h-4 text-primary" />
-                      </div>
-                    )}
-                     <div className="flex-1">
+                <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {msg.role === 'assistant' && (
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                    </div>
+                  )}
+                  
+                  <Card className={`max-w-[80%] ${
+                    msg.role === 'assistant' 
+                      ? 'bg-background border shadow-sm' 
+                      : 'bg-primary/5 border-primary/20'
+                  }`}>
+                    <div className="p-4">
                       <div className="prose prose-sm max-w-none dark:prose-invert prose-p:leading-relaxed prose-pre:bg-muted prose-pre:text-foreground">
                         <ReactMarkdown 
                           remarkPlugins={[remarkGfm]}
@@ -820,16 +834,22 @@ export const ChatPanel = () => {
                         </div>
                       )}
                     </div>
-                  </div>
-                </Card>
+                  </Card>
+
+                  {msg.role === 'user' && (
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                      <User className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
               ))}
               {isLoading && progressSteps.length > 0 && (
-                <Card className="p-4 bg-gradient-card border-primary/20">
-                  <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-                    </div>
-                    <div className="flex-1 space-y-3">
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+                  </div>
+                  <Card className="flex-1 bg-background border shadow-sm">
+                    <div className="p-4 space-y-3">
                       {progressSteps.map((step) => (
                         <div key={step.id} className="flex items-center gap-3">
                           {step.status === 'pending' && (
@@ -851,8 +871,8 @@ export const ChatPanel = () => {
                         </div>
                       ))}
                     </div>
-                  </div>
-                </Card>
+                  </Card>
+                </div>
               )}
             </>
           )}
@@ -860,9 +880,67 @@ export const ChatPanel = () => {
       </ScrollArea>
 
       {/* Input Area */}
-      <div className="border-t border-border bg-card">
+      <div className="border-t border-border bg-background shadow-sm">{/* Fondo blanco input */}
         <div className="max-w-3xl mx-auto">
-          {/* Sugerencias deshabilitadas para ganar espacio */}
+          {/* Preguntas sugeridas */}
+          {suggestions.length > 0 && (
+            <div className="px-4 pt-3 pb-2 border-b border-border/50">
+              <div className="flex items-center gap-2 mb-2">
+                <Lightbulb className="w-4 h-4 text-primary" />
+                <span className="text-xs font-medium text-muted-foreground">Preguntas sugeridas</span>
+              </div>
+              <div className="relative">
+                <div 
+                  ref={suggestionsScrollRef}
+                  className="flex gap-2 overflow-x-auto scrollbar-hide scroll-smooth"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  {suggestionsLoading ? (
+                    Array.from({ length: 3 }).map((_, idx) => (
+                      <Card key={idx} className="flex-shrink-0 w-[240px] px-3 py-2 bg-muted/30 animate-pulse">
+                        <div className="h-8 bg-muted rounded"></div>
+                      </Card>
+                    ))
+                  ) : (
+                    suggestions.map((question, idx) => (
+                      <Card
+                        key={idx}
+                        className="flex-shrink-0 w-[240px] px-3 py-2.5 bg-background hover:bg-accent hover:border-primary/40 border transition-all cursor-pointer"
+                        onClick={() => setMessage(question)}
+                      >
+                        <div className="flex items-start gap-2">
+                          <Sparkles className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
+                          <p className="text-xs text-foreground leading-relaxed line-clamp-2">
+                            {question}
+                          </p>
+                        </div>
+                      </Card>
+                    ))
+                  )}
+                </div>
+                {suggestions.length > 3 && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute -left-2 top-1/2 -translate-y-1/2 z-10 h-7 w-7 rounded-full bg-background shadow-lg border"
+                      onClick={() => scrollSuggestions('left')}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute -right-2 top-1/2 -translate-y-1/2 z-10 h-7 w-7 rounded-full bg-background shadow-lg border"
+                      onClick={() => scrollSuggestions('right')}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="p-4">
             <div className="flex gap-2">
