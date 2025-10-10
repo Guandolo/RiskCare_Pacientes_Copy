@@ -52,15 +52,25 @@ export const DataSourcesPanel = () => {
 
     // Listener para recargar perfil cuando se cree por primera vez
     const handleProfileUpdate = () => {
-      loadProfile();
+      // Cargar perfil y documentos, y abrir la sección automáticamente
+      loadProfileAndData();
+      setPatientInfoOpen(true);
     };
     window.addEventListener('profileUpdated', handleProfileUpdate);
 
+    // Suscripción para cambios de sesión: si cambia el usuario, recargar datos
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      setProfile(null);
+      setDocuments([]);
+      setLoading(true);
+      loadProfileAndData();
+    });
+
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
+      subscription.unsubscribe();
     };
   }, []);
-
   const loadProfileAndData = async () => {
     await loadProfile();
     await loadDocuments();
@@ -75,12 +85,22 @@ export const DataSourcesPanel = () => {
         .from('patient_profiles')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error cargando perfil:', error);
+        return;
+      }
+
+      if (!data) {
+        // Aún no hay perfil: no mostramos error para evitar falsa alarma
+        setProfile(null);
+        return;
+      }
       
       setProfile(data);
       setPhoneValue(data.phone || "");
+      setPatientInfoOpen(true);
       
       // Cargar datos de HiSmart guardados si existen
       if (data.topus_data && typeof data.topus_data === 'object') {
@@ -92,12 +112,11 @@ export const DataSourcesPanel = () => {
       }
     } catch (error) {
       console.error('Error cargando perfil:', error);
-      toast.error('Error cargando información del paciente');
+      // Evitar mostrar toast de error genérico en primer arranque sin perfil
     } finally {
       setLoading(false);
     }
   };
-
   const loadDocuments = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
