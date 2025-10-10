@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,21 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
     return data.data;
   };
 
+  // Si el usuario ya tiene perfil, cerrar el modal inmediatamente
+  useEffect(() => {
+    if (!open || !userId) return;
+    const checkExisting = async () => {
+      const { data } = await supabase
+        .from('patient_profiles')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (data) {
+        onComplete();
+      }
+    };
+    checkExisting();
+  }, [open, userId]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -53,6 +68,23 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
 
     setLoading(true);
     try {
+      // 0) Verificar si ya existe un perfil y omitir creación
+      const { data: existing, error: checkError } = await supabase
+        .from('patient_profiles')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (checkError) {
+        console.warn('No se pudo verificar perfil existente:', checkError.message);
+      }
+      if (existing) {
+        toast.success('Tu perfil ya está verificado');
+        window.dispatchEvent(new CustomEvent('profileUpdated'));
+        onComplete();
+        return;
+      }
+
       // Consultar API de Topus
       const topusData = await fetchTopusData();
       
@@ -79,7 +111,10 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
       onComplete();
     } catch (error: any) {
       console.error("Error al crear perfil:", error);
-      toast.error(error.message || "Error al crear el perfil. Por favor intenta de nuevo.");
+      const msg = error?.message?.includes('row-level security')
+        ? 'No se pudo crear el perfil por una validación de seguridad. Si ya tienes perfil, recarga la página.'
+        : (error.message || "Error al crear el perfil. Por favor intenta de nuevo.");
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
