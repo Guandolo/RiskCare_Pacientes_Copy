@@ -29,7 +29,7 @@ const nodeTypes = {
     </div>
   ),
   condition: ({ data }: any) => (
-    <div className="px-4 py-3 rounded-lg border border-destructive bg-destructive/10 shadow-md min-w-[160px]">
+    <div className="px-4 py-3 rounded-xl border-2 border-destructive/40 bg-destructive/5 shadow-sm hover:shadow-md transition-shadow min-w-[160px]">
       <div className="flex items-center gap-2">
         <Activity className="w-4 h-4 text-destructive" />
         <div>
@@ -42,7 +42,7 @@ const nodeTypes = {
     </div>
   ),
   medication: ({ data }: any) => (
-    <div className="px-4 py-3 rounded-lg border border-blue-500 bg-blue-50 dark:bg-blue-950/30 shadow-md min-w-[160px]">
+    <div className="px-4 py-3 rounded-xl border-2 border-blue-400/40 bg-blue-50 dark:bg-blue-950/30 shadow-sm hover:shadow-md transition-shadow min-w-[160px]">
       <div className="flex items-center gap-2">
         <Pill className="w-4 h-4 text-blue-600 dark:text-blue-400" />
         <div>
@@ -55,7 +55,7 @@ const nodeTypes = {
     </div>
   ),
   paraclinical: ({ data }: any) => (
-    <div className="px-4 py-3 rounded-lg border border-amber-500 bg-amber-50 dark:bg-amber-950/30 shadow-md min-w-[160px]">
+    <div className="px-4 py-3 rounded-xl border-2 border-amber-400/40 bg-amber-50 dark:bg-amber-950/30 shadow-sm hover:shadow-md transition-shadow min-w-[160px]">
       <div className="flex items-center gap-2">
         <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />
         <div>
@@ -68,7 +68,7 @@ const nodeTypes = {
     </div>
   ),
   specialist: ({ data }: any) => (
-    <div className="px-4 py-3 rounded-lg border border-green-500 bg-green-50 dark:bg-green-950/30 shadow-md min-w-[160px]">
+    <div className="px-4 py-3 rounded-xl border-2 border-green-400/40 bg-green-50 dark:bg-green-950/30 shadow-sm hover:shadow-md transition-shadow min-w-[160px]">
       <div className="flex items-center gap-2">
         <Stethoscope className="w-4 h-4 text-green-600 dark:text-green-400" />
         <div>
@@ -185,29 +185,29 @@ export const ClinicalMapViewer = ({ mapData }: ClinicalMapViewerProps) => {
       source: edge.source,
       target: edge.target,
       label: edge.label,
-      type: 'default',
+      type: 'smoothstep', // Curvas suaves tipo NotebookLM
       animated: true,
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        width: 25,
-        height: 25,
-        color: 'hsl(var(--primary))',
+        width: 20,
+        height: 20,
+        color: 'hsl(var(--primary) / 0.6)',
       },
       style: {
-        strokeWidth: 2.5,
-        stroke: 'hsl(var(--primary))',
+        strokeWidth: 2,
+        stroke: 'hsl(var(--primary) / 0.5)',
       },
       labelStyle: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: 500,
         fill: 'hsl(var(--foreground))',
       },
       labelBgStyle: {
         fill: 'hsl(var(--background))',
-        fillOpacity: 0.9,
+        fillOpacity: 0.95,
       },
-      labelBgPadding: [6, 4] as [number, number],
-      labelBgBorderRadius: 4,
+      labelBgPadding: [8, 6] as [number, number],
+      labelBgBorderRadius: 6,
     }));
   };
 
