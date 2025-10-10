@@ -257,7 +257,6 @@ export const ClinicalNotebookPanel = () => {
   };
 
   return (
-    <TooltipProvider>
       <div className="flex flex-col h-full bg-background">
         {/* Header */}
         <div className="p-4 border-b border-border">
@@ -468,6 +467,5 @@ export const ClinicalNotebookPanel = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </TooltipProvider>
-  );
+   );
 };

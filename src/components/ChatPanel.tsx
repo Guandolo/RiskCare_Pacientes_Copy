@@ -748,7 +748,6 @@ export const ChatPanel = () => {
                       
                       {/* Sello de Respuesta Verificada */}
                       {msg.role === 'assistant' && !isLoading && (
-                        <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50">
@@ -764,7 +763,6 @@ export const ChatPanel = () => {
                               </p>
                             </TooltipContent>
                           </Tooltip>
-                        </TooltipProvider>
                       )}
                     </div>
                   </div>
