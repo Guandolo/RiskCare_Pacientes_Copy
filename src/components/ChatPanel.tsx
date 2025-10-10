@@ -962,38 +962,34 @@ export const ChatPanel = () => {
       {/* Input Area */}
       <div className="border-t border-border bg-background shadow-sm">{/* Fondo blanco input */}
         <div className="max-w-3xl mx-auto">
-          {/* Preguntas sugeridas */}
+          {/* Preguntas sugeridas - Carrusel horizontal compacto */}
           {suggestions.length > 0 && (
-            <div className="px-4 pt-3 pb-2 border-b border-border/50">
-              <div className="flex items-center gap-2 mb-2">
-                <Lightbulb className="w-4 h-4 text-foreground/60" />
-                <span className="text-xs font-medium text-muted-foreground">Preguntas sugeridas</span>
-              </div>
+            <div className="px-4 pt-2 pb-2 border-b border-border/30">
               <div className="relative">
                 <div 
                   ref={suggestionsScrollRef}
-                  className="flex gap-2 overflow-x-auto scrollbar-hide scroll-smooth"
+                  className="flex gap-2 overflow-x-auto scrollbar-hide scroll-smooth pb-1"
                   style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
                   {suggestionsLoading ? (
                     Array.from({ length: 3 }).map((_, idx) => (
-                      <Card key={idx} className="flex-shrink-0 w-[240px] px-3 py-2 bg-muted/30 animate-pulse">
-                        <div className="h-8 bg-muted rounded"></div>
+                      <Card key={idx} className="flex-shrink-0 w-[200px] px-2.5 py-1.5 bg-muted/30 animate-pulse">
+                        <div className="h-6 bg-muted rounded"></div>
                       </Card>
                     ))
                   ) : (
                     suggestions.map((question, idx) => (
                       <Card
                         key={idx}
-                        className="flex-shrink-0 w-[240px] px-3 py-2.5 bg-background hover:bg-accent/70 hover:border-foreground/20 border transition-all cursor-pointer shadow-sm"
+                        className="flex-shrink-0 px-3 py-1.5 bg-muted/50 hover:bg-accent hover:border-primary/30 border border-border/50 transition-all cursor-pointer shadow-sm hover-scale"
                         onClick={() => {
                           setMessage(question);
                           setTimeout(() => handleSendMessage(), 100);
                         }}
                       >
-                        <div className="flex items-start gap-2">
-                          <Sparkles className="w-3.5 h-3.5 text-foreground/60 flex-shrink-0 mt-0.5" />
-                          <p className="text-xs text-foreground/80 leading-relaxed line-clamp-2">
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles className="w-3 h-3 text-primary/70 flex-shrink-0" />
+                          <p className="text-xs text-foreground/90 whitespace-nowrap">
                             {question}
                           </p>
                         </div>
@@ -1001,23 +997,23 @@ export const ChatPanel = () => {
                     ))
                   )}
                 </div>
-                {suggestions.length > 3 && (
+                {suggestions.length > 2 && (
                   <>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="absolute -left-2 top-1/2 -translate-y-1/2 z-10 h-7 w-7 rounded-full bg-background shadow-lg border"
+                      className="absolute -left-1 top-1/2 -translate-y-1/2 z-10 h-6 w-6 rounded-full bg-background/90 shadow-md border border-border/50 hover:bg-accent"
                       onClick={() => scrollSuggestions('left')}
                     >
-                      <ChevronLeft className="w-4 h-4" />
+                      <ChevronLeft className="w-3.5 h-3.5" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="absolute -right-2 top-1/2 -translate-y-1/2 z-10 h-7 w-7 rounded-full bg-background shadow-lg border"
+                      className="absolute -right-1 top-1/2 -translate-y-1/2 z-10 h-6 w-6 rounded-full bg-background/90 shadow-md border border-border/50 hover:bg-accent"
                       onClick={() => scrollSuggestions('right')}
                     >
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-3.5 h-3.5" />
                     </Button>
                   </>
                 )}
