@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { fileUrl, fileName, fileType, userId, userIdentification } = await req.json();
+    const { fileUrl, fileName, fileType, userId, userIdentification, pdfPassword } = await req.json();
     
     const GEMINI_API_KEY = Deno.env.get('API_GEMINI');
     if (!GEMINI_API_KEY) {
@@ -28,7 +28,7 @@ serve(async (req) => {
     
     // Convertir a base64 de forma segura para archivos grandes
     // Si es PDF y está protegido, intentar desbloquearlo con el documento de identidad
-    if (fileType === 'application/pdf' && userIdentification) {
+    if (fileType === 'application/pdf') {
       try {
         const { PDFDocument } = await import('https://cdn.skypack.dev/pdf-lib@^1.17.1');
         
@@ -38,17 +38,43 @@ serve(async (req) => {
           console.log('PDF sin contraseña');
         } catch (loadError) {
           isPDFProtected = true;
-          console.log('PDF protegido, intentando desbloquear con:', userIdentification);
+          console.log('PDF protegido detectado');
         }
 
         if (isPDFProtected) {
-          try {
-            const pdfDoc = await PDFDocument.load(arrayBuffer, { password: userIdentification });
-            arrayBuffer = await pdfDoc.save();
-            console.log('PDF desbloqueado exitosamente');
-          } catch (unlockError) {
-            console.error('Error desbloqueando PDF:', unlockError);
-            throw new Error(`PDF protegido. No se pudo desbloquear con el documento de identidad ${userIdentification}.`);
+          let unlocked = false;
+
+          // 1) Intentar con documento de identidad
+          if (userIdentification) {
+            try {
+              const pdfDoc = await PDFDocument.load(arrayBuffer, { password: userIdentification });
+              arrayBuffer = await pdfDoc.save();
+              unlocked = true;
+              console.log('PDF desbloqueado exitosamente con identificación');
+            } catch (e) {
+              console.warn('No se pudo desbloquear con identificación');
+            }
+          }
+
+          // 2) Intentar con contraseña proporcionada explícitamente
+          if (!unlocked && pdfPassword) {
+            try {
+              const pdfDoc = await PDFDocument.load(arrayBuffer, { password: pdfPassword });
+              arrayBuffer = await pdfDoc.save();
+              unlocked = true;
+              console.log('PDF desbloqueado exitosamente con contraseña proporcionada');
+            } catch (e) {
+              console.warn('No se pudo desbloquear con contraseña proporcionada');
+            }
+          }
+
+          // 3) Si no se pudo, solicitar contraseña al cliente
+          if (!unlocked) {
+            console.error('Error desbloqueando PDF: se requiere contraseña');
+            return new Response(
+              JSON.stringify({ error: 'PDF_PASSWORD_REQUIRED', message: 'Este PDF está protegido. Ingresa la contraseña para continuar.' }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 423 }
+            );
           }
         }
       } catch (error) {

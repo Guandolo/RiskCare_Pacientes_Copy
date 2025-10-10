@@ -41,6 +41,9 @@ export const DataSourcesPanel = () => {
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [selectedDocPreview, setSelectedDocPreview] = useState<any | null>(null);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [pdfPassword, setPdfPassword] = useState('');
+  const [pendingProcessing, setPendingProcessing] = useState<any | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -116,6 +119,53 @@ export const DataSourcesPanel = () => {
   const handleViewDocument = (doc: any) => {
     setSelectedDocPreview(doc);
     setPreviewDialogOpen(true);
+  };
+
+  const startPasswordFlow = (params: { publicUrl: string; fileName: string; fileType: string; userId: string; identification?: string | null; }) => {
+    setPendingProcessing(params);
+    setPdfPassword(params.identification || profile?.identification || '');
+    setPasswordDialogOpen(true);
+  };
+
+  const confirmPassword = async () => {
+    if (!pendingProcessing) return;
+    try {
+      const { publicUrl, fileName, fileType, userId, identification } = pendingProcessing;
+      toast.info(`Intentando desbloquear ${fileName}...`);
+      const { data: retryData, error: retryError } = await supabase.functions.invoke('process-document', {
+        body: {
+          fileUrl: publicUrl,
+          fileName,
+          fileType,
+          userId,
+          userIdentification: identification || profile?.identification,
+          pdfPassword
+        }
+      });
+
+      if (retryError) {
+        console.error('Error reintentando procesamiento:', retryError);
+        toast.error('Contraseña incorrecta o no se pudo desbloquear el PDF');
+        return;
+      }
+
+      toast.success(`${fileName} cargado exitosamente`);
+      setPasswordDialogOpen(false);
+      setPendingProcessing(null);
+      setPdfPassword('');
+      await loadDocuments();
+      window.dispatchEvent(new CustomEvent('documentsUpdated'));
+    } catch (e) {
+      console.error(e);
+      toast.error('Error reintentando procesamiento');
+    }
+  };
+
+  const cancelPassword = () => {
+    setPasswordDialogOpen(false);
+    setPendingProcessing(null);
+    setPdfPassword('');
+    toast.message('Carga de PDF protegida cancelada');
   };
 
   const handlePhoneUpdate = async () => {
@@ -287,6 +337,19 @@ export const DataSourcesPanel = () => {
         });
 
         if (processError) {
+          const msg = String((processError as any)?.message || '');
+          if (msg.includes('PDF_PASSWORD_REQUIRED') || msg.includes('423') || msg.toLowerCase().includes('protegido')) {
+            startPasswordFlow({
+              publicUrl,
+              fileName: file.name,
+              fileType: file.type,
+              userId: user.id,
+              identification: profile?.identification || null,
+            });
+            toast.message(`Se requiere contraseña para ${file.name}`);
+            // Salimos para permitir que el usuario ingrese la contraseña antes de continuar
+            return;
+          }
           console.error('Error procesando documento:', processError);
           toast.error(`Error procesando ${file.name}`);
           continue;
@@ -672,7 +735,7 @@ export const DataSourcesPanel = () => {
                             className={`p-2.5 cursor-pointer transition-all hover:bg-accent/10 ${
                               selectedDocPreview?.id === doc.id ? 'bg-accent/10 border-primary/50' : 'bg-accent/5'
                             }`}
-                            onClick={() => setSelectedDocPreview(doc)}
+                            onClick={() => handleViewDocument(doc)}
                           >
                             <div className="flex items-start gap-2">
                               <div className="w-8 h-8 rounded bg-secondary/10 flex items-center justify-center flex-shrink-0">
@@ -829,6 +892,29 @@ export const DataSourcesPanel = () => {
                 </ScrollArea>
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Dialog para contraseña de PDF */}
+      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Documento protegido</DialogTitle>
+            <DialogDescription>
+              Este PDF requiere una contraseña. Ingresa la contraseña (suele ser tu número de documento).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              type="password"
+              placeholder="Contraseña del PDF"
+              value={pdfPassword}
+              onChange={(e) => setPdfPassword(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={cancelPassword}>Cancelar</Button>
+              <Button onClick={confirmPassword}>Confirmar</Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
