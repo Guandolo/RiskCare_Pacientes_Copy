@@ -112,7 +112,7 @@ export const QuickUploadModal = ({ open, onOpenChange, onSuccess }: QuickUploadM
             .getPublicUrl(fileName);
 
           // Crear registro en la base de datos con estado 'pending'
-          const { error: dbError } = await supabase
+          const { data: insertedDoc, error: dbError } = await supabase
             .from('clinical_documents')
             .insert({
               user_id: userId,
@@ -121,9 +121,63 @@ export const QuickUploadModal = ({ open, onOpenChange, onSuccess }: QuickUploadM
               file_url: fileName, // Guardar path, no URL completa
               document_type: 'Documento cargado',
               processing_status: 'pending' // Estado inicial: pendiente de procesamiento
-            });
+            })
+            .select()
+            .single();
 
           if (dbError) throw dbError;
+
+          // Disparar procesamiento en segundo plano
+          console.log('Iniciando procesamiento para:', uploadFile.file.name);
+          
+          // Actualizar estado a 'processing'
+          await supabase
+            .from('clinical_documents')
+            .update({ processing_status: 'processing' })
+            .eq('id', insertedDoc.id);
+
+          // Invocar función de procesamiento (sin esperar)
+          supabase.functions
+            .invoke('process-document', {
+              body: {
+                fileUrl: publicUrl,
+                fileName: uploadFile.file.name,
+                fileType: uploadFile.file.type,
+                userId: userId,
+                verifyIdentity: false,
+                forceUpload: true
+              }
+            })
+            .then(async (response) => {
+              if (response.error) {
+                console.error('Error procesando documento:', response.error);
+                // Marcar como fallido
+                await supabase
+                  .from('clinical_documents')
+                  .update({ 
+                    processing_status: 'failed',
+                    processing_error: response.error.message 
+                  })
+                  .eq('id', insertedDoc.id);
+              } else {
+                console.log('Documento procesado exitosamente:', response.data);
+                // El edge function ya actualiza el documento, pero por si acaso
+                await supabase
+                  .from('clinical_documents')
+                  .update({ processing_status: 'completed' })
+                  .eq('id', insertedDoc.id);
+              }
+            })
+            .catch(async (error) => {
+              console.error('Error invocando process-document:', error);
+              await supabase
+                .from('clinical_documents')
+                .update({ 
+                  processing_status: 'failed',
+                  processing_error: error.message 
+                })
+                .eq('id', insertedDoc.id);
+            });
 
           // Actualizar estado a uploaded
           setFiles(prev => prev.map(f => 
@@ -153,7 +207,9 @@ export const QuickUploadModal = ({ open, onOpenChange, onSuccess }: QuickUploadM
       const errorCount = results.filter(r => !r.success).length;
 
       if (successCount > 0) {
-        toast.success(`${successCount} documento${successCount !== 1 ? 's' : ''} cargado${successCount !== 1 ? 's' : ''} exitosamente. Se procesarán en segundo plano.`);
+        toast.success(`${successCount} documento${successCount !== 1 ? 's' : ''} cargado${successCount !== 1 ? 's' : ''} exitosamente.`, {
+          description: 'La extracción de datos iniciará automáticamente. Puedes ver el progreso en la biblioteca de documentos.'
+        });
         onSuccess();
         
         // Esperar un momento para que el usuario vea el estado y luego cerrar

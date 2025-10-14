@@ -324,28 +324,65 @@ Retorna SOLO JSON con esta estructura exacta:
       }
     }
 
-    // Guardar en la base de datos
-    const { data: savedDoc, error: dbError } = await supabase
+    // Buscar el documento existente por fileUrl y userId
+    const { data: existingDoc } = await supabase
       .from('clinical_documents')
-      .insert({
-        user_id: user.id,
-        file_name: fileName,
-        file_type: fileType,
-        file_url: fileUrl,
-        extracted_text: extractedData.extracted_text || '',
-        document_type: extractedData.document_type || 'Desconocido',
-        document_date: extractedData.document_date || null,
-        structured_data: extractedData.structured_data || {}
-      })
-      .select()
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('file_url', fileUrl)
       .single();
 
-    if (dbError) {
-      console.error('Error guardando documento:', dbError);
-      throw dbError;
-    }
+    let savedDoc;
+    
+    if (existingDoc) {
+      // Actualizar documento existente
+      const { data: updatedDoc, error: updateError } = await supabase
+        .from('clinical_documents')
+        .update({
+          extracted_text: extractedData.extracted_text || '',
+          document_type: extractedData.document_type || 'Desconocido',
+          document_date: extractedData.document_date || null,
+          structured_data: extractedData.structured_data || {},
+          processing_status: 'completed',
+          processing_error: null
+        })
+        .eq('id', existingDoc.id)
+        .select()
+        .single();
 
-    console.log('Documento procesado y guardado exitosamente');
+      if (updateError) {
+        console.error('Error actualizando documento:', updateError);
+        throw updateError;
+      }
+      
+      savedDoc = updatedDoc;
+      console.log('Documento actualizado exitosamente:', existingDoc.id);
+    } else {
+      // Crear nuevo documento (fallback por si no existe)
+      const { data: newDoc, error: insertError } = await supabase
+        .from('clinical_documents')
+        .insert({
+          user_id: user.id,
+          file_name: fileName,
+          file_type: fileType,
+          file_url: fileUrl,
+          extracted_text: extractedData.extracted_text || '',
+          document_type: extractedData.document_type || 'Desconocido',
+          document_date: extractedData.document_date || null,
+          structured_data: extractedData.structured_data || {},
+          processing_status: 'completed'
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Error insertando documento:', insertError);
+        throw insertError;
+      }
+      
+      savedDoc = newDoc;
+      console.log('Documento insertado exitosamente');
+    }
 
     return new Response(
       JSON.stringify({ 

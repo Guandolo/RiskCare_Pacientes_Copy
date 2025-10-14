@@ -43,6 +43,13 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
   useEffect(() => {
     if (open) {
       loadDocuments();
+      
+      // Auto-refresco cada 5 segundos cuando el modal está abierto
+      const interval = setInterval(() => {
+        loadDocuments();
+      }, 5000);
+      
+      return () => clearInterval(interval);
     }
   }, [open]);
 
@@ -223,28 +230,65 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
     }
   };
 
-  const getProcessingStatusMessage = (status?: 'pending' | 'processing' | 'completed' | 'failed') => {
-    if (!status || status === 'completed') return null;
+  const getProcessingStatusMessage = (status?: 'pending' | 'processing' | 'completed' | 'failed', doc?: ClinicalDocument) => {
+    if (!status || status === 'completed') {
+      // Si está completado y tiene datos extraídos, mostrar resumen
+      if (doc?.extracted_text) {
+        const preview = doc.extracted_text.substring(0, 150);
+        return (
+          <div className="mt-2 text-xs text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded p-2 border border-green-200 dark:border-green-800">
+            <div className="flex items-center gap-2 mb-1">
+              <CheckCircle className="w-3 h-3" />
+              <span className="font-medium">Documento procesado</span>
+            </div>
+            <p className="text-muted-foreground line-clamp-2">{preview}...</p>
+          </div>
+        );
+      }
+      return null;
+    }
 
     switch (status) {
       case 'pending':
         return (
-          <div className="mt-2 text-xs text-muted-foreground bg-secondary/50 rounded p-2">
-            ⏳ Documento en cola para procesamiento
+          <div className="mt-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded p-2 border border-amber-200 dark:border-amber-800">
+            <div className="flex items-center gap-2 mb-1">
+              <Clock className="w-3 h-3" />
+              <span className="font-medium">En cola para procesamiento</span>
+            </div>
+            El sistema extraerá automáticamente la información. Esto puede tardar 1-2 minutos. La biblioteca se actualiza cada 5 segundos.
           </div>
         );
       case 'processing':
         return (
-          <div className="mt-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded p-2 border border-blue-200 dark:border-blue-800">
+          <div className="mt-2 text-xs text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded p-2 border border-blue-200 dark:border-blue-800">
             <div className="flex items-center gap-2 mb-1">
               <Loader2 className="w-3 h-3 animate-spin" />
-              <span className="font-medium">Extrayendo información...</span>
+              <span className="font-medium">Extrayendo información del documento...</span>
             </div>
-            Este proceso puede tardar 1-2 minutos. Los datos estarán disponibles pronto.
+            <div className="space-y-1 mt-2">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
+                <span>Análisis con IA en progreso</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-300"></div>
+                <span>Extracción de datos clínicos</span>
+              </div>
+            </div>
+            <p className="mt-2 text-muted-foreground">Tiempo estimado: 30s - 2min</p>
           </div>
         );
       case 'failed':
-        return null;
+        return (
+          <div className="mt-2 text-xs text-destructive bg-destructive/10 rounded p-2 border border-destructive/20">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertCircle className="w-3 h-3" />
+              <span className="font-medium">Error en el procesamiento</span>
+            </div>
+            No se pudo extraer la información. Intenta volver a cargar el documento.
+          </div>
+        );
       default:
         return null;
     }
@@ -378,7 +422,7 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
                           <span>{formatDate(doc.document_date || doc.created_at)}</span>
                         </div>
 
-                        {getProcessingStatusMessage(doc.processing_status)}
+                        {getProcessingStatusMessage(doc.processing_status, doc)}
 
                         {doc.file_type?.includes('image') && doc.file_url && (
                           <div className="aspect-video bg-muted rounded-md mb-3 overflow-hidden">
