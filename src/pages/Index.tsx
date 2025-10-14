@@ -27,6 +27,18 @@ const Index = () => {
   const [profileChecked, setProfileChecked] = useState(false);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // Detectar cambio de usuario y forzar reload
+  useEffect(() => {
+    if (user?.id && currentUserId && user.id !== currentUserId) {
+      // Usuario diferente detectado - forzar reload completo
+      console.log("Usuario diferente detectado, limpiando estado...");
+      window.location.reload();
+    } else if (user?.id) {
+      setCurrentUserId(user.id);
+    }
+  }, [user?.id, currentUserId]);
 
   useEffect(() => {
     const update = () => setIsMobile(window.innerWidth < 768);
