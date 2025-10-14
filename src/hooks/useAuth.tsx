@@ -91,22 +91,12 @@ export const useAuth = () => {
   };
 
   const signOut = async () => {
-    // Limpiar variables globales inmediatamente
-    currentSession = null;
-    currentUser = null;
-    
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error("Error al cerrar sesión:", error.message);
-      throw error;
+    // Usa la ruta dedicada para un cierre de sesión profundo
+    if (window.top) {
+      (window.top as Window).location.href = "/logout";
+    } else {
+      window.location.href = "/logout";
     }
-    
-    // Limpiar todo el localStorage para evitar persistencia de datos
-    localStorage.clear();
-    sessionStorage.clear();
-    
-    // Forzar recarga completa para limpiar todo el estado de React
-    window.location.href = "/auth";
   };
 
   return {
