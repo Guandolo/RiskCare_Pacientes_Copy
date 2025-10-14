@@ -100,15 +100,15 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
         nombres: data.data.nombres || '',
         apellidos: data.data.apellidos || '',
         numeroDocumento: data.data.numeroDocumento || '',
-        tipoDocumento: 'CC', // SIEMPRE CC por defecto
+        tipoDocumento: data.data.tipoDocumento || 'CC',
         fechaNacimiento: data.data.fechaNacimiento || '',
         tipoSangre: data.data.tipoSangre || '',
         rh: data.data.rh || '',
         sexo: data.data.sexo || ''
       });
       
-      // Precargar datos - SIEMPRE CC
-      setDocumentType('CC');
+      // Precargar datos del documento extraído
+      setDocumentType(data.data.tipoDocumento || 'CC');
       setIdentification(data.data.numeroDocumento || '');
       
       // Guardar ambas imágenes del documento en el storage
