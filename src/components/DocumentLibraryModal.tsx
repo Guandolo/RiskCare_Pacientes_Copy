@@ -201,14 +201,14 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
         return (
           <Badge variant="secondary" className="text-xs gap-1">
             <Clock className="w-3 h-3" />
-            Pendiente
+            En cola
           </Badge>
         );
       case 'processing':
         return (
-          <Badge variant="default" className="text-xs gap-1 animate-pulse">
+          <Badge variant="default" className="text-xs gap-1 bg-blue-500 hover:bg-blue-600">
             <Loader2 className="w-3 h-3 animate-spin" />
-            Procesando
+            Procesando...
           </Badge>
         );
       case 'failed':
@@ -218,6 +218,33 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
             Error
           </Badge>
         );
+      default:
+        return null;
+    }
+  };
+
+  const getProcessingStatusMessage = (status?: 'pending' | 'processing' | 'completed' | 'failed') => {
+    if (!status || status === 'completed') return null;
+
+    switch (status) {
+      case 'pending':
+        return (
+          <div className="mt-2 text-xs text-muted-foreground bg-secondary/50 rounded p-2">
+            ⏳ Documento en cola para procesamiento
+          </div>
+        );
+      case 'processing':
+        return (
+          <div className="mt-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded p-2 border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-2 mb-1">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span className="font-medium">Extrayendo información...</span>
+            </div>
+            Este proceso puede tardar 1-2 minutos. Los datos estarán disponibles pronto.
+          </div>
+        );
+      case 'failed':
+        return null;
       default:
         return null;
     }
@@ -350,6 +377,8 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
                           <Calendar className="w-3 h-3" />
                           <span>{formatDate(doc.document_date || doc.created_at)}</span>
                         </div>
+
+                        {getProcessingStatusMessage(doc.processing_status)}
 
                         {doc.file_type?.includes('image') && doc.file_url && (
                           <div className="aspect-video bg-muted rounded-md mb-3 overflow-hidden">

@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Upload, AlertTriangle, CheckCircle, HelpCircle, X } from "lucide-react";
+import { Upload, AlertTriangle, CheckCircle, HelpCircle, X, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -47,6 +47,11 @@ export const SecureUploadModal = ({ open, onOpenChange, onSuccess }: SecureUploa
     try {
       setStatus('processing');
       setUploadProgress(10);
+      
+      toast.info('Iniciando carga del documento...', {
+        description: 'Este proceso puede tardar entre 30 segundos y 2 minutos dependiendo del tamaño del archivo.',
+        duration: 4000
+      });
 
       // 1. Obtener sesión del usuario
       const { data: { session } } = await supabase.auth.getSession();
@@ -57,6 +62,7 @@ export const SecureUploadModal = ({ open, onOpenChange, onSuccess }: SecureUploa
       }
 
       setUploadProgress(20);
+      toast.loading('Subiendo archivo al servidor...', { id: 'upload-progress' });
 
       // 2. Subir archivo temporalmente a Supabase Storage
       const fileName = `${session.user.id}/${Date.now()}-${file.name}`;
@@ -66,12 +72,18 @@ export const SecureUploadModal = ({ open, onOpenChange, onSuccess }: SecureUploa
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
+        toast.dismiss('upload-progress');
         toast.error('Error al subir el archivo');
         resetModal();
         return;
       }
 
       setUploadProgress(40);
+      toast.dismiss('upload-progress');
+      toast.loading('Extrayendo texto e información del documento...', { 
+        id: 'processing-doc',
+        description: 'Esto puede tardar un momento...'
+      });
 
       // 3. Obtener URL pública del archivo
       const { data: { publicUrl } } = supabase.storage
@@ -82,6 +94,11 @@ export const SecureUploadModal = ({ open, onOpenChange, onSuccess }: SecureUploa
       setUploadProgress(60);
 
       // 4. Llamar a la función de procesamiento con verificación de identidad
+      toast.loading('Verificando que el documento te pertenezca...', { 
+        id: 'verify-doc',
+        description: 'Validando información de identidad...'
+      });
+      
       const { data, error } = await supabase.functions.invoke('process-document', {
         body: {
           fileName: file.name,
@@ -94,6 +111,8 @@ export const SecureUploadModal = ({ open, onOpenChange, onSuccess }: SecureUploa
       });
 
       setUploadProgress(100);
+      toast.dismiss('processing-doc');
+      toast.dismiss('verify-doc');
 
       if (error) {
         console.error('Processing error:', error);
@@ -295,12 +314,25 @@ export const SecureUploadModal = ({ open, onOpenChange, onSuccess }: SecureUploa
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                <p className="text-sm">Procesando y verificando documento...</p>
+                <p className="text-sm font-medium">Procesando y verificando documento...</p>
               </div>
               <Progress value={uploadProgress} className="w-full" />
               <p className="text-xs text-muted-foreground">
                 {selectedFile?.name}
               </p>
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                <p className="text-xs text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>
+                    {uploadProgress < 40 ? 'Subiendo archivo al servidor...' :
+                     uploadProgress < 60 ? 'Extrayendo texto e información...' :
+                     'Verificando identidad y guardando...'}
+                  </span>
+                </p>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                  ⏱️ Este proceso puede tardar entre 30 segundos y 2 minutos. Por favor no cierres esta ventana.
+                </p>
+              </div>
             </div>
           )}
 
