@@ -217,10 +217,13 @@ export const ChatPanel = () => {
       setSuggestions([]);
       loadSuggestions([]);
       
-      toast({
-        title: "Nuevo chat iniciado",
-        description: "Comienza una nueva conversación",
-      });
+      // Solo mostrar toast si fue acción manual del usuario (cuando ya hay una conversación activa)
+      if (currentConversationId) {
+        toast({
+          title: "Nuevo chat iniciado",
+          description: "Comienza una nueva conversación",
+        });
+      }
     } catch (error) {
       console.error('Error creating conversation:', error);
     }
