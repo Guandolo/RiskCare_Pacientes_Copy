@@ -568,11 +568,7 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
                     onValueChange={(v) => setEditableData({...editableData, tipoDocumento: v})}
                   >
                     <SelectTrigger id="tipoDocumento">
-                      <SelectValue placeholder="Selecciona tipo de documento">
-                        {editableData.tipoDocumento ? 
-                          DOCUMENT_TYPES.find(t => t.value === editableData.tipoDocumento)?.label 
-                          : "Selecciona tipo de documento"}
-                      </SelectValue>
+                      <SelectValue placeholder="Selecciona tipo de documento" />
                     </SelectTrigger>
                     <SelectContent className="z-50 bg-popover">
                       {DOCUMENT_TYPES.map((type) => (
