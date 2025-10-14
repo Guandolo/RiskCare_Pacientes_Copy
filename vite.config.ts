@@ -13,11 +13,14 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: [
       { find: "@", replacement: path.resolve(__dirname, "./src") },
-      { find: /^@radix-ui\/react-tooltip(\/.*)?$/, replacement: path.resolve(__dirname, "./src/shims/radix-tooltip-shim.tsx") },
+      // Force all tooltip imports (including subpaths and prebundled ids) to our stub
+      { find: /^@radix-ui\/react-tooltip(?:\/.*)?$/, replacement: path.resolve(__dirname, "./src/shims/tooltip-shim.tsx") },
+      { find: "@radix-ui/react-tooltip", replacement: path.resolve(__dirname, "./src/shims/tooltip-shim.tsx") },
+      { find: "@radix-ui_react-tooltip", replacement: path.resolve(__dirname, "./src/shims/tooltip-shim.tsx") },
     ],
     dedupe: ["react", "react-dom"],
   },
   optimizeDeps: {
-    exclude: ["@radix-ui/react-tooltip"],
+    exclude: ["@radix-ui/react-tooltip", "@radix-ui_react-tooltip"],
   },
 }));
