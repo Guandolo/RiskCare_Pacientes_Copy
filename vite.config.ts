@@ -11,10 +11,10 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-      "@radix-ui/react-tooltip": path.resolve(__dirname, "./src/shims/radix-tooltip-shim.tsx"),
-    },
+    alias: [
+      { find: "@", replacement: path.resolve(__dirname, "./src") },
+      { find: /^@radix-ui\/react-tooltip(\/.*)?$/, replacement: path.resolve(__dirname, "./src/shims/radix-tooltip-shim.tsx") },
+    ],
     dedupe: ["react", "react-dom"],
   },
   optimizeDeps: {
