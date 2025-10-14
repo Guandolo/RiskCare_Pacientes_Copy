@@ -92,6 +92,8 @@ export type Database = {
           file_type: string
           file_url: string
           id: string
+          processing_error: string | null
+          processing_status: string | null
           structured_data: Json | null
           updated_at: string | null
           user_id: string
@@ -105,6 +107,8 @@ export type Database = {
           file_type: string
           file_url: string
           id?: string
+          processing_error?: string | null
+          processing_status?: string | null
           structured_data?: Json | null
           updated_at?: string | null
           user_id: string
@@ -118,6 +122,8 @@ export type Database = {
           file_type?: string
           file_url?: string
           id?: string
+          processing_error?: string | null
+          processing_status?: string | null
           structured_data?: Json | null
           updated_at?: string | null
           user_id?: string

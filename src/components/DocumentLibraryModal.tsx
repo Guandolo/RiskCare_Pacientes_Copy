@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Upload, FileText, Image, Search, Filter, Download, Trash2, Eye, Calendar, File, X } from "lucide-react";
+import { Upload, FileText, Image, Search, Filter, Download, Trash2, Eye, Calendar, File, X, Loader2, AlertCircle, CheckCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
-import { SecureUploadModal } from "./SecureUploadModal";
+import { QuickUploadModal } from "./QuickUploadModal";
 
 interface ClinicalDocument {
   id: string;
@@ -21,6 +21,8 @@ interface ClinicalDocument {
   file_type: string;
   extracted_text: string | null;
   structured_data: any;
+  processing_status?: 'pending' | 'processing' | 'completed' | 'failed';
+  processing_error?: string | null;
 }
 
 interface DocumentLibraryModalProps {
@@ -71,7 +73,7 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
           publicUrl = urlData.publicUrl;
         }
         return { ...doc, file_url: publicUrl };
-      });
+      }) as ClinicalDocument[];
       
       setDocuments(documentsWithUrls);
     } catch (error) {
@@ -191,6 +193,36 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
     return <FileText className="w-5 h-5 text-purple-500" />;
   };
 
+  const getProcessingStatusBadge = (status?: 'pending' | 'processing' | 'completed' | 'failed') => {
+    if (!status || status === 'completed') return null;
+
+    switch (status) {
+      case 'pending':
+        return (
+          <Badge variant="secondary" className="text-xs gap-1">
+            <Clock className="w-3 h-3" />
+            Pendiente
+          </Badge>
+        );
+      case 'processing':
+        return (
+          <Badge variant="default" className="text-xs gap-1 animate-pulse">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            Procesando
+          </Badge>
+        );
+      case 'failed':
+        return (
+          <Badge variant="destructive" className="text-xs gap-1">
+            <AlertCircle className="w-3 h-3" />
+            Error
+          </Badge>
+        );
+      default:
+        return null;
+    }
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -297,13 +329,19 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
                             {getDocumentTypeIcon(doc.document_type)}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-sm truncate mb-1">
+                            <h3 className="font-semibold text-sm truncate mb-1 flex items-center gap-2">
                               {doc.file_name}
+                              {getProcessingStatusBadge(doc.processing_status)}
                             </h3>
                             {doc.document_type && (
                               <Badge variant="secondary" className="text-xs">
                                 {doc.document_type}
                               </Badge>
+                            )}
+                            {doc.processing_error && (
+                              <p className="text-xs text-destructive mt-1 truncate" title={doc.processing_error}>
+                                {doc.processing_error}
+                              </p>
                             )}
                           </div>
                         </div>
@@ -370,14 +408,14 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
         </DialogContent>
       </Dialog>
 
-      {/* Modal de subida */}
-      <SecureUploadModal
+      {/* Modal de subida - Quick Upload*/}
+      <QuickUploadModal
         open={showUploadModal}
         onOpenChange={setShowUploadModal}
         onSuccess={() => {
           loadDocuments();
           setShowUploadModal(false);
-          toast.success('Documento cargado exitosamente');
+          toast.success('Documentos cargados exitosamente');
           window.dispatchEvent(new CustomEvent('documentsUpdated'));
         }}
       />

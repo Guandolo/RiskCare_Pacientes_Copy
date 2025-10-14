@@ -1,4 +1,4 @@
-import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw, Trash2, Download, User, CreditCard, MapPin, Building2, Phone, Droplet, FolderOpen, Activity, FilePlus2, Pill, Check } from "lucide-react";
+import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw, Trash2, Download, User, CreditCard, MapPin, Building2, Phone, Droplet, FolderOpen, Activity, FilePlus2, Pill, Check, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SecureUploadModal } from "./SecureUploadModal";
+import { QuickUploadModal } from "./QuickUploadModal";
 import { DocumentLibraryModal } from "./DocumentLibraryModal";
 import { ClinicalRecordsModal } from "./ClinicalRecordsModal";
 import { UpdateClinicalDataModal } from "./UpdateClinicalDataModal";
@@ -30,6 +31,8 @@ interface ClinicalDocument {
   document_type: string | null;
   document_date: string | null;
   created_at: string;
+  processing_status?: 'pending' | 'processing' | 'completed' | 'failed';
+  processing_error?: string | null;
 }
 
 export const DataSourcesPanel = () => {
@@ -50,6 +53,7 @@ export const DataSourcesPanel = () => {
   const [pdfPassword, setPdfPassword] = useState('');
   const [pendingProcessing, setPendingProcessing] = useState<any | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showQuickUploadModal, setShowQuickUploadModal] = useState(false);
   const [showDocumentLibrary, setShowDocumentLibrary] = useState(false);
   const [showClinicalRecords, setShowClinicalRecords] = useState(false);
   const [showPrescriptions, setShowPrescriptions] = useState(false);
@@ -135,13 +139,13 @@ export const DataSourcesPanel = () => {
 
       const { data, error } = await supabase
         .from('clinical_documents')
-        .select('id, file_name, document_type, document_date, created_at, file_url, file_type, extracted_text, structured_data')
+        .select('id, file_name, document_type, document_date, created_at, file_url, file_type, extracted_text, structured_data, processing_status, processing_error')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      setDocuments(data || []);
+      setDocuments((data || []) as ClinicalDocument[]);
     } catch (error) {
       console.error('Error cargando documentos:', error);
     }
@@ -550,25 +554,25 @@ export const DataSourcesPanel = () => {
             </TooltipContent>
           </Tooltip>
 
-          {/* Upload Section */}
+          {/* Upload Section - Quick Upload*/}
           <div className="space-y-2">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button 
-                  className="w-full gap-2 bg-primary hover:bg-primary-dark transition-all" 
+                  className="w-full gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all shadow-md" 
                   size="lg"
-                  onClick={() => setShowUploadModal(true)}
+                  onClick={() => setShowQuickUploadModal(true)}
                 >
                   <FilePlus2 className="w-4 h-4" />
-                  Subir Documentos
+                  Carga Rápida de Documentos
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Cargar resultados de laboratorio, imágenes diagnósticas o documentos médicos</p>
+                <p>Sube múltiples documentos de forma rápida. Se procesarán en segundo plano.</p>
               </TooltipContent>
             </Tooltip>
             <p className="text-xs text-muted-foreground text-center">
-              PDF, JPG, PNG - Máx 20MB con verificación de identidad
+              Carga múltiple - Se procesan automáticamente
             </p>
           </div>
 
@@ -721,7 +725,14 @@ export const DataSourcesPanel = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Upload Modal */}
+      {/* Quick Upload Modal */}
+      <QuickUploadModal
+        open={showQuickUploadModal}
+        onOpenChange={setShowQuickUploadModal}
+        onSuccess={handleUploadSuccess}
+      />
+
+      {/* Secure Upload Modal (legacy) */}
       <SecureUploadModal
         open={showUploadModal}
         onOpenChange={setShowUploadModal}
