@@ -14,6 +14,19 @@ const ensureAuthListener = () => {
     currentUser = session?.user ?? null;
     // Notificar a la app sin crear múltiples listeners por componente
     window.dispatchEvent(new CustomEvent('authChanged', { detail: { event, hasSession: !!session } }));
+
+    // Seguridad: al cerrar sesión desde cualquier pestaña/contexto, limpiar y redirigir de inmediato
+    if (event === 'SIGNED_OUT') {
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
+      if (window.top) {
+        (window.top as Window).location.href = '/auth';
+      } else {
+        window.location.href = '/auth';
+      }
+    }
   });
   authInitialized = true;
 };
