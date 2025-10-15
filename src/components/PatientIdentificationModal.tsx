@@ -188,6 +188,7 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
         
         // Procesar ambos documentos en background
         if (insertedDocs && insertedDocs.length === 2) {
+          const { data: { session } } = await supabase.auth.getSession();
           // Procesar frente
           supabase.functions.invoke('process-document', {
             body: {
@@ -197,7 +198,8 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
               userId: userId,
               userIdentification: docNumber,
               verifyIdentity: false
-            }
+            },
+            headers: { Authorization: `Bearer ${session?.access_token}` }
           }).catch(err => console.error('Error procesando frente:', err));
 
           // Procesar reverso
@@ -209,7 +211,8 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
               userId: userId,
               userIdentification: docNumber,
               verifyIdentity: false
-            }
+            },
+            headers: { Authorization: `Bearer ${session?.access_token}` }
           }).catch(err => console.error('Error procesando reverso:', err));
         }
       } catch (storageError) {

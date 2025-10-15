@@ -183,6 +183,7 @@ export const DataSourcesPanel = () => {
     try {
       const { publicUrl, fileName, fileType, userId, identification } = pendingProcessing;
       toast.info(`Intentando desbloquear ${fileName}...`);
+      const { data: { session } } = await supabase.auth.getSession();
       const { data: retryData, error: retryError } = await supabase.functions.invoke('process-document', {
         body: {
           fileUrl: publicUrl,
@@ -191,7 +192,8 @@ export const DataSourcesPanel = () => {
           userId,
           userIdentification: identification || profile?.identification,
           pdfPassword
-        }
+        },
+        headers: { Authorization: `Bearer ${session?.access_token}` }
       });
 
       if (retryError) {
