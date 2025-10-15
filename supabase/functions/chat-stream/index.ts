@@ -185,7 +185,16 @@ serve(async (req) => {
       });
 
       if (!response.ok) {
-        throw new Error(`AI gateway error: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`AI gateway error ${response.status}:`, errorText);
+        
+        if (response.status === 402) {
+          throw new Error('Los créditos de Lovable AI se han agotado. Por favor, recarga créditos en Settings → Workspace → Usage.');
+        }
+        if (response.status === 429) {
+          throw new Error('Se ha excedido el límite de solicitudes. Por favor, espera un momento antes de intentar nuevamente.');
+        }
+        throw new Error(`Error del servicio de IA: ${response.status}`);
       }
 
       const data = await response.json();
@@ -213,8 +222,13 @@ serve(async (req) => {
       });
 
       if (!response.ok) {
-        console.error("Error en auditor, asumiendo válido por defecto");
-        return { valido: true, justificacion: "Error en auditor" };
+        const errorText = await response.text();
+        console.error(`Error en auditor ${response.status}:`, errorText);
+        
+        if (response.status === 402 || response.status === 429) {
+          console.warn("Auditor no disponible temporalmente, asumiendo válido");
+        }
+        return { valido: true, justificacion: "Error en auditor, respuesta aceptada por defecto" };
       }
 
       const data = await response.json();
