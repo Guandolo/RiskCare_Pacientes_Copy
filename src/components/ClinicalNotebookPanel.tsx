@@ -74,6 +74,29 @@ export const ClinicalNotebookPanel = () => {
 
       setGeneratedData({ type: module.type, title: module.title, content });
       setFullscreenOpen(true);
+
+      // Guardar la nota en la base de datos
+      const { error: saveError } = await supabase.from('clinical_notes').insert({
+        user_id: session.user.id,
+        type: module.type,
+        title: module.title,
+        content: content
+      });
+
+      if (saveError) {
+        console.error('Error guardando nota:', saveError);
+        toast({ 
+          title: 'Advertencia', 
+          description: 'El análisis se generó pero no se pudo guardar en el historial.',
+          variant: 'default'
+        });
+      } else {
+        toast({ 
+          title: 'Guardado', 
+          description: `${module.title} guardado en tu historial.`,
+          variant: 'default'
+        });
+      }
     } catch (e: any) {
       console.error('Error al generar análisis:', e);
       toast({ title: 'Error', description: e?.message || 'Error desconocido', variant: 'destructive' });
