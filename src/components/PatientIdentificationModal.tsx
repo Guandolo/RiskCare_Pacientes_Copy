@@ -127,6 +127,11 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
 
         if (uploadFrontError) throw uploadFrontError;
 
+        // Obtener URL pública del frente
+        const { data: { publicUrl: frontPublicUrl } } = supabase.storage
+          .from('clinical-documents')
+          .getPublicUrl(uploadFrontData.path);
+
         // Convertir base64 a blob - REVERSO
         const backBlob = await fetch(backImage).then(r => r.blob());
         const backFile = new File([backBlob], `documento_identidad_reverso_${docNumber}_${timestamp}.jpg`, { type: 'image/jpeg' });
@@ -138,44 +143,78 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
 
         if (uploadBackError) throw uploadBackError;
 
-        // Crear DOS registros en la tabla clinical_documents (uno por cada cara)
-        const documentsToInsert = [
-          {
-            user_id: userId,
-            file_name: `Documento de Identidad - Frente (${docNumber})`,
-            file_type: 'image/jpeg',
-            document_type: 'Documento de Identidad - Frente',
-            file_url: uploadFrontData.path,
-            structured_data: {
-              ...data.data,
-              lado: 'frente'
-            }
-          },
-          {
-            user_id: userId,
-            file_name: `Documento de Identidad - Reverso (${docNumber})`,
-            file_type: 'image/jpeg',
-            document_type: 'Documento de Identidad - Reverso',
-            file_url: uploadBackData.path,
-            structured_data: {
-              ...data.data,
-              lado: 'reverso'
-            }
-          }
-        ];
+        // Obtener URL pública del reverso
+        const { data: { publicUrl: backPublicUrl } } = supabase.storage
+          .from('clinical-documents')
+          .getPublicUrl(uploadBackData.path);
 
-        const { error: dbError } = await supabase
+        // Crear DOS registros en la tabla clinical_documents (uno por cada cara) con estado 'processing'
+        const { data: insertedDocs, error: dbError } = await supabase
           .from('clinical_documents')
-          .insert(documentsToInsert);
+          .insert([
+            {
+              user_id: userId,
+              file_name: `Documento de Identidad - Frente (${docNumber})`,
+              file_type: 'image/jpeg',
+              document_type: 'Documento de Identidad - Frente',
+              file_url: frontPublicUrl,
+              processing_status: 'processing',
+              structured_data: {
+                ...data.data,
+                lado: 'frente'
+              }
+            },
+            {
+              user_id: userId,
+              file_name: `Documento de Identidad - Reverso (${docNumber})`,
+              file_type: 'image/jpeg',
+              document_type: 'Documento de Identidad - Reverso',
+              file_url: backPublicUrl,
+              processing_status: 'processing',
+              structured_data: {
+                ...data.data,
+                lado: 'reverso'
+              }
+            }
+          ])
+          .select();
 
         if (dbError) {
           console.error('Error guardando documentos en BD:', dbError);
-        } else {
-          console.log('Ambas caras del documento guardadas exitosamente');
+          throw dbError;
+        }
+
+        console.log('Documentos guardados, iniciando procesamiento...');
+        
+        // Procesar ambos documentos en background
+        if (insertedDocs && insertedDocs.length === 2) {
+          // Procesar frente
+          supabase.functions.invoke('process-document', {
+            body: {
+              fileUrl: frontPublicUrl,
+              fileName: insertedDocs[0].file_name,
+              fileType: 'image/jpeg',
+              userId: userId,
+              userIdentification: docNumber,
+              verifyIdentity: false
+            }
+          }).catch(err => console.error('Error procesando frente:', err));
+
+          // Procesar reverso
+          supabase.functions.invoke('process-document', {
+            body: {
+              fileUrl: backPublicUrl,
+              fileName: insertedDocs[1].file_name,
+              fileType: 'image/jpeg',
+              userId: userId,
+              userIdentification: docNumber,
+              verifyIdentity: false
+            }
+          }).catch(err => console.error('Error procesando reverso:', err));
         }
       } catch (storageError) {
         console.error('Error guardando imágenes del documento:', storageError);
-        // No bloqueamos el flujo si falla el guardado
+        throw storageError;
       }
       
       setScanMode('review');
