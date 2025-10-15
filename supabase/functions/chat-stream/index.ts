@@ -94,9 +94,9 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY no configurada" }), {
+    const API_GEMINI = Deno.env.get("API_GEMINI");
+    if (!API_GEMINI) {
+      return new Response(JSON.stringify({ error: "API_GEMINI no configurada" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -171,75 +171,95 @@ serve(async (req) => {
         generatorMessages.push({ role: "system", content: `CORRECCIÓN REQUERIDA: ${extraContext}` });
       }
 
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: generatorMessages,
-          stream: false,
-        }),
-      });
+      // Convertir mensajes al formato de Gemini
+      const geminiContents = [];
+      let systemInstruction = SYSTEM_PROMPT + `\n\nCONTEXTO DE DOCUMENTOS DISPONIBLES:\n${contextInfo}`;
+      
+      for (const msg of generatorMessages) {
+        if (msg.role === 'system') {
+          systemInstruction += `\n${msg.content}`;
+        } else {
+          geminiContents.push({
+            role: msg.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: msg.content }]
+          });
+        }
+      }
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_GEMINI}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: geminiContents,
+            systemInstruction: {
+              parts: [{ text: systemInstruction }]
+            },
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 2048,
+            }
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`AI gateway error ${response.status}:`, errorText);
+        console.error(`Gemini API error ${response.status}:`, errorText);
         
-        if (response.status === 402) {
-          throw new Error('Los créditos de Lovable AI se han agotado. Por favor, recarga créditos en Settings → Workspace → Usage.');
-        }
         if (response.status === 429) {
-          throw new Error('Se ha excedido el límite de solicitudes. Por favor, espera un momento antes de intentar nuevamente.');
+          throw new Error('Se ha excedido el límite de solicitudes de Gemini. Por favor, espera un momento.');
         }
-        throw new Error(`Error del servicio de IA: ${response.status}`);
+        throw new Error(`Error de Gemini API: ${response.status}`);
       }
 
       const data = await response.json();
-      return data.choices[0].message.content;
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     }
 
     // Función auxiliar para auditar una respuesta
     async function auditResponse(draft: string): Promise<{ valido: boolean; justificacion: string }> {
-      const auditMessages = [
-        { role: "system", content: AUDITOR_PROMPT },
-        { role: "user", content: `PREGUNTA DEL PACIENTE:\n${message}\n\nDOCUMENTOS FUENTE:\n${contextInfo}\n\nRESPUESTA BORRADOR A VALIDAR:\n${draft}` },
-      ];
+      const auditPrompt = `${AUDITOR_PROMPT}\n\nPREGUNTA DEL PACIENTE:\n${message}\n\nDOCUMENTOS FUENTE:\n${contextInfo}\n\nRESPUESTA BORRADOR A VALIDAR:\n${draft}`;
 
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-pro",
-          messages: auditMessages,
-          stream: false,
-        }),
-      });
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${API_GEMINI}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              role: 'user',
+              parts: [{ text: auditPrompt }]
+            }],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 500,
+              responseMimeType: "application/json"
+            }
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`Error en auditor ${response.status}:`, errorText);
         
-        if (response.status === 402 || response.status === 429) {
+        if (response.status === 429) {
           console.warn("Auditor no disponible temporalmente, asumiendo válido");
         }
         return { valido: true, justificacion: "Error en auditor, respuesta aceptada por defecto" };
       }
 
       const data = await response.json();
-      const auditResult = data.choices[0].message.content;
+      const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
       
       try {
-        const parsed = JSON.parse(auditResult);
-        return parsed;
+        const result = JSON.parse(textResponse);
+        return result;
       } catch (e) {
-        console.error("Error parseando respuesta del auditor:", e);
-        return { valido: true, justificacion: "Error en parseo" };
+        console.error("Error parsing audit response:", e);
+        return { valido: true, justificacion: "Error parseando respuesta del auditor" };
       }
     }
 
