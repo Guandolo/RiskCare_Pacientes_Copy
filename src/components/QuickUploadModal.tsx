@@ -118,7 +118,7 @@ export const QuickUploadModal = ({ open, onOpenChange, onSuccess }: QuickUploadM
               user_id: userId,
               file_name: uploadFile.file.name,
               file_type: uploadFile.file.type,
-              file_url: fileName, // Guardar path, no URL completa
+              file_url: publicUrl, // Guardar URL pública para normalizar con el procesador
               document_type: 'Documento cargado',
               processing_status: 'pending' // Estado inicial: pendiente de procesamiento
             })
@@ -146,7 +146,8 @@ export const QuickUploadModal = ({ open, onOpenChange, onSuccess }: QuickUploadM
                 userId: userId,
                 verifyIdentity: false,
                 forceUpload: true
-              }
+              },
+              headers: { Authorization: `Bearer ${session.access_token}` }
             })
             .then(async (response) => {
               if (response.error) {

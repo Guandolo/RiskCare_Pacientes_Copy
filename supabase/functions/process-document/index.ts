@@ -324,17 +324,51 @@ Retorna SOLO JSON con esta estructura exacta:
       }
     }
 
-    // Buscar el documento existente por fileUrl y userId
-    const { data: existingDoc } = await supabase
+    // Buscar el documento existente por fileUrl (URL pública) o por ruta interna del bucket
+    // Normalizar: extraer la ruta relativa dentro de 'clinical-documents' a partir de la URL pública
+    const storagePath = (() => {
+      try {
+        const u = new URL(fileUrl);
+        const parts = u.pathname.split('/');
+        const idx = parts.findIndex(p => p === 'clinical-documents');
+        if (idx !== -1) {
+          return decodeURIComponent(parts.slice(idx + 1).join('/'));
+        }
+      } catch (_) { /* noop */ }
+      return null;
+    })();
+
+    // Intentar localizar el registro existente por cualquiera de los dos formatos
+    let existingDocId: string | null = null;
+
+    const { data: byUrl } = await supabase
       .from('clinical_documents')
-      .select('id')
+      .select('id, created_at')
       .eq('user_id', user.id)
       .eq('file_url', fileUrl)
-      .single();
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (byUrl && byUrl.length > 0) {
+      existingDocId = byUrl[0].id as string;
+    }
+
+    if (!existingDocId && storagePath) {
+      const { data: byPath } = await supabase
+        .from('clinical_documents')
+        .select('id, created_at')
+        .eq('user_id', user.id)
+        .eq('file_url', storagePath)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (byPath && byPath.length > 0) {
+        existingDocId = byPath[0].id as string;
+      }
+    }
 
     let savedDoc;
     
-    if (existingDoc) {
+    if (existingDocId) {
       // Actualizar documento existente
       const { data: updatedDoc, error: updateError } = await supabase
         .from('clinical_documents')
@@ -346,7 +380,7 @@ Retorna SOLO JSON con esta estructura exacta:
           processing_status: 'completed',
           processing_error: null
         })
-        .eq('id', existingDoc.id)
+        .eq('id', existingDocId)
         .select()
         .single();
 
@@ -356,7 +390,7 @@ Retorna SOLO JSON con esta estructura exacta:
       }
       
       savedDoc = updatedDoc;
-      console.log('Documento actualizado exitosamente:', existingDoc.id);
+      console.log('Documento actualizado exitosamente:', existingDocId);
     } else {
       // Crear nuevo documento (fallback por si no existe)
       const { data: newDoc, error: insertError } = await supabase
