@@ -377,7 +377,7 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
           <DialogDescription>
             {scanMode === 'select' && "Elige cómo deseas registrarte: escaneando tu documento o ingresando los datos manualmente."}
             {scanMode === 'capture' && "Captura fotos claras del frente y reverso de tu documento de identidad."}
-            {scanMode === 'review' && "Paso 1/2: Revisa y confirma la información de tu documento. Puedes editar cualquier campo si es necesario."}
+            {scanMode === 'review' && "Revisa y completa tu información. Los campos de tipo de sangre y RH son opcionales."}
             {scanMode === 'topus' && "Paso 2/2: Revisión final de tus datos consolidados. Verifica que toda la información sea correcta antes de continuar."}
           </DialogDescription>
         </DialogHeader>
@@ -428,21 +428,39 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
                       return;
                     }
 
-                    // Simular datos extraídos para ingreso manual
-                    setEditableData({
-                      nombres: '',
-                      apellidos: '',
-                      numeroDocumento: identification,
-                      tipoDocumento: documentType,
-                      fechaNacimiento: '',
-                      tipoSangre: '',
-                      rh: '',
-                    });
-                    
-                    setScanMode('topus');
+                    // Consultar datos de Topus primero
+                    toast.info("Consultando tus datos en ADRES...");
                     const topusResult = await fetchTopusData();
                     setTopusData(topusResult);
-                    toast.success("Datos consultados exitosamente");
+                    
+                    // Llenar editableData con los datos de Topus
+                    const nombreCompleto = topusResult?.result?.nombre_completo || '';
+                    const partesNombre = nombreCompleto.split(' ');
+                    const nombres = partesNombre.slice(0, 2).join(' ');
+                    const apellidos = partesNombre.slice(2).join(' ');
+                    
+                    setEditableData({
+                      nombres: nombres,
+                      apellidos: apellidos,
+                      numeroDocumento: identification,
+                      tipoDocumento: documentType,
+                      fechaNacimiento: topusResult?.result?.fecha_nacimiento || '',
+                      tipoSangre: '',
+                      rh: '',
+                      sexo: topusResult?.result?.sexo || ''
+                    });
+                    
+                    setAdresData({
+                      eps: topusResult?.result?.eps || '',
+                      eps_tipo: topusResult?.result?.eps_tipo || '',
+                      estado_afiliacion: topusResult?.result?.estado_afiliacion || '',
+                      municipio: topusResult?.result?.municipio_id || '',
+                      departamento: topusResult?.result?.departamento_id || ''
+                    });
+                    
+                    // Ir directamente a pantalla de revisión para que agregue datos opcionales
+                    setScanMode('review');
+                    toast.success("Datos consultados exitosamente. Agrega información adicional si lo deseas.");
                   } catch (error: any) {
                     console.error("Error:", error);
                     toast.error(error.message || "Error al verificar el documento");
@@ -640,29 +658,29 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="tipoSangre">Tipo de Sangre</Label>
+                  <Label htmlFor="tipoSangre">Tipo de Sangre <span className="text-muted-foreground text-xs">(Opcional)</span></Label>
                   <Input
                     id="tipoSangre"
                     value={editableData.tipoSangre}
                     onChange={(e) => setEditableData({...editableData, tipoSangre: e.target.value})}
-                    placeholder="Ej: O"
+                    placeholder="Ej: O, A, B, AB"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="rh">RH</Label>
+                  <Label htmlFor="rh">RH <span className="text-muted-foreground text-xs">(Opcional)</span></Label>
                   <Input
                     id="rh"
                     value={editableData.rh}
                     onChange={(e) => setEditableData({...editableData, rh: e.target.value})}
-                    placeholder="Ej: +"
+                    placeholder="Ej: +, -"
                   />
                 </div>
               </div>
 
               <div className="bg-primary/5 p-4 rounded-lg">
-                <p className="text-sm font-medium mb-2">📋 Paso 1 de 2</p>
+                <p className="text-sm font-medium mb-2">📋 Información Personal</p>
                 <p className="text-xs text-muted-foreground">
-                  Revisa cuidadosamente los datos extraídos de tu documento. Al continuar, consultaremos información adicional en ADRES.
+                  Revisa y completa tu información. Los datos de tipo de sangre y RH son opcionales, puedes agregarlos ahora o después.
                 </p>
               </div>
 
