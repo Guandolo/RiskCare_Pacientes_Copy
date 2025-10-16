@@ -1,5 +1,8 @@
 project_id = "mixunsevvfenajctpdfq"
 
+[functions.send-email]
+verify_jwt = false
+
 [functions.extract-document-data]
 verify_jwt = false
 
