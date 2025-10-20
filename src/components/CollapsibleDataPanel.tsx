@@ -3,9 +3,10 @@ import { DataSourcesPanel } from "./DataSourcesPanel";
 
 interface CollapsibleDataPanelProps {
   isCollapsed: boolean;
+  displayedUserId?: string;
 }
 
-export const CollapsibleDataPanel = ({ isCollapsed }: CollapsibleDataPanelProps) => {
+export const CollapsibleDataPanel = ({ isCollapsed, displayedUserId }: CollapsibleDataPanelProps) => {
   const tools = [
     { icon: FolderOpen, label: "Documentos", key: "documents", color: "text-blue-500" },
     { icon: Upload, label: "Subir", key: "upload", color: "text-green-500" },
@@ -40,7 +41,7 @@ export const CollapsibleDataPanel = ({ isCollapsed }: CollapsibleDataPanelProps)
       ) : (
         // Vista expandida - contenido completo
         <div className="h-full bg-muted/30 overflow-hidden">
-          <DataSourcesPanel />
+          <DataSourcesPanel displayedUserId={displayedUserId} />
         </div>
       )}
     </div>

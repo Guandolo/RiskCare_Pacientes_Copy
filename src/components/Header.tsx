@@ -11,18 +11,24 @@ import riskCareIcon from "@/assets/riskcare-icon.png";
 import { ProfesionalClinicoModal } from "./ProfesionalClinicoModal";
 import { ViewProfesionalDataModal } from "./ViewProfesionalDataModal";
 import { SuperAdminPanel } from "./SuperAdminPanel";
+import { PatientSearchModal } from "./PatientSearchModal";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
+import { useProfesionalContext } from "@/hooks/useProfesionalContext";
+import { Users } from "lucide-react";
 
 export const Header = () => {
   const { user, signOut } = useAuth();
   const { roles, isProfesional, isAdminClinica, isSuperAdmin } = useUserRole();
+  const { currentPatientUserId, setPatientContext } = useProfesionalContext();
   const [showProfesionalModal, setShowProfesionalModal] = useState(false);
   const [showViewDataModal, setShowViewDataModal] = useState(false);
+  const [showPatientSearchModal, setShowPatientSearchModal] = useState(false);
   const [profesionalData, setProfesionalData] = useState<any>(null);
   const [fullRethusData, setFullRethusData] = useState<any>(null);
+  const [currentPatientInfo, setCurrentPatientInfo] = useState<any>(null);
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
 
@@ -69,6 +75,36 @@ export const Header = () => {
     fetchProfesionalData();
   }, [isProfesional, user]);
 
+  // Cargar información del paciente actual si el profesional está viendo a alguien
+  useEffect(() => {
+    const fetchCurrentPatientInfo = async () => {
+      if (!isProfesional || !currentPatientUserId) {
+        setCurrentPatientInfo(null);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('patient_profiles')
+          .select('full_name, identification, document_type, age, eps')
+          .eq('user_id', currentPatientUserId)
+          .single();
+
+        if (error) throw error;
+        setCurrentPatientInfo(data);
+      } catch (error) {
+        console.error('Error fetching current patient info:', error);
+      }
+    };
+
+    fetchCurrentPatientInfo();
+  }, [isProfesional, currentPatientUserId]);
+
+  const handlePatientSelected = (patientUserId: string, clinicaId: string) => {
+    setPatientContext(patientUserId, clinicaId);
+    window.location.reload(); // Recargar para actualizar todos los componentes
+  };
+
 
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
@@ -104,6 +140,39 @@ export const Header = () => {
           className="h-10 w-10 object-contain cursor-pointer"
           onClick={() => navigate("/")}
         />
+        
+        {/* Información del paciente actual (solo para profesionales) */}
+        {isProfesional && currentPatientInfo && (
+          <div className="flex items-center gap-3 px-3 py-1.5 bg-muted/50 rounded-lg border border-border/50">
+            <div className="text-sm">
+              <p className="font-semibold">{currentPatientInfo.full_name || 'Paciente'}</p>
+              <p className="text-xs text-muted-foreground">
+                {currentPatientInfo.document_type} {currentPatientInfo.identification} • {currentPatientInfo.age} años
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowPatientSearchModal(true)}
+              className="h-auto py-1 px-2"
+            >
+              <Users className="h-4 w-4 mr-1" />
+              <span className="text-xs">Cambiar</span>
+            </Button>
+          </div>
+        )}
+        
+        {/* Botón para buscar paciente si no hay ninguno seleccionado */}
+        {isProfesional && !currentPatientInfo && (
+          <Button
+            variant="outline"
+            onClick={() => setShowPatientSearchModal(true)}
+            className="h-auto py-2"
+          >
+            <Users className="h-4 w-4 mr-2" />
+            <span className="text-sm">Buscar Paciente</span>
+          </Button>
+        )}
       </div>
 
       <div className="flex items-center gap-4">
@@ -333,6 +402,16 @@ export const Header = () => {
             onOpenChange={setShowViewDataModal}
             rethusData={fullRethusData}
             fechaValidacion={profesionalData.fechaValidacion}
+          />
+        )}
+
+        {/* Modal de Búsqueda de Paciente (solo para profesionales) */}
+        {isProfesional && user && (
+          <PatientSearchModal
+            open={showPatientSearchModal}
+            onOpenChange={setShowPatientSearchModal}
+            onPatientSelected={handlePatientSelected}
+            profesionalUserId={user.id}
           />
         )}
       </div>

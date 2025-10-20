@@ -16,10 +16,12 @@ import confetti from 'canvas-confetti';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useProfesionalContext } from "@/hooks/useProfesionalContext";
 
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const { currentPatientUserId, isProfesional, loading: contextLoading } = useProfesionalContext();
   const [isMobile, setIsMobile] = useState(false);
   const [showIdentificationModal, setShowIdentificationModal] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
@@ -28,6 +30,9 @@ const Index = () => {
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  
+  // Determinar qué usuario se está visualizando (profesional puede ver pacientes)
+  const displayedUserId = isProfesional && currentPatientUserId ? currentPatientUserId : user?.id;
 
   // Detectar cambio de usuario y forzar reload
   useEffect(() => {
@@ -258,7 +263,7 @@ const Index = () => {
     };
   }, []);
 
-  if (loading || checkingProfile) {
+  if (loading || checkingProfile || contextLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-subtle">
         <div className="text-center">
@@ -290,19 +295,19 @@ const Index = () => {
             <div className="flex-1 overflow-hidden pb-16">
               {mobileTab === "documents" && (
                 <div className="h-full bg-card overflow-hidden">
-                  <DataSourcesPanel />
+                  <DataSourcesPanel displayedUserId={displayedUserId} />
                 </div>
               )}
               
               {mobileTab === "chat" && (
                 <div className="h-full flex flex-col overflow-hidden">
-                  <ChatPanel />
+                  <ChatPanel displayedUserId={displayedUserId} />
                 </div>
               )}
               
               {mobileTab === "notebook" && (
                 <div className="h-full bg-card overflow-hidden">
-                  <ClinicalNotebookPanel />
+                  <ClinicalNotebookPanel displayedUserId={displayedUserId} />
                 </div>
               )}
             </div>
@@ -323,7 +328,7 @@ const Index = () => {
                 onCollapse={() => setLeftPanelCollapsed(true)}
                 onExpand={() => setLeftPanelCollapsed(false)}
               >
-                <CollapsibleDataPanel isCollapsed={leftPanelCollapsed} />
+                <CollapsibleDataPanel isCollapsed={leftPanelCollapsed} displayedUserId={displayedUserId} />
               </ResizablePanel>
 
               <ResizableHandle withHandle className="relative group">
@@ -345,7 +350,7 @@ const Index = () => {
               {/* Center Panel - Chat Assistant (Fixed, no collapsible) */}
               <ResizablePanel defaultSize={50} minSize={30}>
                 <div className="h-full flex flex-col overflow-hidden">
-                  <ChatPanel />
+                  <ChatPanel displayedUserId={displayedUserId} />
                 </div>
               </ResizablePanel>
 
@@ -375,7 +380,7 @@ const Index = () => {
                 onCollapse={() => setRightPanelCollapsed(true)}
                 onExpand={() => setRightPanelCollapsed(false)}
               >
-                <CollapsibleNotebookPanel isCollapsed={rightPanelCollapsed} />
+                <CollapsibleNotebookPanel isCollapsed={rightPanelCollapsed} displayedUserId={displayedUserId} />
               </ResizablePanel>
             </ResizablePanelGroup>
           </div>

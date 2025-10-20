@@ -3,9 +3,10 @@ import { ClinicalNotebookPanel } from "./ClinicalNotebookPanel";
 
 interface CollapsibleNotebookPanelProps {
   isCollapsed: boolean;
+  displayedUserId?: string;
 }
 
-export const CollapsibleNotebookPanel = ({ isCollapsed }: CollapsibleNotebookPanelProps) => {
+export const CollapsibleNotebookPanel = ({ isCollapsed, displayedUserId }: CollapsibleNotebookPanelProps) => {
   const tools = [
     { icon: Network, label: "Mapa", key: "clinical-map", color: "text-cyan-500" },
     { icon: FlaskConical, label: "Laboratorios", key: "paraclinicos", color: "text-emerald-500" },
@@ -39,7 +40,7 @@ export const CollapsibleNotebookPanel = ({ isCollapsed }: CollapsibleNotebookPan
       ) : (
         // Vista expandida - contenido completo
         <div className="h-full overflow-hidden">
-          <ClinicalNotebookPanel />
+          <ClinicalNotebookPanel displayedUserId={displayedUserId} />
         </div>
       )}
     </div>

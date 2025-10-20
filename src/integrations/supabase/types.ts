@@ -311,6 +311,36 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_access_logs: {
+        Row: {
+          access_details: Json | null
+          access_type: string
+          clinica_id: string
+          created_at: string | null
+          id: string
+          paciente_user_id: string
+          profesional_user_id: string
+        }
+        Insert: {
+          access_details?: Json | null
+          access_type: string
+          clinica_id: string
+          created_at?: string | null
+          id?: string
+          paciente_user_id: string
+          profesional_user_id: string
+        }
+        Update: {
+          access_details?: Json | null
+          access_type?: string
+          clinica_id?: string
+          created_at?: string | null
+          id?: string
+          paciente_user_id?: string
+          profesional_user_id?: string
+        }
+        Relationships: []
+      }
       patient_profiles: {
         Row: {
           age: number | null
@@ -366,6 +396,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profesional_patient_context: {
+        Row: {
+          current_clinica_id: string | null
+          current_patient_user_id: string | null
+          id: string
+          profesional_user_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          current_clinica_id?: string | null
+          current_patient_user_id?: string | null
+          id?: string
+          profesional_user_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          current_clinica_id?: string | null
+          current_patient_user_id?: string | null
+          id?: string
+          profesional_user_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       profesionales_clinicos: {
         Row: {

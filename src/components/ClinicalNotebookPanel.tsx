@@ -29,7 +29,11 @@ const analysisModules: AnalysisModule[] = [
   { id: 'analisis_corporal', title: 'Análisis Corporal', description: 'Gráficos de evolución de peso, IMC y signos vitales', icon: Activity, type: 'analisis_corporal' },
 ];
 
-export const ClinicalNotebookPanel = () => {
+interface ClinicalNotebookPanelProps {
+  displayedUserId?: string;
+}
+
+export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanelProps) => {
   const { toast } = useToast();
   const [generatingModule, setGeneratingModule] = useState<string | null>(null);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);

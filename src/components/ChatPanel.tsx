@@ -35,7 +35,11 @@ type ProgressStep = {
   status: 'pending' | 'in-progress' | 'completed';
 };
 
-export const ChatPanel = () => {
+interface ChatPanelProps {
+  displayedUserId?: string;
+}
+
+export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);

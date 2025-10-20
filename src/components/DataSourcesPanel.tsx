@@ -35,7 +35,11 @@ interface ClinicalDocument {
   processing_error?: string | null;
 }
 
-export const DataSourcesPanel = () => {
+interface DataSourcesPanelProps {
+  displayedUserId?: string;
+}
+
+export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => {
   const [profile, setProfile] = useState<PatientProfile | null>(null);
   const [documents, setDocuments] = useState<ClinicalDocument[]>([]);
   const [loading, setLoading] = useState(true);
