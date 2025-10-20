@@ -40,21 +40,24 @@ serve(async (req) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRweG95a2VzYWlvYWhjbHhibW1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5NDA5NDIsImV4cCI6MjA3NjUxNjk0Mn0.RFEFsg04wRZboOQ_UbnWtcLl3I-yWq5ilrKITgBvL2I'
+          'x-api-key': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRweG95a2VzYWlvYWhjbHhibW1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5NDA5NDIsImV4cCI6MjA3NjUxNjk0Mn0.RFEFsg04wRZboOQ_UbnWtcLl3I-yWq5ilrKITgBvL2I'
         },
         body: JSON.stringify({ tipoDocumento, numeroDocumento })
       }
     );
 
     if (!rethusResponse.ok) {
-      throw new Error('Error al consultar RETHUS');
+      const errorText = await rethusResponse.text();
+      console.error('Error RETHUS Response:', errorText);
+      throw new Error(`Error al consultar RETHUS: ${rethusResponse.status}`);
     }
 
     const rethusData = await rethusResponse.json();
-    console.log('Respuesta RETHUS:', rethusData);
+    console.log('Respuesta RETHUS completa:', JSON.stringify(rethusData, null, 2));
 
     // Determinar si la validación fue exitosa
-    const esValido = rethusData && rethusData.length > 0;
+    // La respuesta tiene estructura: { datos_academicos: [...] }
+    const esValido = rethusData?.datos_academicos && Array.isArray(rethusData.datos_academicos) && rethusData.datos_academicos.length > 0;
 
     // Actualizar o crear registro de profesional clínico
     const { data: existingProfesional } = await supabase
