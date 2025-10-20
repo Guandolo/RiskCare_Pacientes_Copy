@@ -26,7 +26,11 @@ export const SuperAdminPanel = () => {
   if (!isSuperAdmin) return null;
 
   const handleCreateClinica = async () => {
+    console.log('=== INICIO handleCreateClinica ===');
+    console.log('Datos de clínica:', clinicaData);
+    
     if (!clinicaData.nombre || !clinicaData.adminEmail) {
+      console.log('Validación fallida - falta nombre o documento');
       toast.error("Nombre y documento del administrador son requeridos");
       return;
     }
