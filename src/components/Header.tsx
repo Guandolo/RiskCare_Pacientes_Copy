@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import riskCareIcon from "@/assets/riskcare-icon.png";
 import { ProfesionalClinicoModal } from "./ProfesionalClinicoModal";
+import { ViewProfesionalDataModal } from "./ViewProfesionalDataModal";
 import { SuperAdminPanel } from "./SuperAdminPanel";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,9 @@ export const Header = () => {
   const { user, signOut } = useAuth();
   const { roles, isProfesional, isAdminClinica, isSuperAdmin } = useUserRole();
   const [showProfesionalModal, setShowProfesionalModal] = useState(false);
+  const [showViewDataModal, setShowViewDataModal] = useState(false);
   const [profesionalData, setProfesionalData] = useState<any>(null);
+  const [fullRethusData, setFullRethusData] = useState<any>(null);
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
 
@@ -36,6 +39,9 @@ export const Header = () => {
 
         if (error) throw error;
         
+        // Guardar datos completos para el modal de vista
+        setFullRethusData(data?.rethus_data);
+        
         // Extraer información del último registro académico
         const rethusData = data?.rethus_data as any;
         console.log('RETHUS Data completo:', rethusData);
@@ -45,10 +51,10 @@ export const Header = () => {
           console.log('Último dato académico:', ultimoDato);
           
           setProfesionalData({
-            profesion: ultimoDato.programa || ultimoDato.profesion || 'No especificada',
-            especialidad: ultimoDato.ocupacion || ultimoDato.especialidad || 'No especificada',
-            registroProfesional: ultimoDato.numero_tarjeta_profesional || ultimoDato.registro || 'No especificado',
-            institucion: ultimoDato.institucion_educativa || 'No especificada',
+            profesion: ultimoDato.profesion_u_ocupacion || 'No especificada',
+            especialidad: ultimoDato.tipo_programa || 'No especificada',
+            registroProfesional: ultimoDato.acto_administrativo || 'No especificado',
+            institucion: ultimoDato.entidad_reportadora || 'No especificada',
             totalTitulos: rethusData.datos_academicos.length,
             fechaValidacion: data.fecha_validacion
           });
@@ -166,14 +172,24 @@ export const Header = () => {
                             <GraduationCap className="h-3.5 w-3.5" />
                             <span>Información Profesional</span>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowProfesionalModal(true)}
-                            className="h-auto py-1 px-2 text-xs"
-                          >
-                            Actualizar
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setShowViewDataModal(true)}
+                              className="h-auto py-1 px-2 text-xs"
+                            >
+                              Ver Datos
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setShowProfesionalModal(true)}
+                              className="h-auto py-1 px-2 text-xs"
+                            >
+                              Actualizar
+                            </Button>
+                          </div>
                         </div>
                         <div className="text-xs text-muted-foreground space-y-1 ml-5">
                           {profesionalData.profesion && profesionalData.profesion !== 'No especificada' && (
@@ -309,6 +325,16 @@ export const Header = () => {
             window.location.reload();
           }}
         />
+
+        {/* Modal de Ver Datos Profesionales */}
+        {fullRethusData && profesionalData && (
+          <ViewProfesionalDataModal
+            open={showViewDataModal}
+            onOpenChange={setShowViewDataModal}
+            rethusData={fullRethusData}
+            fechaValidacion={profesionalData.fechaValidacion}
+          />
+        )}
       </div>
     </header>
   );
