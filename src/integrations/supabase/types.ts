@@ -82,6 +82,67 @@ export type Database = {
           },
         ]
       }
+      clinica_pacientes: {
+        Row: {
+          clinica_id: string
+          created_at: string | null
+          id: string
+          paciente_user_id: string
+          profesional_asignado_user_id: string | null
+        }
+        Insert: {
+          clinica_id: string
+          created_at?: string | null
+          id?: string
+          paciente_user_id: string
+          profesional_asignado_user_id?: string | null
+        }
+        Update: {
+          clinica_id?: string
+          created_at?: string | null
+          id?: string
+          paciente_user_id?: string
+          profesional_asignado_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinica_pacientes_clinica_id_fkey"
+            columns: ["clinica_id"]
+            isOneToOne: false
+            referencedRelation: "clinicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clinica_profesionales: {
+        Row: {
+          clinica_id: string
+          created_at: string | null
+          id: string
+          profesional_user_id: string
+        }
+        Insert: {
+          clinica_id: string
+          created_at?: string | null
+          id?: string
+          profesional_user_id: string
+        }
+        Update: {
+          clinica_id?: string
+          created_at?: string | null
+          id?: string
+          profesional_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinica_profesionales_clinica_id_fkey"
+            columns: ["clinica_id"]
+            isOneToOne: false
+            referencedRelation: "clinicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinical_documents: {
         Row: {
           created_at: string | null
@@ -190,6 +251,42 @@ export type Database = {
         }
         Relationships: []
       }
+      clinicas: {
+        Row: {
+          admin_user_id: string
+          created_at: string | null
+          direccion: string | null
+          email: string | null
+          id: string
+          nit: string | null
+          nombre: string
+          telefono: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          admin_user_id: string
+          created_at?: string | null
+          direccion?: string | null
+          email?: string | null
+          id?: string
+          nit?: string | null
+          nombre: string
+          telefono?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          admin_user_id?: string
+          created_at?: string | null
+          direccion?: string | null
+          email?: string | null
+          id?: string
+          nit?: string | null
+          nombre?: string
+          telefono?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string
@@ -256,15 +353,89 @@ export type Database = {
         }
         Relationships: []
       }
+      profesionales_clinicos: {
+        Row: {
+          created_at: string | null
+          estado_validacion: string | null
+          fecha_validacion: string | null
+          id: string
+          numero_documento: string
+          rethus_data: Json | null
+          tipo_documento: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          estado_validacion?: string | null
+          fecha_validacion?: string | null
+          id?: string
+          numero_documento: string
+          rethus_data?: Json | null
+          tipo_documento: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          estado_validacion?: string | null
+          fecha_validacion?: string | null
+          id?: string
+          numero_documento?: string
+          rethus_data?: Json | null
+          tipo_documento?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_any_role: {
+        Args: {
+          _roles: Database["public"]["Enums"]["app_role"][]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "paciente"
+        | "profesional_clinico"
+        | "admin_clinica"
+        | "superadmin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -391,6 +562,13 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "paciente",
+        "profesional_clinico",
+        "admin_clinica",
+        "superadmin",
+      ],
+    },
   },
 } as const
