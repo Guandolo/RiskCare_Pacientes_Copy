@@ -320,10 +320,12 @@ export type Database = {
           full_name: string | null
           id: string
           identification: string
+          is_verified: boolean | null
           phone: string | null
           topus_data: Json | null
           updated_at: string | null
           user_id: string
+          verification_document_id: string | null
         }
         Insert: {
           age?: number | null
@@ -333,10 +335,12 @@ export type Database = {
           full_name?: string | null
           id?: string
           identification: string
+          is_verified?: boolean | null
           phone?: string | null
           topus_data?: Json | null
           updated_at?: string | null
           user_id: string
+          verification_document_id?: string | null
         }
         Update: {
           age?: number | null
@@ -346,12 +350,22 @@ export type Database = {
           full_name?: string | null
           id?: string
           identification?: string
+          is_verified?: boolean | null
           phone?: string | null
           topus_data?: Json | null
           updated_at?: string | null
           user_id?: string
+          verification_document_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "patient_profiles_verification_document_id_fkey"
+            columns: ["verification_document_id"]
+            isOneToOne: false
+            referencedRelation: "clinical_documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profesionales_clinicos: {
         Row: {
