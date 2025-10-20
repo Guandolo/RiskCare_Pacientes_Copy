@@ -6,6 +6,8 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Logout from "./pages/Logout";
 import NotFound from "./pages/NotFound";
+import SuperAdmin from "./pages/SuperAdmin";
+import ClinicAdmin from "./pages/ClinicAdmin";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +20,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/logout" element={<Logout />} />
+          <Route path="/superadmin" element={<SuperAdmin />} />
+          <Route path="/admin-clinica" element={<ClinicAdmin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

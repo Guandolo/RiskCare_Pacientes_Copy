@@ -4,7 +4,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
-import { Sun, Moon, LogOut, MessageCircle, UserCog, Hospital, Shield } from "lucide-react";
+import { Sun, Moon, LogOut, MessageCircle, UserCog, Hospital, Shield, Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import riskCareIcon from "@/assets/riskcare-icon.png";
@@ -147,7 +147,35 @@ export const Header = () => {
                   <Separator />
                   <div className="space-y-2">
                     <h4 className="font-medium text-sm">Administración</h4>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate("/superadmin")}
+                      className="w-full justify-start"
+                    >
+                      <Building2 className="h-4 w-4 mr-2" />
+                      Portal SuperAdmin
+                    </Button>
                     <SuperAdminPanel />
+                  </div>
+                </>
+              )}
+
+              {/* Panel Admin Clínica */}
+              {isAdminClinica && !isSuperAdmin && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">Administración</h4>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate("/admin-clinica")}
+                      className="w-full justify-start"
+                    >
+                      <Hospital className="h-4 w-4 mr-2" />
+                      Mi Clínica
+                    </Button>
                   </div>
                 </>
               )}
