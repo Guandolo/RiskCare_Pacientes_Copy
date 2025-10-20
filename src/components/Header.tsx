@@ -1,16 +1,22 @@
-import { LogOut, User, HelpCircle, ExternalLink, Sun, Moon } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
-import { toast } from "@/components/ui/sonner";
-import riskCareIcon from "@/assets/riskcare-icon.png";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
-import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
+import { Sun, Moon, LogOut, MessageCircle, UserCog, Hospital, Shield } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import riskCareIcon from "@/assets/riskcare-icon.png";
+import { ProfesionalClinicoModal } from "./ProfesionalClinicoModal";
+import { SuperAdminPanel } from "./SuperAdminPanel";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 
 export const Header = () => {
   const { user, signOut } = useAuth();
+  const { roles, isProfesional, isAdminClinica, isSuperAdmin } = useUserRole();
+  const [showProfesionalModal, setShowProfesionalModal] = useState(false);
   const navigate = useNavigate();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
@@ -77,7 +83,6 @@ export const Header = () => {
           <PopoverTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2 h-auto py-2 px-3">
               <Avatar className="w-8 h-8">
-                <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.user_metadata?.full_name || user?.email || "Usuario"} />
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                   {getUserInitials()}
                 </AvatarFallback>
@@ -85,68 +90,124 @@ export const Header = () => {
               <span className="text-sm font-medium hidden sm:inline">{user?.email || "Usuario"}</span>
             </Button>
           </PopoverTrigger>
+          
           <PopoverContent className="w-80" align="end">
             <div className="space-y-4">
-              {/* User Info */}
-              <div className="flex items-center gap-3">
-                <Avatar className="w-12 h-12">
-                  <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.user_metadata?.full_name || user?.email || "Usuario"} />
-                  <AvatarFallback className="bg-primary text-primary-foreground">
-                    {getUserInitials()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">
-                    {user?.user_metadata?.full_name || user?.email || "Usuario"}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {user?.email}
-                  </p>
-                </div>
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Cuenta</h4>
+                <p className="text-sm text-muted-foreground">
+                  {user?.user_metadata?.full_name || user?.email}
+                </p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
 
+              {/* Roles del usuario */}
+              {roles.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">Mis Roles</h4>
+                    <div className="flex gap-2 flex-wrap">
+                      {isProfesional && (
+                        <Badge variant="secondary" className="text-xs">
+                          <UserCog className="h-3 w-3 mr-1" />
+                          Profesional
+                        </Badge>
+                      )}
+                      {isAdminClinica && (
+                        <Badge variant="secondary" className="text-xs">
+                          <Hospital className="h-3 w-3 mr-1" />
+                          Admin Clínica
+                        </Badge>
+                      )}
+                      {isSuperAdmin && (
+                        <Badge variant="default" className="text-xs">
+                          <Shield className="h-3 w-3 mr-1" />
+                          SuperAdmin
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Validarse como profesional */}
+              {!isProfesional && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      ¿Eres profesional de la salud?
+                    </p>
+                    <Button
+                      onClick={() => setShowProfesionalModal(true)}
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start"
+                    >
+                      <UserCog className="h-4 w-4 mr-2" />
+                      Validarme como Profesional
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {/* Panel SuperAdmin */}
+              {isSuperAdmin && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">Administración</h4>
+                    <SuperAdminPanel />
+                  </div>
+                </>
+              )}
+              
               <Separator />
 
-              {/* Actions */}
-              <div className="space-y-1">
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start gap-2 h-auto py-2"
-                  onClick={handleWhatsAppSupport}
-                >
-                  <HelpCircle className="w-4 h-4" />
-                  <span className="text-sm">Solicitar Ayuda</span>
-                  <ExternalLink className="w-3 h-3 ml-auto" />
-                </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleWhatsAppSupport}
+                className="w-full justify-start"
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Solicitar Ayuda
+              </Button>
 
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start gap-2 h-auto py-2 text-destructive hover:text-destructive"
-                  onClick={handleSignOut}
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span className="text-sm">Cerrar Sesión</span>
-                </Button>
-              </div>
-
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSignOut}
+                className="w-full justify-start text-destructive hover:text-destructive"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Cerrar Sesión
+              </Button>
+              
               <Separator />
-
-              {/* Disclaimer */}
-              <div className="text-xs text-muted-foreground text-center space-y-1">
-                <p>Esta plataforma pertenece a</p>
+              
+              <div className="text-xs text-muted-foreground text-center">
                 <a 
-                  href="https://ingenieria365.com/" 
+                  href="https://ingenieria365.com" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-primary hover:underline font-medium inline-flex items-center gap-1"
+                  className="hover:text-primary transition-colors"
                 >
-                  Ingeniería 365
-                  <ExternalLink className="w-3 h-3" />
+                  Esta plataforma pertenece a Ingenieria 365
                 </a>
               </div>
             </div>
           </PopoverContent>
         </Popover>
+
+        <ProfesionalClinicoModal
+          open={showProfesionalModal}
+          onOpenChange={setShowProfesionalModal}
+          onSuccess={() => {
+            window.location.reload();
+          }}
+        />
       </div>
     </header>
   );

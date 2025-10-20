@@ -27,21 +27,21 @@ export const SuperAdminPanel = () => {
 
   const handleCreateClinica = async () => {
     if (!clinicaData.nombre || !clinicaData.adminEmail) {
-      toast.error("Nombre y email del administrador son requeridos");
+      toast.error("Nombre y documento del administrador son requeridos");
       return;
     }
 
     setSubmitting(true);
     try {
-      // Buscar usuario por email
+      // Buscar usuario por documento de identidad
       const { data: adminUser, error: userError } = await supabase
         .from('patient_profiles')
         .select('user_id')
-        .eq('user_id', clinicaData.adminEmail) // Nota: necesitamos una forma de buscar por email
+        .eq('identification', clinicaData.adminEmail)
         .single();
 
       if (userError) {
-        toast.error("No se encontró un usuario con ese email. El administrador debe estar registrado primero.");
+        toast.error("No se encontró un usuario con ese documento. El administrador debe estar registrado primero.");
         setSubmitting(false);
         return;
       }
@@ -95,24 +95,12 @@ export const SuperAdminPanel = () => {
 
   return (
     <>
-      <Card className="p-6 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-lg bg-gradient-primary flex items-center justify-center">
-            <Building2 className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold">Panel SuperAdmin</h2>
-            <p className="text-sm text-muted-foreground">Gestión de clínicas y administradores</p>
-          </div>
-        </div>
-
-        <div className="grid gap-3">
-          <Button onClick={() => setShowCreateClinica(true)} className="w-full">
-            <UserPlus className="h-4 w-4 mr-2" />
-            Crear Nueva Clínica/IPS
-          </Button>
-        </div>
-      </Card>
+      <div className="space-y-2">
+        <Button onClick={() => setShowCreateClinica(true)} variant="outline" size="sm" className="w-full">
+          <Building2 className="h-4 w-4 mr-2" />
+          Crear Nueva Clínica/IPS
+        </Button>
+      </div>
 
       <Dialog open={showCreateClinica} onOpenChange={setShowCreateClinica}>
         <DialogContent className="sm:max-w-md">
