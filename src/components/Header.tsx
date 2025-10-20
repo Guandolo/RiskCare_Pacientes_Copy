@@ -10,31 +10,20 @@ import { toast } from "sonner";
 import riskCareIcon from "@/assets/riskcare-icon.png";
 import { ProfesionalClinicoModal } from "./ProfesionalClinicoModal";
 import { SuperAdminPanel } from "./SuperAdminPanel";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "next-themes";
 
 export const Header = () => {
   const { user, signOut } = useAuth();
   const { roles, isProfesional, isAdminClinica, isSuperAdmin } = useUserRole();
   const [showProfesionalModal, setShowProfesionalModal] = useState(false);
   const navigate = useNavigate();
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const { theme, setTheme } = useTheme();
 
-  useEffect(() => {
-    // Leer tema guardado o usar preferencia del sistema
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
-    
-    setTheme(initialTheme);
-    document.documentElement.classList.toggle('dark', initialTheme === 'dark');
-  }, []);
 
   const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+    setTheme(theme === 'light' ? 'dark' : 'light');
   };
 
   const handleSignOut = async () => {
