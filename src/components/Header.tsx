@@ -4,22 +4,45 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
-import { Sun, Moon, LogOut, MessageCircle, UserCog, Hospital, Shield, Building2 } from "lucide-react";
+import { Sun, Moon, LogOut, MessageCircle, UserCog, Hospital, Shield, Building2, GraduationCap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import riskCareIcon from "@/assets/riskcare-icon.png";
 import { ProfesionalClinicoModal } from "./ProfesionalClinicoModal";
 import { SuperAdminPanel } from "./SuperAdminPanel";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Header = () => {
   const { user, signOut } = useAuth();
   const { roles, isProfesional, isAdminClinica, isSuperAdmin } = useUserRole();
   const [showProfesionalModal, setShowProfesionalModal] = useState(false);
+  const [profesionalData, setProfesionalData] = useState<any>(null);
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
+
+  useEffect(() => {
+    const fetchProfesionalData = async () => {
+      if (!isProfesional || !user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('profesionales_clinicos')
+          .select('rethus_data')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error) throw error;
+        setProfesionalData(data?.rethus_data);
+      } catch (error) {
+        console.error('Error fetching professional data:', error);
+      }
+    };
+
+    fetchProfesionalData();
+  }, [isProfesional, user]);
 
 
   const toggleTheme = () => {
@@ -116,6 +139,26 @@ export const Header = () => {
                         </Badge>
                       )}
                     </div>
+                    
+                    {isProfesional && profesionalData && (
+                      <div className="mt-3 p-3 bg-muted rounded-lg space-y-1">
+                        <div className="flex items-center gap-2 text-xs font-medium">
+                          <GraduationCap className="h-3.5 w-3.5" />
+                          <span>Información Profesional</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground space-y-0.5 ml-5">
+                          {profesionalData.profesion && (
+                            <p><strong>Profesión:</strong> {profesionalData.profesion}</p>
+                          )}
+                          {profesionalData.especialidad && (
+                            <p><strong>Especialidad:</strong> {profesionalData.especialidad}</p>
+                          )}
+                          {profesionalData.registroProfesional && (
+                            <p><strong>Registro:</strong> {profesionalData.registroProfesional}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
