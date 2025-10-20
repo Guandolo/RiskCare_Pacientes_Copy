@@ -15,7 +15,6 @@ interface ProfesionalClinicoModalProps {
 
 export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isRevalidation = false }: ProfesionalClinicoModalProps) => {
   const [loading, setLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState('Validando...');
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [patientProfile, setPatientProfile] = useState<{document_type: string; identification: string; full_name: string; topus_data?: any} | null>(null);
   const [validationResult, setValidationResult] = useState<{success: boolean; message: string; rethusData?: any} | null>(null);
@@ -73,18 +72,7 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isReval
     }
 
     setLoading(true);
-    setLoadingMessage('Validando...');
     setValidationResult(null);
-
-    // Mensaje de espera después de 5 segundos
-    const waitingTimeout = setTimeout(() => {
-      setLoadingMessage('La consulta está tardando más de lo normal, estamos reintentando...');
-    }, 5000);
-
-    // Mensaje de segundo intento después de 15 segundos
-    const retryTimeout = setTimeout(() => {
-      setLoadingMessage('Realizando segundo intento, por favor espera...');
-    }, 15000);
 
     try {
       const tipoDocumentoMap: Record<string, string> = {
@@ -101,9 +89,6 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isReval
         }
       });
 
-      clearTimeout(waitingTimeout);
-      clearTimeout(retryTimeout);
-
       if (error) throw error;
 
       setValidationResult({
@@ -118,18 +103,14 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isReval
         toast.error("No se encontró registro profesional en RETHUS");
       }
     } catch (error) {
-      clearTimeout(waitingTimeout);
-      clearTimeout(retryTimeout);
-      
       console.error('Error validating professional:', error);
-      toast.error("Error al validar credenciales profesionales");
+      toast.error("Error al validar. La función está reintentando automáticamente...");
       setValidationResult({
         success: false,
-        message: "Error al conectar con el sistema de validación. Por favor intenta nuevamente."
+        message: "Error al conectar con RETHUS. Por favor intenta nuevamente."
       });
     } finally {
       setLoading(false);
-      setLoadingMessage('Validando...');
     }
   };
 
@@ -268,23 +249,14 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isReval
               )}
 
               {!validationResult?.success && (
-                <div className="space-y-3">
-                  {loading && (
-                    <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-                      <AlertDescription className="text-sm">
-                        {loadingMessage}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  <Button 
-                    onClick={handleValidate} 
-                    disabled={loading || loadingProfile}
-                    className="w-full"
-                  >
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {loading ? loadingMessage : isRevalidation ? 'Actualizar Validación' : 'Validar Credenciales'}
-                  </Button>
-                </div>
+                <Button 
+                  onClick={handleValidate} 
+                  disabled={loading || loadingProfile}
+                  className="w-full"
+                >
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {loading ? 'Validando...' : isRevalidation ? 'Actualizar Validación' : 'Validar Credenciales'}
+                </Button>
               )}
 
               {validationResult?.success && (
