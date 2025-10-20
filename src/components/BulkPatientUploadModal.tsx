@@ -40,14 +40,15 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
       const trimmed = line.trim();
       if (!trimmed) continue;
 
-      // Formato esperado: CC,1234567890 o CC,1234567890,Nombre Completo
-      const parts = trimmed.split(',').map(p => p.trim());
+      // Formato esperado: CC 1234567890 o CC,1234567890 o CC,1234567890,Nombre Completo
+      // Soportar espacio o coma como separador
+      const parts = trimmed.split(/[\s,]+/).filter(p => p.length > 0);
       
       if (parts.length >= 2) {
         patients.push({
-          documentType: parts[0],
+          documentType: parts[0].toUpperCase(),
           identification: parts[1],
-          fullName: parts[2] || undefined,
+          fullName: parts.slice(2).join(' ') || undefined,
           status: 'pending'
         });
       }
@@ -66,8 +67,20 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
         headers: { Authorization: `Bearer ${session.access_token}` }
       });
 
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
+
+      console.log('Topus validation response:', data);
+
+      // El edge function retorna { success: true, data: topusData }
+      if (!data || !data.success || !data.data) {
+        console.error('Invalid Topus response structure:', data);
+        return null;
+      }
+
+      return data.data;
     } catch (error) {
       console.error('Error validating with Topus:', error);
       return null;
@@ -100,12 +113,18 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
         // 1. Validar con Topus
         const topusData = await validateWithTopus(patient.documentType, patient.identification);
         
+        console.log('Topus validation result:', topusData);
+        
         if (!topusData || !topusData.result) {
+          const errorMsg = !topusData 
+            ? 'No se pudo validar con Topus' 
+            : 'Datos incompletos de Topus';
+          
           setResults(prev => prev.map((p, idx) => 
             idx === i ? { 
               ...p, 
               status: 'error', 
-              message: 'No se encontró en Topus' 
+              message: errorMsg
             } : p
           ));
           continue;
@@ -140,13 +159,15 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
           patientUserId = authData.user.id;
 
           // Crear perfil
+          const fullName = `${topusData.result.nombre || ''} ${topusData.result.s_nombre || ''} ${topusData.result.apellido || ''} ${topusData.result.s_apellido || ''}`.trim();
+          
           const { error: profileError } = await supabase
             .from('patient_profiles')
             .insert({
               user_id: patientUserId,
               document_type: patient.documentType,
               identification: patient.identification,
-              full_name: topusData.result.nombre + ' ' + topusData.result.apellido,
+              full_name: fullName,
               age: topusData.result.edad,
               eps: topusData.result.eps,
               topus_data: topusData
@@ -177,12 +198,14 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
 
         if (clinicaError) throw clinicaError;
 
+        const displayName = `${topusData.result.nombre || ''} ${topusData.result.s_nombre || ''} ${topusData.result.apellido || ''} ${topusData.result.s_apellido || ''}`.trim();
+        
         setResults(prev => prev.map((p, idx) => 
           idx === i ? { 
             ...p, 
             status: 'success', 
             message: existingProfile ? 'Asociado a clínica' : 'Creado y asociado',
-            fullName: topusData.result.nombre + ' ' + topusData.result.apellido
+            fullName: displayName
           } : p
         ));
 
@@ -239,9 +262,12 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="text-xs">
                 <strong>Formato esperado (uno por línea):</strong><br />
-                CC,1234567890<br />
-                TI,9876543210,Juan Pérez (el nombre es opcional)<br />
-                CE,1122334455
+                CC 1234567890 (con espacio)<br />
+                TI,9876543210 (con coma)<br />
+                CE 1122334455 Nombre Completo (nombre opcional)<br />
+                <span className="text-muted-foreground mt-1 block">
+                  Los datos se validarán automáticamente con Topus
+                </span>
               </AlertDescription>
             </Alert>
 
@@ -251,7 +277,7 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
                 id="bulkText"
                 value={bulkText}
                 onChange={(e) => setBulkText(e.target.value)}
-                placeholder="CC,1234567890&#10;TI,9876543210,Juan Pérez&#10;CE,1122334455"
+                placeholder="CC 1234567890&#10;TI 9876543210 Juan Pérez&#10;CE 1122334455"
                 className="min-h-[200px] font-mono text-sm"
                 disabled={processing}
               />
