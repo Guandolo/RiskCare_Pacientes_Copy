@@ -33,6 +33,8 @@ export const SuperAdminPanel = () => {
 
     setSubmitting(true);
     try {
+      console.log('Buscando usuario con documento:', clinicaData.adminEmail);
+      
       // Buscar usuario por documento de identidad
       const { data: adminUser, error: userError } = await supabase
         .from('patient_profiles')
@@ -40,11 +42,15 @@ export const SuperAdminPanel = () => {
         .eq('identification', clinicaData.adminEmail)
         .single();
 
-      if (userError) {
+      console.log('Resultado búsqueda usuario:', { adminUser, userError });
+
+      if (userError || !adminUser) {
         toast.error("No se encontró un usuario con ese documento. El administrador debe estar registrado primero.");
         setSubmitting(false);
         return;
       }
+
+      console.log('Creando clínica con admin_user_id:', adminUser.user_id);
 
       // Crear clínica
       const { data: clinica, error: clinicaError } = await supabase
@@ -60,18 +66,21 @@ export const SuperAdminPanel = () => {
         .select()
         .single();
 
+      console.log('Resultado creación clínica:', { clinica, clinicaError });
+
       if (clinicaError) throw clinicaError;
+
+      console.log('Asignando rol admin_clinica al usuario:', adminUser.user_id);
 
       // Asignar rol de admin_clinica al usuario
       const { error: roleError } = await supabase
         .from('user_roles')
-        .upsert({
+        .insert({
           user_id: adminUser.user_id,
           role: 'admin_clinica'
-        }, {
-          onConflict: 'user_id,role',
-          ignoreDuplicates: true
         });
+
+      console.log('Resultado asignación rol:', { roleError });
 
       if (roleError) throw roleError;
 
