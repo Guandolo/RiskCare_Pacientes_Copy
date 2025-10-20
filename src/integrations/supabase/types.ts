@@ -372,6 +372,7 @@ export type Database = {
           created_at: string | null
           estado_validacion: string | null
           fecha_validacion: string | null
+          historial_validaciones: Json | null
           id: string
           numero_documento: string
           rethus_data: Json | null
@@ -383,6 +384,7 @@ export type Database = {
           created_at?: string | null
           estado_validacion?: string | null
           fecha_validacion?: string | null
+          historial_validaciones?: Json | null
           id?: string
           numero_documento: string
           rethus_data?: Json | null
@@ -394,6 +396,7 @@ export type Database = {
           created_at?: string | null
           estado_validacion?: string | null
           fecha_validacion?: string | null
+          historial_validaciones?: Json | null
           id?: string
           numero_documento?: string
           rethus_data?: Json | null

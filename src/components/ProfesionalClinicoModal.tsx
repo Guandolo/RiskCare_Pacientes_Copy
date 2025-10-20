@@ -10,13 +10,15 @@ interface ProfesionalClinicoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  isRevalidation?: boolean;
 }
 
-export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess }: ProfesionalClinicoModalProps) => {
+export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isRevalidation = false }: ProfesionalClinicoModalProps) => {
   const [loading, setLoading] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [patientProfile, setPatientProfile] = useState<{document_type: string; identification: string; full_name: string} | null>(null);
   const [validationResult, setValidationResult] = useState<{success: boolean; message: string; rethusData?: any} | null>(null);
+  const [previousValidation, setPreviousValidation] = useState<{fecha: string; totalTitulos: number} | null>(null);
 
   useEffect(() => {
     const fetchPatientProfile = async () => {
@@ -35,6 +37,23 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess }: Profe
 
         if (error) throw error;
         setPatientProfile(data);
+
+        // Si es re-validación, obtener la última validación
+        if (isRevalidation) {
+          const { data: profesional } = await supabase
+            .from('profesionales_clinicos')
+            .select('fecha_validacion, rethus_data')
+            .eq('user_id', user.id)
+            .single();
+
+          if (profesional) {
+            const rethusData = profesional.rethus_data as any;
+            setPreviousValidation({
+              fecha: profesional.fecha_validacion,
+              totalTitulos: rethusData?.datos_academicos?.length || 0
+            });
+          }
+        }
       } catch (error) {
         console.error('Error fetching patient profile:', error);
         toast.error("No se pudo cargar tu perfil de paciente");
@@ -44,7 +63,7 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess }: Profe
     };
 
     fetchPatientProfile();
-  }, [open]);
+  }, [open, isRevalidation]);
 
   const handleValidate = async () => {
     if (!patientProfile) {
@@ -103,9 +122,11 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess }: Profe
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Validar como Profesional Clínico</DialogTitle>
+          <DialogTitle>{isRevalidation ? 'Actualizar Validación Profesional' : 'Validar como Profesional Clínico'}</DialogTitle>
           <DialogDescription>
-            Valida tus credenciales profesionales en el Registro RETHUS para acceder a funciones avanzadas
+            {isRevalidation 
+              ? 'Actualiza tu información profesional si has obtenido nuevos títulos o certificaciones' 
+              : 'Valida tus credenciales profesionales en el Registro RETHUS para acceder a funciones avanzadas'}
           </DialogDescription>
         </DialogHeader>
 
@@ -116,10 +137,24 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess }: Profe
             </div>
           ) : patientProfile ? (
             <>
+              {previousValidation && (
+                <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
+                  <AlertDescription>
+                    <div className="space-y-1 text-sm">
+                      <p className="font-medium">Última validación:</p>
+                      <p>• Fecha: {new Date(previousValidation.fecha).toLocaleDateString('es-CO')}</p>
+                      <p>• Títulos registrados: {previousValidation.totalTitulos}</p>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               <Alert>
                 <AlertDescription>
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Se validará con tu documento registrado:</p>
+                    <p className="text-sm font-medium">
+                      {isRevalidation ? 'Se actualizará con tu documento registrado:' : 'Se validará con tu documento registrado:'}
+                    </p>
                     <div className="text-sm">
                       <p><strong>Nombre:</strong> {patientProfile.full_name}</p>
                       <p><strong>Tipo:</strong> {patientProfile.document_type}</p>
@@ -154,16 +189,22 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess }: Profe
                         <div className="mt-3 space-y-2 text-sm text-green-800 dark:text-green-200">
                           <div className="flex items-start gap-2">
                             <GraduationCap className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="font-medium">Información Académica:</p>
+                            <div className="space-y-1">
+                              <p className="font-medium">Información Académica Encontrada:</p>
                               {validationResult.rethusData.profesion && (
                                 <p>• <strong>Profesión:</strong> {validationResult.rethusData.profesion}</p>
                               )}
                               {validationResult.rethusData.especialidad && (
-                                <p>• <strong>Especialidad:</strong> {validationResult.rethusData.especialidad}</p>
+                                <p>• <strong>Ocupación:</strong> {validationResult.rethusData.especialidad}</p>
                               )}
                               {validationResult.rethusData.registroProfesional && (
                                 <p>• <strong>Registro:</strong> {validationResult.rethusData.registroProfesional}</p>
+                              )}
+                              {validationResult.rethusData.institucion && (
+                                <p>• <strong>Institución:</strong> {validationResult.rethusData.institucion}</p>
+                              )}
+                              {validationResult.rethusData.totalTitulos && (
+                                <p className="mt-2 font-medium">Total de títulos: {validationResult.rethusData.totalTitulos}</p>
                               )}
                             </div>
                           </div>
@@ -180,7 +221,7 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess }: Profe
                 className="w-full"
               >
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {loading ? 'Validando...' : 'Validar Credenciales'}
+                {loading ? 'Validando...' : isRevalidation ? 'Actualizar Validación' : 'Validar Credenciales'}
               </Button>
             </>
           ) : (

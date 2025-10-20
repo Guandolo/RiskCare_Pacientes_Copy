@@ -30,12 +30,24 @@ export const Header = () => {
       try {
         const { data, error } = await supabase
           .from('profesionales_clinicos')
-          .select('rethus_data')
+          .select('rethus_data, fecha_validacion')
           .eq('user_id', user.id)
           .single();
 
         if (error) throw error;
-        setProfesionalData(data?.rethus_data);
+        
+        // Extraer información del último registro académico
+        const rethusData = data?.rethus_data as any;
+        if (rethusData?.datos_academicos && Array.isArray(rethusData.datos_academicos) && rethusData.datos_academicos.length > 0) {
+          const ultimoDato = rethusData.datos_academicos[0];
+          setProfesionalData({
+            profesion: ultimoDato.programa || ultimoDato.profesion || 'No especificada',
+            especialidad: ultimoDato.ocupacion || ultimoDato.especialidad || 'No especificada',
+            registroProfesional: ultimoDato.numero_tarjeta_profesional || ultimoDato.registro || 'No especificado',
+            totalTitulos: rethusData.datos_academicos.length,
+            fechaValidacion: data.fecha_validacion
+          });
+        }
       } catch (error) {
         console.error('Error fetching professional data:', error);
       }
@@ -141,20 +153,38 @@ export const Header = () => {
                     </div>
                     
                     {isProfesional && profesionalData && (
-                      <div className="mt-3 p-3 bg-muted rounded-lg space-y-1">
-                        <div className="flex items-center gap-2 text-xs font-medium">
-                          <GraduationCap className="h-3.5 w-3.5" />
-                          <span>Información Profesional</span>
+                      <div className="mt-3 p-3 bg-muted rounded-lg space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-xs font-medium">
+                            <GraduationCap className="h-3.5 w-3.5" />
+                            <span>Información Profesional</span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowProfesionalModal(true)}
+                            className="h-auto py-1 px-2 text-xs"
+                          >
+                            Actualizar
+                          </Button>
                         </div>
                         <div className="text-xs text-muted-foreground space-y-0.5 ml-5">
                           {profesionalData.profesion && (
                             <p><strong>Profesión:</strong> {profesionalData.profesion}</p>
                           )}
                           {profesionalData.especialidad && (
-                            <p><strong>Especialidad:</strong> {profesionalData.especialidad}</p>
+                            <p><strong>Ocupación:</strong> {profesionalData.especialidad}</p>
                           )}
                           {profesionalData.registroProfesional && (
                             <p><strong>Registro:</strong> {profesionalData.registroProfesional}</p>
+                          )}
+                          {profesionalData.totalTitulos && (
+                            <p><strong>Total títulos:</strong> {profesionalData.totalTitulos}</p>
+                          )}
+                          {profesionalData.fechaValidacion && (
+                            <p className="text-[10px] mt-1 opacity-70">
+                              Última validación: {new Date(profesionalData.fechaValidacion).toLocaleDateString('es-CO')}
+                            </p>
                           )}
                         </div>
                       </div>
@@ -264,6 +294,7 @@ export const Header = () => {
         <ProfesionalClinicoModal
           open={showProfesionalModal}
           onOpenChange={setShowProfesionalModal}
+          isRevalidation={isProfesional}
           onSuccess={() => {
             window.location.reload();
           }}

@@ -66,8 +66,20 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .single();
 
+    const validacionActual = {
+      fecha: new Date().toISOString(),
+      tipo_documento: tipoDocumento,
+      numero_documento: numeroDocumento,
+      datos_rethus: rethusData,
+      estado: esValido ? 'validado' : 'rechazado'
+    };
+
     if (existingProfesional) {
-      // Actualizar registro existente
+      // Obtener historial actual y agregar nueva validación
+      const historial = existingProfesional.historial_validaciones || [];
+      const nuevoHistorial = [...historial, validacionActual];
+      
+      // Actualizar registro existente con nueva validación y historial
       await supabase
         .from('profesionales_clinicos')
         .update({
@@ -75,11 +87,12 @@ serve(async (req) => {
           numero_documento: numeroDocumento,
           rethus_data: rethusData,
           estado_validacion: esValido ? 'validado' : 'rechazado',
-          fecha_validacion: new Date().toISOString()
+          fecha_validacion: new Date().toISOString(),
+          historial_validaciones: nuevoHistorial
         })
         .eq('user_id', user.id);
     } else {
-      // Crear nuevo registro
+      // Crear nuevo registro con primera validación en historial
       await supabase
         .from('profesionales_clinicos')
         .insert({
@@ -88,7 +101,8 @@ serve(async (req) => {
           numero_documento: numeroDocumento,
           rethus_data: rethusData,
           estado_validacion: esValido ? 'validado' : 'rechazado',
-          fecha_validacion: new Date().toISOString()
+          fecha_validacion: new Date().toISOString(),
+          historial_validaciones: [validacionActual]
         });
     }
 
@@ -105,12 +119,25 @@ serve(async (req) => {
         });
     }
 
+    // Extraer información académica relevante para mostrar
+    let rethusDataToReturn = null;
+    if (esValido && rethusData?.datos_academicos && rethusData.datos_academicos.length > 0) {
+      const ultimoDato = rethusData.datos_academicos[0];
+      rethusDataToReturn = {
+        profesion: ultimoDato.programa || ultimoDato.profesion || 'No especificada',
+        especialidad: ultimoDato.ocupacion || ultimoDato.especialidad || 'No especificada',
+        registroProfesional: ultimoDato.numero_tarjeta_profesional || ultimoDato.registro || 'No especificado',
+        institucion: ultimoDato.institucion_educativa || 'No especificada',
+        totalTitulos: rethusData.datos_academicos.length
+      };
+    }
+
     return new Response(
       JSON.stringify({
         success: esValido,
-        data: rethusData,
+        rethusData: rethusDataToReturn,
         message: esValido 
-          ? 'Profesional validado correctamente' 
+          ? `Profesional validado correctamente. Se encontraron ${rethusData.datos_academicos.length} título(s) académico(s).`
           : 'No se encontró registro en RETHUS'
       }),
       { 
