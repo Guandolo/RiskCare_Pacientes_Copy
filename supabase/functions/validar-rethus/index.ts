@@ -93,12 +93,13 @@ serve(async (req) => {
     if (esValido) {
       await supabase
         .from('user_roles')
-        .insert({
+        .upsert({
           user_id: user.id,
           role: 'profesional_clinico'
-        })
-        .onConflict('user_id, role')
-        .ignore();
+        }, {
+          onConflict: 'user_id,role',
+          ignoreDuplicates: true
+        });
     }
 
     return new Response(
