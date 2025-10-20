@@ -11,9 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Building2, Users, UserPlus, Trash2, Search, Heart, UserCog } from "lucide-react";
+import { Building2, Users, UserPlus, Trash2, Search, Heart, UserCog, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BulkPatientUploadModal } from "@/components/BulkPatientUploadModal";
 
 interface Clinica {
   id: string;
@@ -55,6 +56,7 @@ export default function ClinicAdmin() {
   const [loading, setLoading] = useState(true);
   const [showAddPaciente, setShowAddPaciente] = useState(false);
   const [showAddProfesional, setShowAddProfesional] = useState(false);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [pacienteDocument, setPacienteDocument] = useState("");
   const [profesionalDocument, setProfesionalDocument] = useState("");
@@ -361,10 +363,16 @@ export default function ClinicAdmin() {
           <TabsContent value="pacientes" className="mt-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Pacientes Asignados</h2>
-              <Button onClick={() => setShowAddPaciente(true)}>
-                <UserPlus className="h-4 w-4 mr-2" />
-                Agregar Paciente
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => setShowBulkUpload(true)} variant="outline">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Carga Masiva
+                </Button>
+                <Button onClick={() => setShowAddPaciente(true)}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Agregar Paciente
+                </Button>
+              </div>
             </div>
 
             <div className="grid gap-4">
@@ -440,6 +448,17 @@ export default function ClinicAdmin() {
         </Tabs>
       </div>
 
+      {/* Modal de Carga Masiva */}
+      {clinica && (
+        <BulkPatientUploadModal
+          open={showBulkUpload}
+          onOpenChange={setShowBulkUpload}
+          clinicaId={clinica.id}
+          onSuccess={loadClinicaData}
+        />
+      )}
+
+      {/* Dialog para agregar paciente individual */}
       <Dialog open={showAddPaciente} onOpenChange={setShowAddPaciente}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
