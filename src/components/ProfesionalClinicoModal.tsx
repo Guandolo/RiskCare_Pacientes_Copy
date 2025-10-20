@@ -16,7 +16,7 @@ interface ProfesionalClinicoModalProps {
 export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isRevalidation = false }: ProfesionalClinicoModalProps) => {
   const [loading, setLoading] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [patientProfile, setPatientProfile] = useState<{document_type: string; identification: string; full_name: string} | null>(null);
+  const [patientProfile, setPatientProfile] = useState<{document_type: string; identification: string; full_name: string; topus_data?: any} | null>(null);
   const [validationResult, setValidationResult] = useState<{success: boolean; message: string; rethusData?: any} | null>(null);
   const [previousValidation, setPreviousValidation] = useState<{fecha: string; totalTitulos: number} | null>(null);
 
@@ -31,7 +31,7 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isReval
 
         const { data, error } = await supabase
           .from('patient_profiles')
-          .select('document_type, identification, full_name')
+          .select('document_type, identification, full_name, topus_data')
           .eq('user_id', user.id)
           .single();
 
@@ -153,7 +153,17 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isReval
                       {isRevalidation ? 'Se actualizará con tu documento registrado:' : 'Se validará con tu documento registrado:'}
                     </p>
                     <div className="text-sm">
-                      <p><strong>Nombre:</strong> {patientProfile.full_name}</p>
+                      <p><strong>Nombre:</strong> {
+                        patientProfile.full_name || 
+                        (() => {
+                          const topusData = patientProfile.topus_data as any;
+                          if (topusData?.result) {
+                            const { nombre, s_nombre, apellido, s_apellido } = topusData.result;
+                            return `${nombre || ''} ${s_nombre || ''} ${apellido || ''} ${s_apellido || ''}`.trim();
+                          }
+                          return 'No disponible';
+                        })()
+                      }</p>
                       <p><strong>Tipo:</strong> {patientProfile.document_type}</p>
                       <p><strong>Número:</strong> {patientProfile.identification}</p>
                     </div>
