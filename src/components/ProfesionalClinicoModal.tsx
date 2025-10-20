@@ -98,11 +98,8 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isReval
       });
 
       if (data.success) {
-        toast.success("¡Validación exitosa! Ahora eres profesional clínico");
-        setTimeout(() => {
-          onSuccess();
-          onOpenChange(false);
-        }, 3000);
+        toast.success("¡Validación exitosa!");
+        // No cerramos automáticamente - dejamos que el usuario revise y confirme
       } else {
         toast.error("No se encontró registro profesional en RETHUS");
       }
@@ -186,26 +183,36 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isReval
                       </p>
                       
                       {validationResult.success && validationResult.rethusData && (
-                        <div className="mt-3 space-y-2 text-sm text-green-800 dark:text-green-200">
+                        <div className="mt-3 space-y-3 text-sm text-green-800 dark:text-green-200">
                           <div className="flex items-start gap-2">
                             <GraduationCap className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                            <div className="space-y-1">
-                              <p className="font-medium">Información Académica Encontrada:</p>
-                              {validationResult.rethusData.profesion && (
-                                <p>• <strong>Profesión:</strong> {validationResult.rethusData.profesion}</p>
-                              )}
-                              {validationResult.rethusData.especialidad && (
-                                <p>• <strong>Ocupación:</strong> {validationResult.rethusData.especialidad}</p>
-                              )}
-                              {validationResult.rethusData.registroProfesional && (
-                                <p>• <strong>Registro:</strong> {validationResult.rethusData.registroProfesional}</p>
-                              )}
-                              {validationResult.rethusData.institucion && (
-                                <p>• <strong>Institución:</strong> {validationResult.rethusData.institucion}</p>
-                              )}
-                              {validationResult.rethusData.totalTitulos && (
-                                <p className="mt-2 font-medium">Total de títulos: {validationResult.rethusData.totalTitulos}</p>
-                              )}
+                            <div className="space-y-2 flex-1">
+                              <p className="font-semibold">Información Académica Validada:</p>
+                              <div className="pl-2 space-y-1.5 border-l-2 border-green-300 dark:border-green-700">
+                                {validationResult.rethusData.profesion && (
+                                  <p>• <strong>Profesión:</strong> {validationResult.rethusData.profesion}</p>
+                                )}
+                                {validationResult.rethusData.especialidad && (
+                                  <p>• <strong>Ocupación:</strong> {validationResult.rethusData.especialidad}</p>
+                                )}
+                                {validationResult.rethusData.registroProfesional && (
+                                  <p>• <strong>Registro Profesional:</strong> {validationResult.rethusData.registroProfesional}</p>
+                                )}
+                                {validationResult.rethusData.institucion && (
+                                  <p>• <strong>Institución:</strong> {validationResult.rethusData.institucion}</p>
+                                )}
+                                {validationResult.rethusData.totalTitulos && (
+                                  <p className="mt-2 pt-2 border-t border-green-300 dark:border-green-700">
+                                    <strong>Total de títulos académicos:</strong> {validationResult.rethusData.totalTitulos}
+                                  </p>
+                                )}
+                              </div>
+                              <Alert className="mt-3 bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700">
+                                <AlertDescription className="text-xs text-green-900 dark:text-green-100">
+                                  <p className="font-medium mb-1">Por favor verifica que esta información sea correcta.</p>
+                                  <p>Si los datos mostrados corresponden a tu información académica, haz clic en "Confirmar" para completar la validación.</p>
+                                </AlertDescription>
+                              </Alert>
                             </div>
                           </div>
                         </div>
@@ -215,14 +222,40 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isReval
                 </div>
               )}
 
-              <Button 
-                onClick={handleValidate} 
-                disabled={loading || loadingProfile}
-                className="w-full"
-              >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {loading ? 'Validando...' : isRevalidation ? 'Actualizar Validación' : 'Validar Credenciales'}
-              </Button>
+              {!validationResult?.success && (
+                <Button 
+                  onClick={handleValidate} 
+                  disabled={loading || loadingProfile}
+                  className="w-full"
+                >
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {loading ? 'Validando...' : isRevalidation ? 'Actualizar Validación' : 'Validar Credenciales'}
+                </Button>
+              )}
+
+              {validationResult?.success && (
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => {
+                      setValidationResult(null);
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Validar Nuevamente
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      onSuccess();
+                      onOpenChange(false);
+                    }}
+                    className="flex-1"
+                  >
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Confirmar
+                  </Button>
+                </div>
+              )}
             </>
           ) : (
             <Alert>

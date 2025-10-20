@@ -38,15 +38,22 @@ export const Header = () => {
         
         // Extraer información del último registro académico
         const rethusData = data?.rethus_data as any;
+        console.log('RETHUS Data completo:', rethusData);
+        
         if (rethusData?.datos_academicos && Array.isArray(rethusData.datos_academicos) && rethusData.datos_academicos.length > 0) {
           const ultimoDato = rethusData.datos_academicos[0];
+          console.log('Último dato académico:', ultimoDato);
+          
           setProfesionalData({
             profesion: ultimoDato.programa || ultimoDato.profesion || 'No especificada',
             especialidad: ultimoDato.ocupacion || ultimoDato.especialidad || 'No especificada',
             registroProfesional: ultimoDato.numero_tarjeta_profesional || ultimoDato.registro || 'No especificado',
+            institucion: ultimoDato.institucion_educativa || 'No especificada',
             totalTitulos: rethusData.datos_academicos.length,
             fechaValidacion: data.fecha_validacion
           });
+        } else {
+          console.warn('No se encontraron datos académicos en rethus_data');
         }
       } catch (error) {
         console.error('Error fetching professional data:', error);
@@ -168,21 +175,24 @@ export const Header = () => {
                             Actualizar
                           </Button>
                         </div>
-                        <div className="text-xs text-muted-foreground space-y-0.5 ml-5">
-                          {profesionalData.profesion && (
+                        <div className="text-xs text-muted-foreground space-y-1 ml-5">
+                          {profesionalData.profesion && profesionalData.profesion !== 'No especificada' && (
                             <p><strong>Profesión:</strong> {profesionalData.profesion}</p>
                           )}
-                          {profesionalData.especialidad && (
+                          {profesionalData.especialidad && profesionalData.especialidad !== 'No especificada' && (
                             <p><strong>Ocupación:</strong> {profesionalData.especialidad}</p>
                           )}
-                          {profesionalData.registroProfesional && (
+                          {profesionalData.registroProfesional && profesionalData.registroProfesional !== 'No especificado' && (
                             <p><strong>Registro:</strong> {profesionalData.registroProfesional}</p>
                           )}
+                          {profesionalData.institucion && profesionalData.institucion !== 'No especificada' && (
+                            <p><strong>Institución:</strong> {profesionalData.institucion}</p>
+                          )}
                           {profesionalData.totalTitulos && (
-                            <p><strong>Total títulos:</strong> {profesionalData.totalTitulos}</p>
+                            <p className="pt-1"><strong>Total títulos:</strong> {profesionalData.totalTitulos}</p>
                           )}
                           {profesionalData.fechaValidacion && (
-                            <p className="text-[10px] mt-1 opacity-70">
+                            <p className="text-[10px] mt-1 pt-1 border-t opacity-70">
                               Última validación: {new Date(profesionalData.fechaValidacion).toLocaleDateString('es-CO')}
                             </p>
                           )}
