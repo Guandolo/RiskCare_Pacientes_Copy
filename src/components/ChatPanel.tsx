@@ -123,7 +123,8 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
       console.log('Loading suggestions with context...');
       const { data, error } = await supabase.functions.invoke('chat-suggestions', {
         body: { 
-          conversationContext: conversationContext || messages 
+          conversationContext: conversationContext || messages,
+          targetUserId: displayedUserId // Enviar el usuario que se está visualizando
         },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });

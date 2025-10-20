@@ -34,8 +34,48 @@ serve(async (req) => {
 
     const user = userData.user;
 
-    // Obtener el contexto de la conversación del body
-    const { conversationContext } = await req.json();
+    // Obtener el contexto de la conversación y el targetUserId del body
+    const { conversationContext, targetUserId } = await req.json();
+    
+    // Determinar qué usuario se está consultando
+    let patientUserId = user.id;
+    
+    // Si se proporciona targetUserId, verificar permisos
+    if (targetUserId && targetUserId !== user.id) {
+      // Verificar que el usuario autenticado es un profesional con acceso a este paciente
+      const { data: hasAccess } = await supabase.rpc('has_role', { 
+        _user_id: user.id, 
+        _role: 'profesional_clinico' 
+      });
+      
+      if (!hasAccess) {
+        return new Response(JSON.stringify({ error: "No autorizado para acceder a datos de otros usuarios" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      // Verificar que el profesional tiene acceso a este paciente a través de una clínica
+      const { data: clinicaAccess, error: accessError } = await supabase
+        .from('clinica_profesionales')
+        .select(`
+          clinica_id,
+          clinica_pacientes!inner(paciente_user_id)
+        `)
+        .eq('profesional_user_id', user.id)
+        .eq('clinica_pacientes.paciente_user_id', targetUserId)
+        .limit(1)
+        .maybeSingle();
+      
+      if (accessError || !clinicaAccess) {
+        return new Response(JSON.stringify({ error: "No tienes acceso a este paciente" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      patientUserId = targetUserId;
+    }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -45,19 +85,33 @@ serve(async (req) => {
       });
     }
 
-    // Cargar contexto (perfil + documentos breves)
+    // Cargar contexto (perfil + documentos breves) del paciente correcto
     const { data: profile } = await supabase
       .from("patient_profiles")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", patientUserId)
       .single();
 
     const { data: documents } = await supabase
       .from("clinical_documents")
       .select("file_name, document_type, document_date, extracted_text, structured_data, created_at")
-      .eq("user_id", user.id)
+      .eq("user_id", patientUserId)
       .order("created_at", { ascending: false })
       .limit(10);
+    
+    // Obtener información del profesional si aplica
+    let profesionalInfo = null;
+    if (targetUserId && targetUserId !== user.id) {
+      const { data: profData } = await supabase
+        .from('profesionales_clinicos')
+        .select('rethus_data')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (profData?.rethus_data) {
+        profesionalInfo = profData.rethus_data;
+      }
+    }
 
     console.log('Profile:', profile);
     console.log('Documents count:', documents?.length || 0);
@@ -110,7 +164,41 @@ serve(async (req) => {
       conversationSummary += '\nBASADO en esta conversación, genera preguntas de seguimiento que ayuden al usuario a profundizar en los temas que está explorando.\n';
     }
 
-    const systemPrompt = `Eres un asistente que genera preguntas EXPLORATORIAS para ayudar al paciente a COMPRENDER su información médica existente.
+    // Determinar el prompt del sistema según el rol
+    let systemPrompt = '';
+    
+    if (profesionalInfo) {
+      // Prompt para profesionales clínicos
+      const profesion = profesionalInfo.datos_academicos?.[0]?.profesion_u_ocupacion || 'profesional de la salud';
+      const especialidad = profesionalInfo.datos_academicos?.[0]?.tipo_programa || '';
+      
+      systemPrompt = `Eres un asistente clínico AVANZADO diseñado para apoyar a profesionales de la salud.
+
+CONTEXTO DEL PROFESIONAL:
+- Profesión: ${profesion}
+- Especialidad: ${especialidad}
+
+REGLAS FUNDAMENTALES:
+- Genera EXACTAMENTE 3 preguntas TÉCNICAS en español (máximo 15 palabras cada una)
+- Las preguntas deben usar TERMINOLOGÍA MÉDICA apropiada para un ${profesion}
+- ENFÓCATE en análisis clínicos, correlaciones, tendencias y hallazgos relevantes
+- Prioriza preguntas que ayuden en el proceso de EVALUACIÓN CLÍNICA
+- Si HAY contexto de conversación, genera preguntas de SEGUIMIENTO especializadas
+- Las preguntas pueden explorar diagnósticos diferenciales, criterios clínicos, y planes de manejo
+
+TIPOS DE PREGUNTAS SUGERIDAS (Enfoque Clínico):
+✓ "¿Cuál es la tendencia de [parámetro] en los últimos 6 meses?"
+✓ "¿Hay correlación entre [medicamento] y [resultado de laboratorio]?"
+✓ "¿Qué hallazgos relevantes muestran los estudios de [especialidad]?"
+✓ "¿Cuáles son los factores de riesgo identificados en el historial?"
+✓ "¿Hay adherencia al tratamiento de [condición]?"
+✓ "¿Qué criterios diagnósticos cumple según [guía clínica]?"
+✓ Preguntas de seguimiento basadas en evaluación clínica
+
+OBJETIVO: Facilitar la evaluación clínica del paciente con preguntas técnicas y relevantes.`;
+    } else {
+      // Prompt para pacientes
+      systemPrompt = `Eres un asistente que genera preguntas EXPLORATORIAS para ayudar al paciente a COMPRENDER su información médica existente.
 
 REGLAS FUNDAMENTALES - NO NEGOCIABLES:
 - Genera EXACTAMENTE 3 preguntas CORTAS en español (máximo 10 palabras cada una)
@@ -139,6 +227,7 @@ TIPOS DE PREGUNTAS PROHIBIDAS (Inducen a consejos médicos):
 ✗ Cualquier pregunta que espere una opinión clínica o recomendación
 
 OBJETIVO: El paciente debe poder explorar y comprender sus datos sin inducir al asistente a actuar como médico.`;
+    }
 
     const body: any = {
       model: "google/gemini-2.5-flash",
