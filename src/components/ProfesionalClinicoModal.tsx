@@ -189,17 +189,23 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isReval
                             <div className="space-y-2 flex-1">
                               <p className="font-semibold">Información Académica Validada:</p>
                               <div className="pl-2 space-y-1.5 border-l-2 border-green-300 dark:border-green-700">
-                                {validationResult.rethusData.profesion && (
-                                  <p>• <strong>Profesión:</strong> {validationResult.rethusData.profesion}</p>
+                                {validationResult.rethusData.profesion && validationResult.rethusData.profesion !== 'No especificada' && (
+                                  <p>• <strong>Profesión u Ocupación:</strong> {validationResult.rethusData.profesion}</p>
                                 )}
-                                {validationResult.rethusData.especialidad && (
-                                  <p>• <strong>Ocupación:</strong> {validationResult.rethusData.especialidad}</p>
+                                {validationResult.rethusData.especialidad && validationResult.rethusData.especialidad !== 'No especificada' && (
+                                  <p>• <strong>Tipo Programa:</strong> {validationResult.rethusData.especialidad}</p>
                                 )}
-                                {validationResult.rethusData.registroProfesional && (
-                                  <p>• <strong>Registro Profesional:</strong> {validationResult.rethusData.registroProfesional}</p>
+                                {validationResult.rethusData.registroProfesional && validationResult.rethusData.registroProfesional !== 'No especificado' && (
+                                  <p>• <strong>Acto Administrativo:</strong> {validationResult.rethusData.registroProfesional}</p>
                                 )}
-                                {validationResult.rethusData.institucion && (
-                                  <p>• <strong>Institución:</strong> {validationResult.rethusData.institucion}</p>
+                                {validationResult.rethusData.institucion && validationResult.rethusData.institucion !== 'No especificada' && (
+                                  <p>• <strong>Entidad Reportadora:</strong> {validationResult.rethusData.institucion}</p>
+                                )}
+                                {validationResult.rethusData.fechaInicio && (
+                                  <p>• <strong>Fecha Inicio Ejercer:</strong> {new Date(validationResult.rethusData.fechaInicio).toLocaleDateString('es-CO')}</p>
+                                )}
+                                {validationResult.rethusData.origenTitulo && validationResult.rethusData.origenTitulo !== 'No especificado' && (
+                                  <p>• <strong>Origen Título:</strong> {validationResult.rethusData.origenTitulo}</p>
                                 )}
                                 {validationResult.rethusData.totalTitulos && (
                                   <p className="mt-2 pt-2 border-t border-green-300 dark:border-green-700">

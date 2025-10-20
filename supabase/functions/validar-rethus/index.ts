@@ -124,10 +124,12 @@ serve(async (req) => {
     if (esValido && rethusData?.datos_academicos && rethusData.datos_academicos.length > 0) {
       const ultimoDato = rethusData.datos_academicos[0];
       rethusDataToReturn = {
-        profesion: ultimoDato.programa || ultimoDato.profesion || 'No especificada',
-        especialidad: ultimoDato.ocupacion || ultimoDato.especialidad || 'No especificada',
-        registroProfesional: ultimoDato.numero_tarjeta_profesional || ultimoDato.registro || 'No especificado',
-        institucion: ultimoDato.institucion_educativa || 'No especificada',
+        profesion: ultimoDato.profesion_u_ocupacion || 'No especificada',
+        especialidad: ultimoDato.tipo_programa || 'No especificada',
+        registroProfesional: ultimoDato.acto_administrativo || 'No especificado',
+        institucion: ultimoDato.entidad_reportadora || 'No especificada',
+        fechaInicio: ultimoDato.fecha_inicio_ejercer_acto_administrativo || null,
+        origenTitulo: ultimoDato.origen_obtencion_titulo || 'No especificado',
         totalTitulos: rethusData.datos_academicos.length
       };
     }
