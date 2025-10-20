@@ -15,6 +15,7 @@ import { Building2, Users, UserPlus, Trash2, Search, Heart, UserCog, Upload } fr
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BulkPatientUploadModal } from "@/components/BulkPatientUploadModal";
+import { AccessLogsTable } from "@/components/AccessLogsTable";
 
 interface Clinica {
   id: string;
@@ -349,7 +350,7 @@ export default function ClinicAdmin() {
         </Card>
 
         <Tabs defaultValue="pacientes" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="pacientes">
               <Heart className="h-4 w-4 mr-2" />
               Pacientes ({pacientes.length})
@@ -357,6 +358,10 @@ export default function ClinicAdmin() {
             <TabsTrigger value="profesionales">
               <UserCog className="h-4 w-4 mr-2" />
               Profesionales ({profesionales.length})
+            </TabsTrigger>
+            <TabsTrigger value="logs">
+              <Search className="h-4 w-4 mr-2" />
+              Registro de Accesos
             </TabsTrigger>
           </TabsList>
 
@@ -444,6 +449,10 @@ export default function ClinicAdmin() {
                 </div>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="logs" className="mt-6">
+            {clinica && <AccessLogsTable clinicaId={clinica.id} />}
           </TabsContent>
         </Tabs>
       </div>
