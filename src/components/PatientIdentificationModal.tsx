@@ -349,6 +349,21 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
         throw error;
       }
 
+      // Asignar rol de paciente al usuario
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .upsert({
+          user_id: user.id,
+          role: 'paciente'
+        }, {
+          onConflict: 'user_id,role',
+          ignoreDuplicates: true
+        });
+
+      if (roleError) {
+        console.error('Error asignando rol:', roleError);
+      }
+
       toast.success("¡Perfil creado exitosamente!");
       
       // Disparar evento para actualizar la vista del panel

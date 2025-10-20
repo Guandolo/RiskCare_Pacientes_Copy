@@ -8,6 +8,7 @@ import { CollapsibleNotebookPanel } from "@/components/CollapsibleNotebookPanel"
 import { Header } from "@/components/Header";
 import { PatientIdentificationModal } from "@/components/PatientIdentificationModal";
 import { MobileNavigation } from "@/components/MobileNavigation";
+import { RoleActions } from "@/components/RoleActions";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import Shepherd from 'shepherd.js';

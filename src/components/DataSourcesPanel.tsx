@@ -10,6 +10,7 @@ import { QuickUploadModal } from "./QuickUploadModal";
 import { DocumentLibraryModal } from "./DocumentLibraryModal";
 import { ClinicalRecordsModal } from "./ClinicalRecordsModal";
 import { UpdateClinicalDataModal } from "./UpdateClinicalDataModal";
+import { RoleActions } from "./RoleActions";
 import { toast } from "@/components/ui/sonner";
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -527,6 +528,9 @@ export const DataSourcesPanel = () => {
               </CollapsibleContent>
             </Card>
           </Collapsible>
+
+          {/* Role Actions Card */}
+          <RoleActions />
 
           {/* Mis Documentos Cargados - Botón tipo tarjeta */}
           <Tooltip>
