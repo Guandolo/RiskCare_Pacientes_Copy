@@ -15,6 +15,7 @@ interface ProfesionalClinicoModalProps {
 
 export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isRevalidation = false }: ProfesionalClinicoModalProps) => {
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('Validando...');
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [patientProfile, setPatientProfile] = useState<{document_type: string; identification: string; full_name: string; topus_data?: any} | null>(null);
   const [validationResult, setValidationResult] = useState<{success: boolean; message: string; rethusData?: any} | null>(null);
@@ -72,7 +73,18 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isReval
     }
 
     setLoading(true);
+    setLoadingMessage('Validando...');
     setValidationResult(null);
+
+    // Mensaje de espera después de 5 segundos
+    const waitingTimeout = setTimeout(() => {
+      setLoadingMessage('La consulta está tardando más de lo normal, estamos reintentando...');
+    }, 5000);
+
+    // Mensaje de segundo intento después de 15 segundos
+    const retryTimeout = setTimeout(() => {
+      setLoadingMessage('Realizando segundo intento, por favor espera...');
+    }, 15000);
 
     try {
       const tipoDocumentoMap: Record<string, string> = {
@@ -89,6 +101,9 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isReval
         }
       });
 
+      clearTimeout(waitingTimeout);
+      clearTimeout(retryTimeout);
+
       if (error) throw error;
 
       setValidationResult({
@@ -99,19 +114,22 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isReval
 
       if (data.success) {
         toast.success("¡Validación exitosa!");
-        // No cerramos automáticamente - dejamos que el usuario revise y confirme
       } else {
         toast.error("No se encontró registro profesional en RETHUS");
       }
     } catch (error) {
+      clearTimeout(waitingTimeout);
+      clearTimeout(retryTimeout);
+      
       console.error('Error validating professional:', error);
       toast.error("Error al validar credenciales profesionales");
       setValidationResult({
         success: false,
-        message: "Error al conectar con el sistema de validación"
+        message: "Error al conectar con el sistema de validación. Por favor intenta nuevamente."
       });
     } finally {
       setLoading(false);
+      setLoadingMessage('Validando...');
     }
   };
 
@@ -196,33 +214,44 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isReval
                         <div className="mt-3 space-y-3 text-sm text-green-800 dark:text-green-200">
                           <div className="flex items-start gap-2">
                             <GraduationCap className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                            <div className="space-y-2 flex-1">
+                            <div className="space-y-3 flex-1">
                               <p className="font-semibold">Información Académica Validada:</p>
-                              <div className="pl-2 space-y-1.5 border-l-2 border-green-300 dark:border-green-700">
-                                {validationResult.rethusData.profesion && validationResult.rethusData.profesion !== 'No especificada' && (
-                                  <p>• <strong>Profesión u Ocupación:</strong> {validationResult.rethusData.profesion}</p>
-                                )}
-                                {validationResult.rethusData.especialidad && validationResult.rethusData.especialidad !== 'No especificada' && (
-                                  <p>• <strong>Tipo Programa:</strong> {validationResult.rethusData.especialidad}</p>
-                                )}
-                                {validationResult.rethusData.registroProfesional && validationResult.rethusData.registroProfesional !== 'No especificado' && (
-                                  <p>• <strong>Acto Administrativo:</strong> {validationResult.rethusData.registroProfesional}</p>
-                                )}
-                                {validationResult.rethusData.institucion && validationResult.rethusData.institucion !== 'No especificada' && (
-                                  <p>• <strong>Entidad Reportadora:</strong> {validationResult.rethusData.institucion}</p>
-                                )}
-                                {validationResult.rethusData.fechaInicio && (
-                                  <p>• <strong>Fecha Inicio Ejercer:</strong> {new Date(validationResult.rethusData.fechaInicio).toLocaleDateString('es-CO')}</p>
-                                )}
-                                {validationResult.rethusData.origenTitulo && validationResult.rethusData.origenTitulo !== 'No especificado' && (
-                                  <p>• <strong>Origen Título:</strong> {validationResult.rethusData.origenTitulo}</p>
-                                )}
-                                {validationResult.rethusData.totalTitulos && (
-                                  <p className="mt-2 pt-2 border-t border-green-300 dark:border-green-700">
-                                    <strong>Total de títulos académicos:</strong> {validationResult.rethusData.totalTitulos}
+                              
+                              {/* Mostrar TODOS los títulos */}
+                              {validationResult.rethusData.datosAcademicos && validationResult.rethusData.datosAcademicos.length > 0 ? (
+                                <div className="space-y-3">
+                                  {validationResult.rethusData.datosAcademicos.map((titulo: any, index: number) => (
+                                    <div key={index} className="pl-2 space-y-1.5 border-l-2 border-green-300 dark:border-green-700 pb-3">
+                                      <p className="font-medium text-xs text-green-900 dark:text-green-100">
+                                        Título {index + 1} de {validationResult.rethusData.datosAcademicos.length}
+                                      </p>
+                                      
+                                      {titulo.profesion_u_ocupacion && (
+                                        <p>• <strong>Profesión u Ocupación:</strong> {titulo.profesion_u_ocupacion}</p>
+                                      )}
+                                      {titulo.tipo_programa && (
+                                        <p>• <strong>Tipo Programa:</strong> {titulo.tipo_programa}</p>
+                                      )}
+                                      {titulo.acto_administrativo && (
+                                        <p>• <strong>Acto Administrativo:</strong> {titulo.acto_administrativo}</p>
+                                      )}
+                                      {titulo.entidad_reportadora && (
+                                        <p>• <strong>Entidad Reportadora:</strong> {titulo.entidad_reportadora}</p>
+                                      )}
+                                      {titulo.fecha_inicio_ejercer_acto_administrativo && (
+                                        <p>• <strong>Fecha Inicio Ejercer:</strong> {new Date(titulo.fecha_inicio_ejercer_acto_administrativo).toLocaleDateString('es-CO')}</p>
+                                      )}
+                                      {titulo.origen_obtencion_titulo && (
+                                        <p>• <strong>Origen Título:</strong> {titulo.origen_obtencion_titulo}</p>
+                                      )}
+                                    </div>
+                                  ))}
+                                  
+                                  <p className="mt-2 pt-2 border-t border-green-300 dark:border-green-700 font-medium">
+                                    Total de títulos académicos: {validationResult.rethusData.datosAcademicos.length}
                                   </p>
-                                )}
-                              </div>
+                                </div>
+                              ) : null}
                               <Alert className="mt-3 bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700">
                                 <AlertDescription className="text-xs text-green-900 dark:text-green-100">
                                   <p className="font-medium mb-1">Por favor verifica que esta información sea correcta.</p>
@@ -239,14 +268,23 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isReval
               )}
 
               {!validationResult?.success && (
-                <Button 
-                  onClick={handleValidate} 
-                  disabled={loading || loadingProfile}
-                  className="w-full"
-                >
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {loading ? 'Validando...' : isRevalidation ? 'Actualizar Validación' : 'Validar Credenciales'}
-                </Button>
+                <div className="space-y-3">
+                  {loading && (
+                    <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                      <AlertDescription className="text-sm">
+                        {loadingMessage}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  <Button 
+                    onClick={handleValidate} 
+                    disabled={loading || loadingProfile}
+                    className="w-full"
+                  >
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {loading ? loadingMessage : isRevalidation ? 'Actualizar Validación' : 'Validar Credenciales'}
+                  </Button>
+                </div>
               )}
 
               {validationResult?.success && (

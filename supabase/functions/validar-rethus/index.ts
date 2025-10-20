@@ -31,28 +31,52 @@ serve(async (req) => {
 
     const { tipoDocumento, numeroDocumento } = await req.json();
 
-    console.log(`Validando profesional: ${tipoDocumento} ${numeroDocumento}`);
+    // Función para llamar a la API RETHUS con reintentos
+    const callRethusAPI = async (attempt: number = 1): Promise<any> => {
+      const maxAttempts = 3;
+      
+      try {
+        console.log(`Intento ${attempt} de ${maxAttempts} - Consultando RETHUS...`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos timeout
+        
+        const rethusResponse = await fetch(
+          'https://dpxoykesaioahclxbmmg.supabase.co/functions/v1/consulta-rethus',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRweG95a2VzYWlvYWhjbHhibW1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5NDA5NDIsImV4cCI6MjA3NjUxNjk0Mn0.RFEFsg04wRZboOQ_UbnWtcLl3I-yWq5ilrKITgBvL2I'
+            },
+            body: JSON.stringify({ tipoDocumento, numeroDocumento }),
+            signal: controller.signal
+          }
+        );
+        
+        clearTimeout(timeoutId);
 
-    // Llamar a la API RETHUS externa
-    const rethusResponse = await fetch(
-      'https://dpxoykesaioahclxbmmg.supabase.co/functions/v1/consulta-rethus',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRweG95a2VzYWlvYWhjbHhibW1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5NDA5NDIsImV4cCI6MjA3NjUxNjk0Mn0.RFEFsg04wRZboOQ_UbnWtcLl3I-yWq5ilrKITgBvL2I'
-        },
-        body: JSON.stringify({ tipoDocumento, numeroDocumento })
+        if (!rethusResponse.ok) {
+          throw new Error(`HTTP ${rethusResponse.status}`);
+        }
+
+        return await rethusResponse.json();
+        
+      } catch (error: any) {
+        console.error(`Error en intento ${attempt}:`, error.message);
+        
+        if (attempt < maxAttempts) {
+          const waitTime = attempt * 2000; // 2s, 4s
+          console.log(`Esperando ${waitTime}ms antes del siguiente intento...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          return callRethusAPI(attempt + 1);
+        }
+        
+        throw error;
       }
-    );
+    };
 
-    if (!rethusResponse.ok) {
-      const errorText = await rethusResponse.text();
-      console.error('Error RETHUS Response:', errorText);
-      throw new Error(`Error al consultar RETHUS: ${rethusResponse.status}`);
-    }
-
-    const rethusData = await rethusResponse.json();
+    const rethusData = await callRethusAPI();
     console.log('Respuesta RETHUS completa:', JSON.stringify(rethusData, null, 2));
 
     // Determinar si la validación fue exitosa
@@ -122,14 +146,8 @@ serve(async (req) => {
     // Extraer información académica relevante para mostrar
     let rethusDataToReturn = null;
     if (esValido && rethusData?.datos_academicos && rethusData.datos_academicos.length > 0) {
-      const ultimoDato = rethusData.datos_academicos[0];
       rethusDataToReturn = {
-        profesion: ultimoDato.profesion_u_ocupacion || 'No especificada',
-        especialidad: ultimoDato.tipo_programa || 'No especificada',
-        registroProfesional: ultimoDato.acto_administrativo || 'No especificado',
-        institucion: ultimoDato.entidad_reportadora || 'No especificada',
-        fechaInicio: ultimoDato.fecha_inicio_ejercer_acto_administrativo || null,
-        origenTitulo: ultimoDato.origen_obtencion_titulo || 'No especificado',
+        datosAcademicos: rethusData.datos_academicos,
         totalTitulos: rethusData.datos_academicos.length
       };
     }
