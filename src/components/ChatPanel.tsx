@@ -74,17 +74,19 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
     const init = async () => {
       await loadOrCreateConversation();
       await loadConversations();
-      // Solo cargar sugerencias iniciales si no se han cargado antes
-      if (!hasLoadedInitialSuggestions) {
+      // Solo cargar sugerencias iniciales si no se han cargado en esta sesión
+      const alreadyLoaded = typeof window !== 'undefined' && sessionStorage.getItem('rc_suggestions_loaded') === '1';
+      if (!alreadyLoaded) {
         loadSuggestions();
         setHasLoadedInitialSuggestions(true);
+        try { sessionStorage.setItem('rc_suggestions_loaded', '1'); } catch {}
       }
     };
     init();
     initializeSpeechRecognition();
 
     const handleDocumentsUpdate = () => {
-      // Solo regenerar sugerencias si hay una conversación activa
+      // Solo regenerar sugerencias si hay conversación activa (evitar en cambio de ventanas)
       if (currentConversationId && messages.length > 0) {
         loadSuggestions(messages);
       }
@@ -94,7 +96,7 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
     return () => {
       window.removeEventListener('documentsUpdated', handleDocumentsUpdate);
     };
-  }, [hasLoadedInitialSuggestions, currentConversationId, messages.length]);
+  }, [currentConversationId, messages.length]);
 
   // Reaccionar a cambios de autenticación (centralizado)
   useEffect(() => {
@@ -112,6 +114,7 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
         setCurrentConversationId(null);
         setConversations([]);
         setHasLoadedInitialSuggestions(false);
+        try { sessionStorage.removeItem('rc_suggestions_loaded'); } catch {}
       }
     };
     window.addEventListener('authChanged', handle);

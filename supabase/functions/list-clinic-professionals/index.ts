@@ -46,9 +46,10 @@ serve(async (req) => {
     await Promise.all(uniqueIds.map(async (id) => {
       try {
         const { data } = await admin.auth.admin.getUserById(id);
+        const user = data?.user;
         emails[id] = {
-          email: data.user.email ?? null,
-          full_name: (data.user.user_metadata?.full_name as string) || (data.user.user_metadata?.name as string) || null,
+          email: user?.email ?? null,
+          full_name: (user?.user_metadata?.full_name as string) || (user?.user_metadata?.name as string) || null,
         };
       } catch (_) {
         emails[id] = { email: null, full_name: null };

@@ -77,9 +77,9 @@ serve(async (req) => {
       patientUserId = targetUserId;
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY no configurada" }), {
+    const API_GEMINI = Deno.env.get("API_GEMINI");
+    if (!API_GEMINI) {
+      return new Response(JSON.stringify({ error: "API_GEMINI no configurada" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -263,84 +263,87 @@ OBJETIVO: El paciente debe poder explorar y comprender sus datos sin inducir al 
       tool_choice: { type: "function", function: { name: "suggest_questions" } },
     };
     
-    console.log('Calling AI for suggestions...');
+    console.log('Calling Gemini for suggestions...');
 
-    console.log('Calling AI for suggestions...');
-    
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+    const promptText = `${systemPrompt}\n\n${contextInfo}${conversationSummary}\n\nDevuelve SOLO un JSON válido con la forma {"suggestions":["...","...","..."]} con exactamente 3 preguntas cortas en español. No incluyas texto adicional.`;
 
-    if (!response.ok) {
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required, please add funds to your Lovable AI workspace." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_GEMINI}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: promptText }],
+            },
+          ],
+        }),
+      }
+    );
+
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text();
+      console.error('Gemini suggestions error:', geminiResponse.status, errorText);
+      if (geminiResponse.status === 429) {
+        return new Response(JSON.stringify({ error: 'Límite de solicitudes de Gemini excedido, intenta luego.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      const t = await response.text();
-      console.error("AI suggestions error:", response.status, t);
-      // Devolver preguntas por defecto si falla
+      // Defaults si falla
       const defaultSuggestions = [
-        "¿Qué significa hipertensión arterial?",
-        "¿Cuáles fueron mis últimos resultados?",
-        "¿Cuándo fue mi última consulta?",
+        '¿Qué significa hipertensión arterial?',
+        '¿Cuáles fueron mis últimos resultados?',
+        '¿Cuándo fue mi última consulta?',
       ];
       return new Response(JSON.stringify({ suggestions: defaultSuggestions }), {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const data = await response.json();
-    console.log('AI Response:', JSON.stringify(data).substring(0, 500));
-    
-    const choice = data.choices?.[0];
-    let suggestions: string[] = [];
+    const geminiData = await geminiResponse.json();
+    const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    const toolCalls = choice?.message?.tool_calls;
-    if (toolCalls && toolCalls[0]?.function?.arguments) {
+    let suggestions: string[] = [];
+    // Intentar parsear JSON
+    if (rawText) {
       try {
-        const args = JSON.parse(toolCalls[0].function.arguments);
-        console.log('Tool call args:', args);
-        if (Array.isArray(args.suggestions)) {
-          suggestions = args.suggestions;
+        const start = rawText.indexOf('{');
+        const end = rawText.lastIndexOf('}');
+        const jsonSlice = start !== -1 && end !== -1 ? rawText.slice(start, end + 1) : rawText;
+        const parsed = JSON.parse(jsonSlice);
+        if (Array.isArray(parsed?.suggestions)) {
+          suggestions = parsed.suggestions;
         }
       } catch (e) {
-        console.error('Error parsing tool call:', e);
+        console.warn('Gemini JSON parse fallback:', e);
       }
     }
 
-    // Fallback: intentar extraer del contenido
-    if (!suggestions.length && typeof choice?.message?.content === "string") {
-      console.log('Using fallback - parsing from content');
-      suggestions = choice.message.content
-        .split("\n")
-        .map((s: string) => s.replace(/^[-*•0-9.)\s]+/, "").trim())
-        .filter((s: string) => s.length > 10 && s.includes("?"))
+    // Fallback: extraer líneas con signos de pregunta
+    if (!suggestions.length && rawText) {
+      suggestions = rawText
+        .split('\n')
+        .map((s: string) => s.replace(/^[\-\*•0-9.)\s]+/, '').trim())
+        .filter((s: string) => s.length > 6 && s.includes('?'))
         .slice(0, 3);
     }
 
-    // Si aún no hay sugerencias, usar defaults
     if (!suggestions.length) {
-      console.log('No suggestions generated, using defaults');
       suggestions = [
-        "¿Qué significa hipertensión arterial?",
-        "¿Cuáles fueron mis últimos resultados?",
-        "¿Cuándo fue mi última consulta?",
+        '¿Qué significa hipertensión arterial?',
+        '¿Cuáles fueron mis últimos resultados?',
+        '¿Cuándo fue mi última consulta?',
       ];
     }
 
     console.log('Final suggestions:', suggestions);
-    
     return new Response(JSON.stringify({ suggestions }), {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
     console.error("chat-suggestions error:", e);
