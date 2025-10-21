@@ -137,7 +137,7 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
           continue;
         }
 
-        // 2. Crear o actualizar perfil del paciente
+        // 2. Verificar si ya existe perfil
         const { data: existingProfile } = await supabase
           .from('patient_profiles')
           .select('user_id')
@@ -145,50 +145,25 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
           .eq('identification', patient.identification)
           .maybeSingle();
 
-        let patientUserId = existingProfile?.user_id;
+        const fullName = `${topusData.result.nombre || ''} ${topusData.result.s_nombre || ''} ${topusData.result.apellido || ''} ${topusData.result.s_apellido || ''}`.trim();
 
-        if (!existingProfile) {
-          // Crear usuario y perfil
-          const email = `paciente.${patient.identification}@riskcare.temp`;
-          
-          // Mover creación al backend seguro
-          const { data: adminCreateResp, error: adminCreateErr } = await supabase.functions.invoke('admin-create-patient', {
-            body: {
-              clinicaId,
-              documentType: patient.documentType,
-              identification: patient.identification,
-              fullName,
-              topusData
-            },
-            headers: { Authorization: `Bearer ${session.access_token}` }
-          });
-          if (adminCreateErr) throw adminCreateErr;
-          patientUserId = adminCreateResp?.userId;
+        // 3. Llamar al backend para crear/asociar
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('No session');
 
-          if (authError) throw authError;
-          patientUserId = authData.user.id;
+        const { data: adminCreateResp, error: adminCreateErr } = await supabase.functions.invoke('admin-create-patient', {
+          body: {
+            clinicaId,
+            documentType: patient.documentType,
+            identification: patient.identification,
+            fullName,
+            topusData
+          },
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        });
+        if (adminCreateErr) throw adminCreateErr;
 
-          // Crear perfil
-          const fullName = `${topusData.result.nombre || ''} ${topusData.result.s_nombre || ''} ${topusData.result.apellido || ''} ${topusData.result.s_apellido || ''}`.trim();
-          
-          // Perfil y rol se manejan en el backend
-
-          if (profileError) throw profileError;
-
-          // Asignar rol de paciente
-          // Rol asignado en el backend
-
-          if (roleError) throw roleError;
-        }
-
-        // 3. Asociar a la clínica
-        // Asociación a clínica realizada en el backend
-
-        if (clinicaError) throw clinicaError;
-
-        const displayName = `${topusData.result.nombre || ''} ${topusData.result.s_nombre || ''} ${topusData.result.apellido || ''} ${topusData.result.s_apellido || ''}`.trim();
-        
-        const updated: PatientRow = { ...patient, status: 'success', message: existingProfile ? 'Asociado a clínica' : 'Creado y asociado', fullName: displayName };
+        const updated: PatientRow = { ...patient, status: 'success', message: existingProfile ? 'Asociado a clínica' : 'Creado y asociado', fullName };
         processedResults.push(updated);
         setResults(prev => prev.map((p, idx) => idx === i ? updated : p));
 

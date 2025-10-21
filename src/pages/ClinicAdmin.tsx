@@ -44,7 +44,9 @@ interface Profesional {
   profesional_user_id: string;
   profesional: {
     identification: string;
+    document_type?: string | null;
     full_name: string | null;
+    email?: string | null;
   };
 }
 
@@ -354,7 +356,7 @@ export default function ClinicAdmin() {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Pacientes Asignados</h2>
               <div className="flex gap-2">
-                <Button onClick={() => setShowBulkUpload(true)} variant="outline">
+                <Button onClick={() => setShowBulkPatients(true)} variant="outline">
                   <Upload className="h-4 w-4 mr-2" />
                   Carga Masiva
                 </Button>
@@ -405,7 +407,7 @@ export default function ClinicAdmin() {
                   <UserPlus className="h-4 w-4 mr-2" />
                   Agregar Profesional
                 </Button>
-                <Button variant="outline" onClick={() => setShowBulkUpload(true)}>
+                <Button variant="outline" onClick={() => setShowBulkProfessionals(true)}>
                   <Upload className="h-4 w-4 mr-2" />
                   Carga Masiva
                 </Button>
@@ -423,9 +425,9 @@ export default function ClinicAdmin() {
                       <p className="text-sm text-muted-foreground">
                         {profesional.profesional?.document_type || 'DOC'}: {profesional.profesional?.identification}
                       </p>
-                      { (profesional as any).profesional?.email && (
-                        <p className="text-sm text-muted-foreground">Email: {(profesional as any).profesional.email}</p>
-                      ) }
+                      {profesional.profesional?.email && (
+                        <p className="text-sm text-muted-foreground">Email: {profesional.profesional.email}</p>
+                      )}
                     </div>
                     <Button
                       variant="outline"
@@ -454,8 +456,8 @@ export default function ClinicAdmin() {
       {/* Modal de Carga Masiva Pacientes */}
       {clinica && (
         <BulkPatientUploadModal
-          open={showBulkUpload && false}
-          onOpenChange={setShowBulkUpload}
+          open={showBulkPatients}
+          onOpenChange={setShowBulkPatients}
           clinicaId={clinica.id}
           onSuccess={loadClinicaData}
         />
@@ -464,8 +466,8 @@ export default function ClinicAdmin() {
       {/* Modal de Carga Masiva Profesionales */}
       {clinica && (
         <BulkProfessionalUploadModal
-          open={showBulkUpload}
-          onOpenChange={setShowBulkUpload}
+          open={showBulkProfessionals}
+          onOpenChange={setShowBulkProfessionals}
           clinicaId={clinica.id}
           onSuccess={loadClinicaData}
         />
