@@ -111,13 +111,24 @@ export default function ClinicAdmin() {
         (pacientesData || []).map(async (cp) => {
           const { data: profile } = await supabase
             .from('patient_profiles')
-            .select('full_name, identification, age, eps')
+            .select('full_name, identification, age, eps, topus_data')
             .eq('user_id', cp.paciente_user_id)
-            .single();
+            .maybeSingle();
+          
+          const displayName = (profile?.full_name 
+            || (profile as any)?.topus_data?.result?.nombre_completo
+            || [
+              (profile as any)?.topus_data?.result?.nombre,
+              (profile as any)?.topus_data?.result?.s_nombre,
+              (profile as any)?.topus_data?.result?.apellido,
+              (profile as any)?.topus_data?.result?.s_apellido,
+            ].filter(Boolean).join(' ').trim()) ?? null;
           
           return {
             ...cp,
-            patient_profile: profile || { full_name: null, identification: '', age: null, eps: null }
+            patient_profile: profile 
+              ? { ...profile, full_name: displayName }
+              : { full_name: null, identification: '', age: null, eps: null }
           };
         })
       );
@@ -148,31 +159,34 @@ export default function ClinicAdmin() {
 
     setSubmitting(true);
     try {
-      const { data: pacienteUser, error: userError } = await supabase
-        .from('patient_profiles')
-        .select('user_id')
-        .eq('identification', pacienteDocument)
-        .maybeSingle();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Sesión no disponible');
 
-      if (userError || !pacienteUser) {
-        toast.error("No se encontró un paciente con ese documento");
-        setSubmitting(false);
-        return;
-      }
+      // Validar y enriquecer con Topus
+      const { data: topusResp, error: topusErr } = await supabase.functions.invoke('fetch-topus-data', {
+        body: { documentType: 'CC', identification: pacienteDocument.trim() },
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+      if (topusErr) throw topusErr;
 
-      const { error } = await supabase
-        .from('clinica_pacientes')
-        .insert({
-          clinica_id: clinica!.id,
-          paciente_user_id: pacienteUser.user_id
-        });
+      const topusData = topusResp?.data ?? null;
 
-      if (error) throw error;
+      // Crear/asociar mediante backend (evita problemas de RLS)
+      const { error: createErr } = await supabase.functions.invoke('admin-create-patient', {
+        body: {
+          clinicaId: clinica!.id,
+          documentType: 'CC',
+          identification: pacienteDocument.trim(),
+          topusData,
+        },
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+      if (createErr) throw createErr;
 
       toast.success("Paciente agregado exitosamente");
       setShowAddPaciente(false);
       setPacienteDocument("");
-      loadClinicaData();
+      await loadClinicaData();
     } catch (error: any) {
       console.error('Error:', error);
       toast.error(error.message || "Error al agregar paciente");
@@ -189,31 +203,23 @@ export default function ClinicAdmin() {
 
     setSubmitting(true);
     try {
-      const { data: profesionalUser, error: userError } = await supabase
-        .from('profesionales_clinicos')
-        .select('user_id')
-        .eq('numero_documento', profesionalDocument)
-        .maybeSingle();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Sesión no disponible');
 
-      if (userError || !profesionalUser) {
-        toast.error("No se encontró un profesional con ese documento");
-        setSubmitting(false);
-        return;
-      }
-
-      const { error } = await supabase
-        .from('clinica_profesionales')
-        .insert({
-          clinica_id: clinica!.id,
-          profesional_user_id: profesionalUser.user_id
-        });
-
-      if (error) throw error;
+      const { error: proErr } = await supabase.functions.invoke('admin-create-professional', {
+        body: {
+          clinicaId: clinica!.id,
+          documentType: 'CC',
+          identification: profesionalDocument.trim(),
+        },
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+      if (proErr) throw proErr;
 
       toast.success("Profesional agregado exitosamente");
       setShowAddProfesional(false);
       setProfesionalDocument("");
-      loadClinicaData();
+      await loadClinicaData();
     } catch (error: any) {
       console.error('Error:', error);
       toast.error(error.message || "Error al agregar profesional");
