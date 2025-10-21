@@ -74,20 +74,27 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
     const init = async () => {
       await loadOrCreateConversation();
       await loadConversations();
-      loadSuggestions();
+      // Solo cargar sugerencias iniciales si no se han cargado antes
+      if (!hasLoadedInitialSuggestions) {
+        loadSuggestions();
+        setHasLoadedInitialSuggestions(true);
+      }
     };
     init();
     initializeSpeechRecognition();
 
     const handleDocumentsUpdate = () => {
-      loadSuggestions();
+      // Solo regenerar sugerencias si hay una conversación activa
+      if (currentConversationId && messages.length > 0) {
+        loadSuggestions(messages);
+      }
     };
     window.addEventListener('documentsUpdated', handleDocumentsUpdate);
 
     return () => {
       window.removeEventListener('documentsUpdated', handleDocumentsUpdate);
     };
-  }, []);
+  }, [hasLoadedInitialSuggestions, currentConversationId, messages.length]);
 
   // Reaccionar a cambios de autenticación (centralizado)
   useEffect(() => {
@@ -109,7 +116,7 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
     };
     window.addEventListener('authChanged', handle);
     return () => window.removeEventListener('authChanged', handle);
-  }, [hasLoadedInitialSuggestions]);
+  }, []); // Sin dependencias para evitar re-suscripciones
 
   const loadSuggestions = async (conversationContext?: Message[]) => {
     try {
@@ -220,6 +227,7 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
       setCurrentConversationId(null);
       setMessages([]);
       setSuggestions([]);
+      // Cargar sugerencias solo para conversación nueva (sin contexto)
       loadSuggestions([]);
       
       // Solo mostrar toast si fue acción manual del usuario (cuando ya hay una conversación activa)
@@ -241,10 +249,8 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
       await loadChatHistory(conversationId);
       setHistoryOpen(false);
       
-      // Cargar sugerencias para la conversación cargada después de un pequeño delay
-      setTimeout(() => {
-        loadSuggestions();
-      }, 300);
+      // NO regenerar sugerencias automáticamente al cargar conversación
+      // Las sugerencias se regenerarán solo cuando el usuario envíe un mensaje
       
       toast({
         title: "Conversación cargada",
@@ -582,7 +588,7 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
   const handleUploadSuccess = () => {
     toast({ title: 'Éxito', description: 'Documento cargado y verificado correctamente' });
     window.dispatchEvent(new CustomEvent('documentsUpdated'));
-    loadSuggestions();
+    // Las sugerencias se actualizarán automáticamente via el evento documentsUpdated
   };
 
   const handleCopyMessage = (content: string) => {
