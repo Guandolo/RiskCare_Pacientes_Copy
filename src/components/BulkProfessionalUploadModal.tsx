@@ -37,12 +37,12 @@ export const BulkProfessionalUploadModal = ({ open, onOpenChange, clinicaId, onS
     const out: Row[] = [];
     for (const line of lines) {
       const parts = line.trim().split(/[\s,]+/).filter(Boolean);
-      // Formato: email DOC IDENT [Nombre...]
+      // Formato: DOC IDENT EMAIL [Nombre...]
       if (parts.length >= 3) {
         out.push({
-          email: parts[0],
-          documentType: parts[1].toUpperCase(),
-          identification: parts[2],
+          documentType: parts[0].toUpperCase(),
+          identification: parts[1],
+          email: parts[2],
           fullName: parts.slice(3).join(' ') || undefined,
           status: 'pending'
         });
@@ -128,7 +128,7 @@ export const BulkProfessionalUploadModal = ({ open, onOpenChange, clinicaId, onS
             Carga Masiva de Profesionales
           </DialogTitle>
           <DialogDescription>
-            Formato: EMAIL DOC_TIPO DOC_NUMERO NOMBRE_OPCIONAL (uno por línea)
+            Formato: DOC_TIPO DOC_NUMERO EMAIL NOMBRE_OPCIONAL (uno por línea)
           </DialogDescription>
         </DialogHeader>
 
@@ -139,8 +139,8 @@ export const BulkProfessionalUploadModal = ({ open, onOpenChange, clinicaId, onS
                 <AlertCircle className="h-4 w-4 mt-0.5" />
                 <div>
                   <strong>Ejemplos (uno por línea):</strong><br />
-                  user1@acme.com CC 12345678 Juan Pérez<br />
-                  user2@acme.com TI 9876543<br />
+                  CC 12345678 user1@acme.com Juan Pérez<br />
+                  TI 9876543 user2@acme.com<br />
                   <span className="text-muted-foreground mt-1 block">Tipos válidos: CC, TI, CE, PA, RC, NU, CD, CN, SC, PE, PT</span>
                 </div>
               </div>
@@ -148,7 +148,7 @@ export const BulkProfessionalUploadModal = ({ open, onOpenChange, clinicaId, onS
 
             <div className="space-y-2">
               <Label htmlFor="bulkProText">Lista de Profesionales</Label>
-              <Textarea id="bulkProText" value={text} onChange={(e) => setText(e.target.value)} placeholder="user@acme.com CC 12345678 Juan Pérez" className="min-h-[200px] font-mono text-sm" disabled={processing} />
+              <Textarea id="bulkProText" value={text} onChange={(e) => setText(e.target.value)} placeholder="CC 12345678 user@acme.com Juan Pérez" className="min-h-[200px] font-mono text-sm" disabled={processing} />
               <p className="text-xs text-muted-foreground">{parse().length} filas detectadas</p>
             </div>
 
@@ -166,7 +166,7 @@ export const BulkProfessionalUploadModal = ({ open, onOpenChange, clinicaId, onS
                 {rows.map((r, idx) => (
                   <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex-1">
-                      <p className="font-medium text-sm">{r.email} • {r.documentType} {r.identification}</p>
+                      <p className="font-medium text-sm">{r.documentType} {r.identification} • {r.email}</p>
                       {r.fullName && <p className="text-xs text-muted-foreground">{r.fullName}</p>}
                       {r.message && <p className="text-xs text-muted-foreground mt-1">{r.message}</p>}
                     </div>

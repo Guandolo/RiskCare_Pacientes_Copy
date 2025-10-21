@@ -40,8 +40,7 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
       const trimmed = line.trim();
       if (!trimmed) continue;
 
-      // Formato esperado: CC 1234567890 o CC,1234567890 o CC,1234567890,Nombre Completo
-      // Soportar espacio o coma como separador
+      // Formato: DOC_TIPO DOC_NUMERO [Nombre...]
       const parts = trimmed.split(/[\s,]+/).filter(p => p.length > 0);
       
       if (parts.length >= 2) {
@@ -207,7 +206,7 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
             Carga Masiva de Pacientes
           </DialogTitle>
           <DialogDescription>
-            Ingresa los datos de los pacientes en formato: TIPO_DOC,NUMERO,NOMBRE (uno por línea)
+            Formato: DOC_TIPO DOC_NUMERO NOMBRE_OPCIONAL (uno por línea)
           </DialogDescription>
         </DialogHeader>
 
@@ -216,12 +215,11 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="text-xs">
-                <strong>Formato esperado (uno por línea):</strong><br />
-                CC 1234567890 (con espacio)<br />
-                TI,9876543210 (con coma)<br />
-                CE 1122334455 Nombre Completo (nombre opcional)<br />
+                <strong>Ejemplos (uno por línea):</strong><br />
+                CC 1234567890<br />
+                TI 9876543210 Juan Pérez<br />
                 <span className="text-muted-foreground mt-1 block">
-                  Los datos se validarán automáticamente con Topus
+                  Tipos válidos: CC, TI, CE, PA, RC, NU, CD, CN, SC, PE, PT
                 </span>
               </AlertDescription>
             </Alert>
@@ -232,7 +230,7 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
                 id="bulkText"
                 value={bulkText}
                 onChange={(e) => setBulkText(e.target.value)}
-                placeholder="CC 1234567890&#10;TI 9876543210 Juan Pérez&#10;CE 1122334455"
+                placeholder="CC 1234567890 Juan Pérez"
                 className="min-h-[200px] font-mono text-sm"
                 disabled={processing}
               />

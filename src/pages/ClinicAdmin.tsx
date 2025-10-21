@@ -152,7 +152,7 @@ export default function ClinicAdmin() {
         .from('patient_profiles')
         .select('user_id')
         .eq('identification', pacienteDocument)
-        .single();
+        .maybeSingle();
 
       if (userError || !pacienteUser) {
         toast.error("No se encontró un paciente con ese documento");
@@ -190,10 +190,10 @@ export default function ClinicAdmin() {
     setSubmitting(true);
     try {
       const { data: profesionalUser, error: userError } = await supabase
-        .from('patient_profiles')
+        .from('profesionales_clinicos')
         .select('user_id')
-        .eq('identification', profesionalDocument)
-        .single();
+        .eq('numero_documento', profesionalDocument)
+        .maybeSingle();
 
       if (userError || !profesionalUser) {
         toast.error("No se encontró un profesional con ese documento");
@@ -367,18 +367,33 @@ export default function ClinicAdmin() {
               </div>
             </div>
 
-            <div className="grid gap-4">
+            <div className="grid gap-3">
               {filteredPacientes.map((paciente) => (
-                <Card key={paciente.id} className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">
-                        {paciente.patient_profile?.full_name || "Sin nombre"}
-                      </h3>
-                      <div className="text-sm text-muted-foreground space-y-1 mt-1">
-                        <p>CC: {paciente.patient_profile?.identification}</p>
-                        {paciente.patient_profile?.eps && <p>EPS: {paciente.patient_profile.eps}</p>}
-                        {paciente.patient_profile?.age && <p>Edad: {paciente.patient_profile.age} años</p>}
+                <Card key={paciente.id} className="p-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="flex-shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-primary" />
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0 flex items-center gap-4 flex-wrap">
+                        <span className="font-semibold text-sm truncate">
+                          {paciente.patient_profile?.full_name || "Sin nombre"}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          CC: {paciente.patient_profile?.identification}
+                        </span>
+                        {paciente.patient_profile?.eps && (
+                          <span className="text-xs text-muted-foreground">
+                            EPS: {paciente.patient_profile.eps}
+                          </span>
+                        )}
+                        {paciente.patient_profile?.age && (
+                          <span className="text-xs text-muted-foreground">
+                            {paciente.patient_profile.age} años
+                          </span>
+                        )}
                       </div>
                     </div>
                     <Button
