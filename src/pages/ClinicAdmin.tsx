@@ -15,6 +15,7 @@ import { Building2, Users, UserPlus, Trash2, Search, Heart, UserCog, Upload } fr
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BulkPatientUploadModal } from "@/components/BulkPatientUploadModal";
+import { BulkProfessionalUploadModal } from "@/components/BulkProfessionalUploadModal";
 import { AccessLogsTable } from "@/components/AccessLogsTable";
 
 interface Clinica {
@@ -57,7 +58,8 @@ export default function ClinicAdmin() {
   const [loading, setLoading] = useState(true);
   const [showAddPaciente, setShowAddPaciente] = useState(false);
   const [showAddProfesional, setShowAddProfesional] = useState(false);
-  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [showBulkPatients, setShowBulkPatients] = useState(false);
+  const [showBulkProfessionals, setShowBulkProfessionals] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [pacienteDocument, setPacienteDocument] = useState("");
   const [profesionalDocument, setProfesionalDocument] = useState("");
@@ -120,31 +122,14 @@ export default function ClinicAdmin() {
       
       setPacientes(pacientesWithProfiles);
 
-      // Cargar profesionales
-      const { data: profesionalesData, error: profesionalesError } = await supabase
-        .from('clinica_profesionales')
-        .select('*')
-        .eq('clinica_id', clinicaData.id);
-
-      if (profesionalesError) throw profesionalesError;
-      
-      // Cargar perfiles de profesionales
-      const profesionalesWithProfiles = await Promise.all(
-        (profesionalesData || []).map(async (cp) => {
-          const { data: profile } = await supabase
-            .from('patient_profiles')
-            .select('identification, full_name')
-            .eq('user_id', cp.profesional_user_id)
-            .single();
-          
-          return {
-            ...cp,
-            profesional: profile || { identification: '', full_name: null }
-          };
-        })
-      );
-      
-      setProfesionales(profesionalesWithProfiles);
+      // Cargar profesionales (via backend para obtener email y datos)
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data: listData, error: listError } = await supabase.functions.invoke('list-clinic-professionals', {
+        body: { clinicaId: clinicaData.id },
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined
+      });
+      if (listError) throw listError;
+      setProfesionales(listData?.data || []);
     } catch (error: any) {
       console.error('Error loading clinic data:', error);
       toast.error("Error al cargar datos de la clínica");
@@ -350,7 +335,7 @@ export default function ClinicAdmin() {
         </Card>
 
         <Tabs defaultValue="pacientes" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="pacientes">
               <Heart className="h-4 w-4 mr-2" />
               Pacientes ({pacientes.length})
@@ -415,10 +400,16 @@ export default function ClinicAdmin() {
           <TabsContent value="profesionales" className="mt-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Profesionales</h2>
-              <Button onClick={() => setShowAddProfesional(true)}>
-                <UserPlus className="h-4 w-4 mr-2" />
-                Agregar Profesional
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => setShowAddProfesional(true)}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Agregar Profesional
+                </Button>
+                <Button variant="outline" onClick={() => setShowBulkUpload(true)}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Carga Masiva
+                </Button>
+              </div>
             </div>
 
             <div className="grid gap-4">
@@ -430,8 +421,11 @@ export default function ClinicAdmin() {
                         {profesional.profesional?.full_name || "Sin nombre"}
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        CC: {profesional.profesional?.identification}
+                        {profesional.profesional?.document_type || 'DOC'}: {profesional.profesional?.identification}
                       </p>
+                      { (profesional as any).profesional?.email && (
+                        <p className="text-sm text-muted-foreground">Email: {(profesional as any).profesional.email}</p>
+                      ) }
                     </div>
                     <Button
                       variant="outline"
@@ -457,9 +451,19 @@ export default function ClinicAdmin() {
         </Tabs>
       </div>
 
-      {/* Modal de Carga Masiva */}
+      {/* Modal de Carga Masiva Pacientes */}
       {clinica && (
         <BulkPatientUploadModal
+          open={showBulkUpload && false}
+          onOpenChange={setShowBulkUpload}
+          clinicaId={clinica.id}
+          onSuccess={loadClinicaData}
+        />
+      )}
+
+      {/* Modal de Carga Masiva Profesionales */}
+      {clinica && (
+        <BulkProfessionalUploadModal
           open={showBulkUpload}
           onOpenChange={setShowBulkUpload}
           clinicaId={clinica.id}

@@ -99,7 +99,7 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
     setShowResults(true);
     setResults(patients);
 
-    const processedResults: PatientRow[] = [];
+    const processedResults: PatientRow[] = []; const allowedDocTypes = new Set(['CC','TI','CE','PA','RC','NU','CD','CN','SC','PE','PT']);
 
     for (let i = 0; i < patients.length; i++) {
       const patient = patients[i];
@@ -110,6 +110,13 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
       ));
 
       try {
+        // Validar tipo de documento
+        if (!allowedDocTypes.has(patient.documentType)) {
+          setResults(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'error', message: 'Tipo de documento no soportado' } : p));
+          processedResults.push({ ...patient, status: 'error', message: 'Tipo de documento no soportado' });
+          continue;
+        }
+
         // 1. Validar con Topus
         const topusData = await validateWithTopus(patient.documentType, patient.identification);
         
@@ -144,16 +151,19 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
           // Crear usuario y perfil
           const email = `paciente.${patient.identification}@riskcare.temp`;
           
-          const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-            email,
-            password: Math.random().toString(36).slice(-12),
-            email_confirm: true,
-            user_metadata: {
-              is_patient: true,
-              document_type: patient.documentType,
-              identification: patient.identification
-            }
+          // Mover creación al backend seguro
+          const { data: adminCreateResp, error: adminCreateErr } = await supabase.functions.invoke('admin-create-patient', {
+            body: {
+              clinicaId,
+              documentType: patient.documentType,
+              identification: patient.identification,
+              fullName,
+              topusData
+            },
+            headers: { Authorization: `Bearer ${session.access_token}` }
           });
+          if (adminCreateErr) throw adminCreateErr;
+          patientUserId = adminCreateResp?.userId;
 
           if (authError) throw authError;
           patientUserId = authData.user.id;
@@ -161,63 +171,32 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
           // Crear perfil
           const fullName = `${topusData.result.nombre || ''} ${topusData.result.s_nombre || ''} ${topusData.result.apellido || ''} ${topusData.result.s_apellido || ''}`.trim();
           
-          const { error: profileError } = await supabase
-            .from('patient_profiles')
-            .insert({
-              user_id: patientUserId,
-              document_type: patient.documentType,
-              identification: patient.identification,
-              full_name: fullName,
-              age: topusData.result.edad,
-              eps: topusData.result.eps,
-              topus_data: topusData
-            });
+          // Perfil y rol se manejan en el backend
 
           if (profileError) throw profileError;
 
           // Asignar rol de paciente
-          const { error: roleError } = await supabase
-            .from('user_roles')
-            .insert({
-              user_id: patientUserId,
-              role: 'paciente'
-            });
+          // Rol asignado en el backend
 
           if (roleError) throw roleError;
         }
 
         // 3. Asociar a la clínica
-        const { error: clinicaError } = await supabase
-          .from('clinica_pacientes')
-          .upsert({
-            clinica_id: clinicaId,
-            paciente_user_id: patientUserId!
-          }, {
-            onConflict: 'clinica_id,paciente_user_id'
-          });
+        // Asociación a clínica realizada en el backend
 
         if (clinicaError) throw clinicaError;
 
         const displayName = `${topusData.result.nombre || ''} ${topusData.result.s_nombre || ''} ${topusData.result.apellido || ''} ${topusData.result.s_apellido || ''}`.trim();
         
-        setResults(prev => prev.map((p, idx) => 
-          idx === i ? { 
-            ...p, 
-            status: 'success', 
-            message: existingProfile ? 'Asociado a clínica' : 'Creado y asociado',
-            fullName: displayName
-          } : p
-        ));
+        const updated: PatientRow = { ...patient, status: 'success', message: existingProfile ? 'Asociado a clínica' : 'Creado y asociado', fullName: displayName };
+        processedResults.push(updated);
+        setResults(prev => prev.map((p, idx) => idx === i ? updated : p));
 
       } catch (error: any) {
         console.error(`Error processing patient ${i}:`, error);
-        setResults(prev => prev.map((p, idx) => 
-          idx === i ? { 
-            ...p, 
-            status: 'error', 
-            message: error.message || 'Error desconocido' 
-          } : p
-        ));
+        const updated: PatientRow = { ...patient, status: 'error', message: error.message || 'Error desconocido' };
+        processedResults.push(updated);
+        setResults(prev => prev.map((p, idx) => idx === i ? updated : p));
       }
 
       // Pequeña pausa entre solicitudes para no sobrecargar
@@ -225,12 +204,13 @@ export const BulkPatientUploadModal = ({ open, onOpenChange, clinicaId, onSucces
     }
 
     setProcessing(false);
-    
-    const successCount = results.filter(r => r.status === 'success').length;
-    const errorCount = results.filter(r => r.status === 'error').length;
-    
+    const finalResults = processedResults.length ? processedResults : results;
+    const successCount = finalResults.filter(r => r.status === 'success').length;
+    const errorCount = finalResults.filter(r => r.status === 'error').length;
+    setResults(finalResults);
+
     toast.success(`Proceso completado: ${successCount} exitosos, ${errorCount} errores`);
-    
+
     if (successCount > 0) {
       onSuccess();
     }

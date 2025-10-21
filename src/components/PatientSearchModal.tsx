@@ -160,6 +160,12 @@ export const PatientSearchModal = ({ open, onOpenChange, onPatientSelected, prof
                 <SelectItem value="CE">Cédula de Extranjería</SelectItem>
                 <SelectItem value="PA">Pasaporte</SelectItem>
                 <SelectItem value="RC">Registro Civil</SelectItem>
+                <SelectItem value="NU">No. Único de id. Personal</SelectItem>
+                <SelectItem value="CD">Carnet Diplomático</SelectItem>
+                <SelectItem value="CN">Certificado de Nacido Vivo</SelectItem>
+                <SelectItem value="SC">Salvo Conducto</SelectItem>
+                <SelectItem value="PE">Permiso Especial de Permanencia</SelectItem>
+                <SelectItem value="PT">Permiso por Protección Temporal</SelectItem>
               </SelectContent>
             </Select>
           </div>

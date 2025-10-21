@@ -12,6 +12,13 @@ const DOCUMENT_TYPES = [
   { value: "CC", label: "Cédula de Ciudadanía" },
   { value: "TI", label: "Tarjeta de Identidad" },
   { value: "CE", label: "Cédula de Extranjería" },
+  { value: "PA", label: "Pasaporte" },
+  { value: "RC", label: "Registro Civil" },
+  { value: "NU", label: "No. Único de id. Personal" },
+  { value: "CD", label: "Carnet Diplomático" },
+  { value: "CN", label: "Certificado de Nacido Vivo" },
+  { value: "SC", label: "Salvo Conducto" },
+  { value: "PE", label: "Permiso Especial de Permanencia" },
   { value: "PT", label: "Permiso por Protección Temporal" },
 ];
 
