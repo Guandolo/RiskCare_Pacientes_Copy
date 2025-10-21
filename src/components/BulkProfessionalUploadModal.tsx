@@ -37,13 +37,27 @@ export const BulkProfessionalUploadModal = ({ open, onOpenChange, clinicaId, onS
     const out: Row[] = [];
     for (const line of lines) {
       const parts = line.trim().split(/[\s,]+/).filter(Boolean);
-      // Formato: DOC IDENT EMAIL [Nombre...]
-      if (parts.length >= 3) {
+      // Formato flexible:
+      // 1) DOC IDENT
+      // 2) DOC IDENT EMAIL
+      // 3) DOC IDENT EMAIL NOMBRE...
+      // 4) DOC IDENT NOMBRE...
+      if (parts.length >= 2) {
+        let email: string | undefined;
+        let fullName: string | undefined;
+        if (parts.length >= 3) {
+          if (parts[2].includes('@')) {
+            email = parts[2];
+            fullName = parts.slice(3).join(' ') || undefined;
+          } else {
+            fullName = parts.slice(2).join(' ') || undefined;
+          }
+        }
         out.push({
           documentType: parts[0].toUpperCase(),
           identification: parts[1],
-          email: parts[2],
-          fullName: parts.slice(3).join(' ') || undefined,
+          email,
+          fullName,
           status: 'pending'
         });
       }

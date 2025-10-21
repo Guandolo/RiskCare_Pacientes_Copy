@@ -65,6 +65,7 @@ export default function ClinicAdmin() {
   const [searchTerm, setSearchTerm] = useState("");
   const [pacienteDocument, setPacienteDocument] = useState("");
   const [profesionalDocument, setProfesionalDocument] = useState("");
+  const [profesionalEmail, setProfesionalEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -206,12 +207,15 @@ export default function ClinicAdmin() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Sesión no disponible');
 
+      const body: any = {
+        clinicaId: clinica!.id,
+        documentType: 'CC',
+        identification: profesionalDocument.trim(),
+      };
+      if (profesionalEmail.trim()) body.email = profesionalEmail.trim();
+
       const { error: proErr } = await supabase.functions.invoke('admin-create-professional', {
-        body: {
-          clinicaId: clinica!.id,
-          documentType: 'CC',
-          identification: profesionalDocument.trim(),
-        },
+        body,
         headers: { Authorization: `Bearer ${session.access_token}` }
       });
       if (proErr) throw proErr;
@@ -219,15 +223,20 @@ export default function ClinicAdmin() {
       toast.success("Profesional agregado exitosamente");
       setShowAddProfesional(false);
       setProfesionalDocument("");
+      setProfesionalEmail("");
       await loadClinicaData();
     } catch (error: any) {
       console.error('Error:', error);
-      toast.error(error.message || "Error al agregar profesional");
+      const msg = error?.message || "Error al agregar profesional";
+      if (msg.toLowerCase().includes('email') && !profesionalEmail.trim()) {
+        toast.error("Si el profesional no existe aún, debes ingresar su email para crearlo.");
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setSubmitting(false);
     }
   };
-
   const handleRemovePaciente = async (id: string) => {
     if (!confirm("¿Estás seguro de remover este paciente?")) return;
 
@@ -539,6 +548,20 @@ export default function ClinicAdmin() {
               />
               <p className="text-xs text-muted-foreground mt-1">
                 El profesional debe estar registrado y validado en RETHUS
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="profesionalEmail">Email del Profesional</Label>
+              <Input
+                id="profesionalEmail"
+                type="email"
+                value={profesionalEmail}
+                onChange={(e) => setProfesionalEmail(e.target.value)}
+                placeholder="usuario@correo.com"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Obligatorio solo si el profesional aún no existe en la plataforma.
               </p>
             </div>
 
