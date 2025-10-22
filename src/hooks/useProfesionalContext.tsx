@@ -1,28 +1,29 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "./useUserRole";
+import { useGlobalStore } from "@/stores/globalStore";
 
 export const useProfesionalContext = () => {
   const { isProfesional, loading: roleLoading } = useUserRole();
-  const [currentPatientUserId, setCurrentPatientUserId] = useState<string | null>(null);
-  const [currentClinicaId, setCurrentClinicaId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { 
+    currentPatientUserId, 
+    currentClinicaId, 
+    setPatientContext: setContextInStore,
+    loadActivePatient
+  } = useGlobalStore();
 
   useEffect(() => {
     if (roleLoading) return;
     
     const loadContext = async () => {
-      if (!isProfesional) {
-        setLoading(false);
-        return;
-      }
+      if (!isProfesional) return;
+
+      // Solo cargar si no hay contexto en el store
+      if (currentPatientUserId) return;
 
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setLoading(false);
-          return;
-        }
+        if (!user) return;
 
         const { data: context, error } = await supabase
           .from('profesional_patient_context')
@@ -34,50 +35,27 @@ export const useProfesionalContext = () => {
           console.error('Error loading professional context:', error);
         }
 
-        if (context) {
-          setCurrentPatientUserId(context.current_patient_user_id);
-          setCurrentClinicaId(context.current_clinica_id);
+        if (context?.current_patient_user_id) {
+          // Cargar el contexto completo usando el store
+          await setContextInStore(context.current_patient_user_id, context.current_clinica_id);
         }
       } catch (error) {
         console.error('Error in loadContext:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
     loadContext();
-  }, [isProfesional, roleLoading]);
+  }, [isProfesional, roleLoading, currentPatientUserId, setContextInStore]);
 
   const setPatientContext = async (patientUserId: string, clinicaId: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error } = await supabase
-        .from('profesional_patient_context')
-        .upsert({
-          profesional_user_id: user.id,
-          current_patient_user_id: patientUserId,
-          current_clinica_id: clinicaId,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'profesional_user_id'
-        });
-
-      if (error) throw error;
-
-      setCurrentPatientUserId(patientUserId);
-      setCurrentClinicaId(clinicaId);
-    } catch (error) {
-      console.error('Error setting patient context:', error);
-    }
+    await setContextInStore(patientUserId, clinicaId);
   };
 
   return {
     currentPatientUserId,
     currentClinicaId,
     setPatientContext,
-    loading,
+    loading: roleLoading,
     isProfesional
   };
 };

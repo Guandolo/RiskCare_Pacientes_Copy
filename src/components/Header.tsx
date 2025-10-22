@@ -77,21 +77,23 @@ export const Header = () => {
   }, [isProfesional, user]);
 
   const handlePatientSelected = async (patientUserId: string, clinicaId: string) => {
-    // Actualizar el contexto del profesional
+    // El setPatientContext del store ya maneja todo:
+    // 1. Actualiza el contexto en BD
+    // 2. Actualiza el estado local en el store
+    // 3. Carga el perfil completo del paciente
     await setPatientContext(patientUserId, clinicaId);
     
-    // Cargar el perfil completo del paciente seleccionado
-    const { data: profile, error } = await supabase
-      .from('patient_profiles')
-      .select('*')
-      .eq('user_id', patientUserId)
-      .single();
-    
-    if (!error && profile) {
-      setActivePatient(profile);
-      toast.success(`Paciente activo: ${profile.full_name || 'Sin nombre'}`);
+    // Verificar que se haya cargado correctamente
+    if (activePatient?.user_id === patientUserId) {
+      toast.success(`Paciente activo: ${activePatient.full_name || 'Sin nombre'}`);
     } else {
-      toast.error('Error al cargar el perfil del paciente');
+      // Dar un poco de tiempo para que el store se actualice
+      setTimeout(() => {
+        const patient = activePatient;
+        if (patient?.user_id === patientUserId) {
+          toast.success(`Paciente activo: ${patient.full_name || 'Sin nombre'}`);
+        }
+      }, 100);
     }
   };
 

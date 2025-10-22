@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check, Mic, MicOff, Paperclip, Clock, CheckCircle2, Loader2, ShieldCheck, ChevronLeft, ChevronRight, Copy, ThumbsUp, ThumbsDown, MoreVertical, Share2, User, Search } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useActivePatient } from "@/hooks/useActivePatient";
+import { useGlobalStore } from "@/stores/globalStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,6 +45,7 @@ interface ChatPanelProps {
 export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
   const { isProfesional } = useUserRole();
   const { activePatient } = useActivePatient();
+  const { getCacheData, setCacheData } = useGlobalStore();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -196,6 +198,15 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Usar cache para evitar recargas innecesarias
+      const cacheKey = `conversations_${user.id}`;
+      const cachedConversations = getCacheData(cacheKey, 3 * 60 * 1000); // 3 minutos
+      
+      if (cachedConversations) {
+        setConversations(cachedConversations);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('conversations')
         .select('*')
@@ -204,6 +215,7 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
 
       if (!error && data) {
         setConversations(data);
+        setCacheData(cacheKey, data);
       }
     } catch (error) {
       console.error('Error loading conversations:', error);

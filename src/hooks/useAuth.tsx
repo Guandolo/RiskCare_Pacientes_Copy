@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { useGlobalStore } from "@/stores/globalStore";
 
 // Singleton auth listener to avoid multiple subscriptions across components
 let authInitialized = false;
@@ -18,6 +19,8 @@ const ensureAuthListener = () => {
     // Seguridad: al cerrar sesión desde cualquier pestaña/contexto, limpiar y redirigir de inmediato
     if (event === 'SIGNED_OUT') {
       try {
+        // Limpiar el store global primero
+        useGlobalStore.getState().resetStore();
         localStorage.clear();
         sessionStorage.clear();
       } catch {}

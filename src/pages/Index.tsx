@@ -34,16 +34,13 @@ const Index = () => {
   // Determinar qué usuario se está visualizando (profesional puede ver pacientes)
   const displayedUserId = isProfesional && currentPatientUserId ? currentPatientUserId : user?.id;
 
-  // Detectar cambio de usuario y forzar reload
+  // ELIMINADO: window.location.reload() - Ya no es necesario con el store global
+  // El estado ahora persiste correctamente entre navegaciones
   useEffect(() => {
-    if (user?.id && currentUserId && user.id !== currentUserId) {
-      // Usuario diferente detectado - forzar reload completo
-      console.log("Usuario diferente detectado, limpiando estado...");
-      window.location.reload();
-    } else if (user?.id) {
+    if (user?.id) {
       setCurrentUserId(user.id);
     }
-  }, [user?.id, currentUserId]);
+  }, [user?.id]);
 
   useEffect(() => {
     const update = () => setIsMobile(window.innerWidth < 768);

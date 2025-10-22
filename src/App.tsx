@@ -10,7 +10,19 @@ import NotFound from "./pages/NotFound";
 import SuperAdmin from "./pages/SuperAdmin";
 import ClinicAdmin from "./pages/ClinicAdmin";
 
-const queryClient = new QueryClient();
+// Configuración optimizada de React Query para evitar recargas masivas
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutos - datos se consideran frescos durante este tiempo
+      gcTime: 10 * 60 * 1000, // 10 minutos - cache time (antes cacheTime)
+      refetchOnWindowFocus: false, // NO recargar al cambiar de ventana
+      refetchOnMount: false, // NO recargar al montar componente si hay datos en cache
+      refetchOnReconnect: false, // NO recargar automáticamente al reconectar
+      retry: 1, // Solo 1 reintento en caso de error
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

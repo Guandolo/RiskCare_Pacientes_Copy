@@ -19,6 +19,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useActivePatient } from "@/hooks/useActivePatient";
 import { useProfesionalContext } from "@/hooks/useProfesionalContext";
 import { useAuth } from "@/hooks/useAuth";
+import { useGlobalStore } from "@/stores/globalStore";
 
 interface PatientProfile {
   full_name: string | null;
@@ -49,6 +50,7 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
   const { isProfesional } = useUserRole();
   const { activePatient, setActivePatient } = useActivePatient();
   const { setPatientContext } = useProfesionalContext();
+  const { getCacheData, setCacheData } = useGlobalStore();
   const [profile, setProfile] = useState<PatientProfile | null>(null);
   const [documents, setDocuments] = useState<ClinicalDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +76,17 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
   const [showPatientSearchModal, setShowPatientSearchModal] = useState(false);
 
   // Efecto para recargar cuando cambie el paciente activo (profesional)
+  // CRÍTICO: Usar cache para evitar recargas innecesarias
   useEffect(() => {
+    const patientId = isProfesional && activePatient ? activePatient.user_id : user?.id;
+    if (!patientId) return;
+    
+    // Intentar cargar desde cache primero
+    const cachedDocuments = getCacheData(`documents_${patientId}`, 2 * 60 * 1000); // 2 minutos
+    if (cachedDocuments) {
+      setDocuments(cachedDocuments);
+    }
+    
     loadProfileAndData();
   }, [isProfesional, activePatient?.user_id]); // Solo reaccionar al cambio de ID, no al objeto completo
 
@@ -175,6 +187,15 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
       // Determinar de qué usuario cargar documentos
       const targetUserId = isProfesional && activePatient ? activePatient.user_id : user.id;
 
+      // Verificar cache primero
+      const cacheKey = `documents_${targetUserId}`;
+      const cachedData = getCacheData(cacheKey, 2 * 60 * 1000); // 2 minutos
+      
+      if (cachedData) {
+        setDocuments(cachedData);
+        return; // Usar datos en cache, no hacer query
+      }
+
       const { data, error } = await supabase
         .from('clinical_documents')
         .select('id, file_name, document_type, document_date, created_at, file_url, file_type, extracted_text, structured_data, processing_status, processing_error')
@@ -183,7 +204,11 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
 
       if (error) throw error;
       
-      setDocuments((data || []) as ClinicalDocument[]);
+      const docs = (data || []) as ClinicalDocument[];
+      setDocuments(docs);
+      
+      // Guardar en cache
+      setCacheData(cacheKey, docs);
     } catch (error) {
       console.error('Error cargando documentos:', error);
     }
