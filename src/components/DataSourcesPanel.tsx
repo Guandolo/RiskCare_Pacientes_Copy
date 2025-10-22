@@ -75,20 +75,36 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
   const [showUpdateClinicalData, setShowUpdateClinicalData] = useState(false);
   const [showPatientSearchModal, setShowPatientSearchModal] = useState(false);
 
-  // Efecto para recargar cuando cambie el paciente activo (profesional)
-  // CRÍTICO: Usar cache para evitar recargas innecesarias
+  // 🚨 CRÍTICO: Solo cargar UNA VEZ al montar o cuando EXPLÍCITAMENTE cambie el paciente activo
+  // NO recargar en eventos de visibilidad para prevenir race conditions
+  const lastLoadedPatientRef = useRef<string | null>(null);
+  
   useEffect(() => {
     const patientId = isProfesional && activePatient ? activePatient.user_id : user?.id;
-    if (!patientId) return;
+    
+    if (!patientId) {
+      console.log('[DataSourcesPanel] 🚫 Sin paciente/usuario - no cargar');
+      return;
+    }
+    
+    // 🚨 PREVENIR RECARGAS: Solo cargar si el paciente cambió explícitamente
+    if (lastLoadedPatientRef.current === patientId) {
+      console.log('[DataSourcesPanel] ⏭️ Paciente no cambió, usando datos en memoria');
+      return;
+    }
+    
+    console.log('[DataSourcesPanel] 🔄 Paciente cambió de', lastLoadedPatientRef.current, 'a', patientId);
+    lastLoadedPatientRef.current = patientId;
     
     // Intentar cargar desde cache primero
-    const cachedDocuments = getCacheData(`documents_${patientId}`, 2 * 60 * 1000); // 2 minutos
+    const cachedDocuments = getCacheData(`documents_${patientId}`, Infinity); // Cache infinito durante sesión
     if (cachedDocuments) {
+      console.log('[DataSourcesPanel] 📦 Usando documentos desde cache');
       setDocuments(cachedDocuments);
     }
     
     loadProfileAndData();
-  }, [isProfesional, activePatient?.user_id]); // Solo reaccionar al cambio de ID, no al objeto completo
+  }, [isProfesional, activePatient?.user_id, user?.id]); // Incluir user?.id para pacientes no-profesionales
 
   useEffect(() => {
     // Listener para recargar perfil cuando se cree por primera vez

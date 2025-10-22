@@ -227,10 +227,16 @@ export const PatientSearchModal = ({ open, onOpenChange, onPatientSelected, prof
                   )}
                 </div>
                 <div className="text-sm space-y-1">
-                  <p><strong>Nombre:</strong> {searchResult.patient.full_name || 'Sin nombre'}</p>
+                  <p><strong>Nombre:</strong> {
+                    searchResult.patient.full_name || 
+                    searchResult.patient.nombre || 
+                    searchResult.patient.name ||
+                    `${searchResult.patient.primer_nombre || ''} ${searchResult.patient.primer_apellido || ''}`.trim() ||
+                    'No disponible'
+                  }</p>
                   <p><strong>Documento:</strong> {searchResult.patient.document_type} {searchResult.patient.identification}</p>
-                  <p><strong>Edad:</strong> {searchResult.patient.age || 'N/A'} años</p>
-                  <p><strong>EPS:</strong> {searchResult.patient.eps || 'N/A'}</p>
+                  <p><strong>Edad:</strong> {searchResult.patient.age || searchResult.patient.edad || 'N/A'} años</p>
+                  <p><strong>EPS:</strong> {searchResult.patient.eps || searchResult.patient.aseguradora || 'N/A'}</p>
                 </div>
                 {(searchLevel === 2 || searchLevel === 3) && (
                   <div className="bg-blue-100 dark:bg-blue-900 p-2 rounded text-xs mt-2">

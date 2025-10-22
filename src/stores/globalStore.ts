@@ -74,8 +74,23 @@ export const useGlobalStore = create<GlobalStore>()(
       
       // Acciones del paciente activo
       setActivePatient: (patient) => {
+        const current = get().activePatient;
+        
+        // 🚨 VALIDACIÓN CRÍTICA: Prevenir sobrescrituras accidentales
+        if (current && patient && current.user_id !== patient.user_id) {
+          console.warn('[GlobalStore] ⚠️ ALERTA: Intentando cambiar paciente de', 
+            current.full_name, '(', current.user_id, ') a', 
+            patient.full_name, '(', patient.user_id, ')');
+          console.warn('[GlobalStore] ⚠️ Stack trace:', new Error().stack);
+        }
+        
+        if (patient) {
+          console.log('[GlobalStore] ✅ Paciente activo actualizado:', patient.full_name, '(', patient.user_id, ')');
+        } else {
+          console.log('[GlobalStore] 🔄 Paciente activo limpiado');
+        }
+        
         set({ activePatient: patient });
-        console.log('[GlobalStore] Paciente activo actualizado:', patient?.full_name || 'ninguno');
       },
       
       clearActivePatient: () => {
@@ -88,21 +103,29 @@ export const useGlobalStore = create<GlobalStore>()(
       },
       
       loadActivePatient: async (userId: string) => {
-        // Si ya está cargando el mismo paciente, no hacer nada
         const current = get();
+        
+        // 🚨 VALIDACIÓN 1: Si ya está cargando el mismo paciente, no hacer nada
         if (current.activePatientLoading && current.activePatient?.user_id === userId) {
-          console.log('[GlobalStore] Paciente ya en proceso de carga, saltando...');
+          console.log('[GlobalStore] ⏭️ Paciente ya en proceso de carga, saltando...');
           return;
         }
         
-        // Si ya está cargado el mismo paciente, no recargar
+        // 🚨 VALIDACIÓN 2: Si ya está cargado el mismo paciente, no recargar
         if (current.activePatient?.user_id === userId && !current.activePatientLoading) {
-          console.log('[GlobalStore] Paciente ya cargado, saltando recarga innecesaria');
+          console.log('[GlobalStore] ⏭️ Paciente ya cargado, saltando recarga innecesaria');
           return;
+        }
+        
+        // 🚨 VALIDACIÓN 3: Si estamos cambiando de paciente, log de advertencia
+        if (current.activePatient && current.activePatient.user_id !== userId) {
+          console.warn('[GlobalStore] ⚠️ CAMBIO DE PACIENTE: de', 
+            current.activePatient.full_name, '(', current.activePatient.user_id, ')',
+            'a userId:', userId);
         }
         
         set({ activePatientLoading: true });
-        console.log('[GlobalStore] Cargando paciente:', userId);
+        console.log('[GlobalStore] 🔄 Cargando paciente:', userId);
         
         try {
           const { data: profile, error } = await supabase
@@ -112,13 +135,20 @@ export const useGlobalStore = create<GlobalStore>()(
             .single();
           
           if (!error && profile) {
+            // 🚨 VALIDACIÓN 4: Verificar que cargamos el paciente correcto
+            if (profile.user_id !== userId) {
+              console.error('[GlobalStore] 🚨 ERROR CRÍTICO: Se solicitó userId', userId, 
+                'pero se recibió', profile.user_id, '- DATOS MEZCLADOS');
+              return;
+            }
+            
             set({ activePatient: profile });
-            console.log('[GlobalStore] Paciente cargado exitosamente:', profile.full_name);
+            console.log('[GlobalStore] ✅ Paciente cargado exitosamente:', profile.full_name, '(', profile.user_id, ')');
           } else {
-            console.error('[GlobalStore] Error cargando paciente:', error);
+            console.error('[GlobalStore] ❌ Error cargando paciente:', error);
           }
         } catch (error) {
-          console.error('[GlobalStore] Excepción cargando paciente:', error);
+          console.error('[GlobalStore] ❌ Excepción cargando paciente:', error);
         } finally {
           set({ activePatientLoading: false });
         }
@@ -235,36 +265,22 @@ export const useGlobalStore = create<GlobalStore>()(
   )
 );
 
-// Listener para eventos de visibilidad
+// 🚨 DESACTIVADO: El listener de visibilidad causaba race conditions y mezcla de datos
+// El estado ahora SOLO se modifica explícitamente por acciones del usuario
+// NO por eventos automáticos del navegador
+
 if (typeof window !== 'undefined') {
-  let lastVisibilityChange = Date.now();
-  
+  // Solo logging, SIN recargas automáticas
   document.addEventListener('visibilitychange', () => {
-    const now = Date.now();
-    const timeSinceLastChange = now - lastVisibilityChange;
-    lastVisibilityChange = now;
-    
     if (document.hidden) {
-      console.log('[GlobalStore] Página oculta - preservando estado');
+      console.log('[GlobalStore] 🔒 Página oculta - estado congelado (NO se recargará automáticamente)');
     } else {
-      console.log('[GlobalStore] Página visible - verificando estado...');
-      
-      // Prevenir múltiples verificaciones rápidas
-      if (timeSinceLastChange < 500) {
-        console.log('[GlobalStore] Evento de visibilidad muy rápido, ignorando');
-        return;
-      }
-      
       const state = useGlobalStore.getState();
-      
-      if (state.activePatient) {
-        console.log('[GlobalStore] ✅ Estado preservado al recuperar foco:', state.activePatient.full_name);
-      } else if (state.currentPatientUserId) {
-        console.log('[GlobalStore] ⚠️ Tenemos currentPatientUserId pero no activePatient, recargando...');
-        state.loadActivePatient(state.currentPatientUserId);
-      } else {
-        console.log('[GlobalStore] ℹ️ No hay paciente activo (esto es normal para pacientes no-profesionales)');
-      }
+      console.log('[GlobalStore] 👁️ Página visible - estado actual:', {
+        activePatient: state.activePatient?.full_name || 'ninguno',
+        currentPatientUserId: state.currentPatientUserId || 'ninguno'
+      });
+      console.log('[GlobalStore] ⚠️ NO se realizarán recargas automáticas para prevenir mezcla de datos');
     }
   });
 }

@@ -10,16 +10,19 @@ import NotFound from "./pages/NotFound";
 import SuperAdmin from "./pages/SuperAdmin";
 import ClinicAdmin from "./pages/ClinicAdmin";
 
-// Configuración optimizada de React Query para evitar recargas masivas
+// 🚨 CONFIGURACIÓN CRÍTICA DE SEGURIDAD: Prevenir race conditions y mezcla de datos PII
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutos - datos se consideran frescos durante este tiempo
-      gcTime: 10 * 60 * 1000, // 10 minutos - cache time (antes cacheTime)
-      refetchOnWindowFocus: false, // NO recargar al cambiar de ventana
-      refetchOnMount: false, // NO recargar al montar componente si hay datos en cache
-      refetchOnReconnect: false, // NO recargar automáticamente al reconectar
+      staleTime: Infinity, // 🚨 Datos NUNCA expiran automáticamente - solo recarga manual
+      gcTime: Infinity, // 🚨 Mantener en cache indefinidamente durante la sesión
+      refetchOnWindowFocus: false, // 🚨 CRÍTICO: NO recargar al cambiar de ventana
+      refetchOnMount: false, // 🚨 CRÍTICO: NO recargar al montar componente
+      refetchOnReconnect: false, // 🚨 CRÍTICO: NO recargar al reconectar
+      refetchInterval: false, // 🚨 CRÍTICO: NO polling automático
+      refetchIntervalInBackground: false, // 🚨 CRÍTICO: NO refetch en background
       retry: 1, // Solo 1 reintento en caso de error
+      retryOnMount: false, // 🚨 NO reintentar automáticamente al montar
     },
   },
 });

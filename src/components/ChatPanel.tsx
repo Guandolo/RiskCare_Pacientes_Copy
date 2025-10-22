@@ -75,15 +75,32 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastLoadedPatientRef = useRef<string | null>(null);
+  const isInitializedRef = useRef(false);
 
   useEffect(() => {
-    // CRÍTICO: No inicializar si es profesional sin paciente activo
+    // 🚨 CRÍTICO: No inicializar si es profesional sin paciente activo
     if (isProfesional && !activePatient?.user_id) {
-      console.log('[ChatPanel] Profesional sin paciente activo, saltando inicialización');
+      console.log('[ChatPanel] 🚫 Profesional sin paciente activo, saltando inicialización');
       return;
     }
     
+    const currentPatientId = isProfesional && activePatient ? activePatient.user_id : 'self';
+    
+    // 🚨 PREVENIR RECARGAS MÚLTIPLES: Solo inicializar UNA VEZ por paciente
+    if (isInitializedRef.current && lastLoadedPatientRef.current === currentPatientId) {
+      console.log('[ChatPanel] ⏭️ Ya inicializado para este paciente, saltando recarga');
+      return;
+    }
+    
+    if (lastLoadedPatientRef.current !== currentPatientId) {
+      console.log('[ChatPanel] 🔄 Paciente cambió de', lastLoadedPatientRef.current, 'a', currentPatientId);
+      lastLoadedPatientRef.current = currentPatientId;
+      isInitializedRef.current = false; // Reset para nuevo paciente
+    }
+    
     const init = async () => {
+      console.log('[ChatPanel] 🚀 Inicializando chat para paciente:', currentPatientId);
       await loadOrCreateConversation();
       await loadConversations();
       // Solo cargar sugerencias iniciales si no se han cargado en esta sesión
@@ -93,6 +110,7 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
         setHasLoadedInitialSuggestions(true);
         try { sessionStorage.setItem('rc_suggestions_loaded', '1'); } catch {}
       }
+      isInitializedRef.current = true;
     };
     init();
     initializeSpeechRecognition();
@@ -108,7 +126,7 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
     return () => {
       window.removeEventListener('documentsUpdated', handleDocumentsUpdate);
     };
-  }, [currentConversationId, messages.length, isProfesional, activePatient?.user_id]);
+  }, [isProfesional, activePatient?.user_id]); // 🚨 SOLO estos dos, NO currentConversationId ni messages.length
 
   // Reaccionar a cambios de autenticación (centralizado)
   useEffect(() => {
