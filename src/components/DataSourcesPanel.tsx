@@ -1,4 +1,4 @@
-import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw, Trash2, Download, User, CreditCard, MapPin, Building2, Phone, Droplet, FolderOpen, Activity, FilePlus2, Pill, Check, Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw, Trash2, Download, User, CreditCard, MapPin, Building2, Phone, Droplet, FolderOpen, Activity, FilePlus2, Pill, Check, Loader2, AlertCircle, CheckCircle, Users } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,12 +10,15 @@ import { QuickUploadModal } from "./QuickUploadModal";
 import { DocumentLibraryModal } from "./DocumentLibraryModal";
 import { ClinicalRecordsModal } from "./ClinicalRecordsModal";
 import { UpdateClinicalDataModal } from "./UpdateClinicalDataModal";
+import { PatientSearchModal } from "./PatientSearchModal";
 import { toast } from "@/components/ui/sonner";
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useActivePatient } from "@/hooks/useActivePatient";
+import { useProfesionalContext } from "@/hooks/useProfesionalContext";
+import { useAuth } from "@/hooks/useAuth";
 
 interface PatientProfile {
   full_name: string | null;
@@ -42,8 +45,10 @@ interface DataSourcesPanelProps {
 }
 
 export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => {
+  const { user } = useAuth();
   const { isProfesional } = useUserRole();
-  const { activePatient } = useActivePatient();
+  const { activePatient, setActivePatient } = useActivePatient();
+  const { setPatientContext } = useProfesionalContext();
   const [profile, setProfile] = useState<PatientProfile | null>(null);
   const [documents, setDocuments] = useState<ClinicalDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,11 +71,12 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
   const [showClinicalRecords, setShowClinicalRecords] = useState(false);
   const [showPrescriptions, setShowPrescriptions] = useState(false);
   const [showUpdateClinicalData, setShowUpdateClinicalData] = useState(false);
+  const [showPatientSearchModal, setShowPatientSearchModal] = useState(false);
 
-  // Efecto para recargar cuando cambie el paciente activo (profesional) o la sesión
+  // Efecto para recargar cuando cambie el paciente activo (profesional)
   useEffect(() => {
     loadProfileAndData();
-  }, [isProfesional, activePatient]);
+  }, [isProfesional, activePatient?.user_id]); // Solo reaccionar al cambio de ID, no al objeto completo
 
   useEffect(() => {
     // Listener para recargar perfil cuando se cree por primera vez
@@ -104,8 +110,10 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Si es profesional y tiene paciente activo, cargar datos del paciente activo
+      // CRÍTICO: Si es profesional y tiene paciente activo, NO hacer consultas adicionales
+      // El activePatient YA tiene todos los datos necesarios del hook useActivePatient
       if (isProfesional && activePatient) {
+        // Usar directamente el activePatient sin hacer consultas adicionales
         setProfile(activePatient);
         setPhoneValue(activePatient.phone || "");
         
@@ -118,10 +126,10 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
           }
         }
         setLoading(false);
-        return;
+        return; // IMPORTANTE: Salir aquí para no ejecutar la consulta de abajo
       }
 
-      // Si no es profesional o no tiene paciente activo, cargar su propio perfil
+      // Solo si NO es profesional o NO tiene paciente activo, cargar su propio perfil
       const { data, error } = await supabase
         .from('patient_profiles')
         .select('*')
@@ -286,6 +294,25 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
     loadProfile(); // Recargar perfil para actualizar los datos
   };
 
+  const handlePatientSelected = async (patientUserId: string, clinicaId: string) => {
+    // Actualizar el contexto del profesional
+    await setPatientContext(patientUserId, clinicaId);
+    
+    // Cargar el perfil completo del paciente seleccionado
+    const { data: profile, error } = await supabase
+      .from('patient_profiles')
+      .select('*')
+      .eq('user_id', patientUserId)
+      .single();
+    
+    if (!error && profile) {
+      setActivePatient(profile);
+      toast.success(`Paciente activo: ${profile.full_name || 'Sin nombre'}`);
+    } else {
+      toast.error('Error al cargar el perfil del paciente');
+    }
+  };
+
   const handleDeleteDocument = async (docId: string, fileName: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -373,16 +400,30 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
     <>
       <div className="flex flex-col h-full bg-muted/30" data-tour="documents-panel">
         <div className="p-4 border-b border-border bg-background shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
-              <FolderOpen className="w-5 h-5 text-primary-foreground" />
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
+                <FolderOpen className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">
+                  {isProfesional && activePatient ? "Paciente Activo" : "Mis Documentos Clínicos"}
+                </h2>
+                <p className="text-xs text-muted-foreground">Fuentes de datos consolidadas</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-sm font-semibold text-foreground">
-                {isProfesional && activePatient ? "Documentos del Paciente Activo" : "Mis Documentos Clínicos"}
-              </h2>
-              <p className="text-xs text-muted-foreground">Fuentes de datos consolidadas</p>
-            </div>
+            {/* Botón Cambiar/Buscar Paciente solo para profesionales */}
+            {isProfesional && (
+              <Button
+                variant={activePatient ? "outline" : "default"}
+                size="sm"
+                onClick={() => setShowPatientSearchModal(true)}
+                className="h-auto py-1.5 px-3"
+              >
+                <Users className="h-4 w-4 mr-1.5" />
+                <span className="text-xs">{activePatient ? "Cambiar" : "Buscar Paciente"}</span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -790,6 +831,16 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
         onSuccess={handleUpdateSuccess}
         hismartData={hismartData}
       />
+
+      {/* Modal de Búsqueda de Paciente (solo para profesionales) */}
+      {isProfesional && user && (
+        <PatientSearchModal
+          open={showPatientSearchModal}
+          onOpenChange={setShowPatientSearchModal}
+          onPatientSelected={handlePatientSelected}
+          profesionalUserId={user.id}
+        />
+      )}
       </div>
     </>
   );

@@ -130,44 +130,6 @@ export const Header = () => {
           className="h-10 w-10 object-contain cursor-pointer"
           onClick={() => navigate("/")}
         />
-        
-        {/* Información del paciente activo (solo para profesionales) */}
-        {isProfesional && activePatient && (
-          <div className="flex items-center gap-3 px-4 py-2 bg-primary/5 rounded-lg border border-primary/20">
-            <div className="text-sm">
-              <p className="text-xs text-muted-foreground font-medium">Paciente Activo:</p>
-              <p className="font-semibold text-foreground">
-                {activePatient.full_name || 
-                  `${activePatient.topus_data?.result?.nombre || ''} ${activePatient.topus_data?.result?.apellido || ''}`.trim() || 
-                  'Sin nombre'}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {activePatient.document_type} {activePatient.identification} • {activePatient.age} años
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowPatientSearchModal(true)}
-              className="h-auto py-1.5 px-3"
-            >
-              <Users className="h-4 w-4 mr-1.5" />
-              <span className="text-xs">Cambiar</span>
-            </Button>
-          </div>
-        )}
-        
-        {/* Botón para buscar paciente si no hay ninguno seleccionado */}
-        {isProfesional && !activePatient && (
-          <Button
-            variant="default"
-            onClick={() => setShowPatientSearchModal(true)}
-            className="h-auto py-2 px-4"
-          >
-            <Users className="h-4 w-4 mr-2" />
-            <span className="text-sm">Buscar Paciente</span>
-          </Button>
-        )}
       </div>
 
       <div className="flex items-center gap-4">
