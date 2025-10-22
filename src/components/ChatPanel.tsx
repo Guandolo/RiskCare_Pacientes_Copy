@@ -77,6 +77,12 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // CRÍTICO: No inicializar si es profesional sin paciente activo
+    if (isProfesional && !activePatient?.user_id) {
+      console.log('[ChatPanel] Profesional sin paciente activo, saltando inicialización');
+      return;
+    }
+    
     const init = async () => {
       await loadOrCreateConversation();
       await loadConversations();
@@ -102,7 +108,7 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
     return () => {
       window.removeEventListener('documentsUpdated', handleDocumentsUpdate);
     };
-  }, [currentConversationId, messages.length]);
+  }, [currentConversationId, messages.length, isProfesional, activePatient?.user_id]);
 
   // Reaccionar a cambios de autenticación (centralizado)
   useEffect(() => {

@@ -75,6 +75,7 @@ export const useGlobalStore = create<GlobalStore>()(
       // Acciones del paciente activo
       setActivePatient: (patient) => {
         set({ activePatient: patient });
+        console.log('[GlobalStore] Paciente activo actualizado:', patient?.full_name || 'ninguno');
       },
       
       clearActivePatient: () => {
@@ -83,10 +84,26 @@ export const useGlobalStore = create<GlobalStore>()(
           currentPatientUserId: null,
           currentClinicaId: null 
         });
+        console.log('[GlobalStore] Paciente activo limpiado');
       },
       
       loadActivePatient: async (userId: string) => {
+        // Si ya está cargando el mismo paciente, no hacer nada
+        const current = get();
+        if (current.activePatientLoading && current.activePatient?.user_id === userId) {
+          console.log('[GlobalStore] Paciente ya en proceso de carga, saltando...');
+          return;
+        }
+        
+        // Si ya está cargado el mismo paciente, no recargar
+        if (current.activePatient?.user_id === userId && !current.activePatientLoading) {
+          console.log('[GlobalStore] Paciente ya cargado, saltando recarga innecesaria');
+          return;
+        }
+        
         set({ activePatientLoading: true });
+        console.log('[GlobalStore] Cargando paciente:', userId);
+        
         try {
           const { data: profile, error } = await supabase
             .from('patient_profiles')
@@ -96,9 +113,12 @@ export const useGlobalStore = create<GlobalStore>()(
           
           if (!error && profile) {
             set({ activePatient: profile });
+            console.log('[GlobalStore] Paciente cargado exitosamente:', profile.full_name);
+          } else {
+            console.error('[GlobalStore] Error cargando paciente:', error);
           }
         } catch (error) {
-          console.error('Error loading active patient:', error);
+          console.error('[GlobalStore] Excepción cargando paciente:', error);
         } finally {
           set({ activePatientLoading: false });
         }

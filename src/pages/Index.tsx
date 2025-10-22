@@ -9,6 +9,7 @@ import { Header } from "@/components/Header";
 import { PatientIdentificationModal } from "@/components/PatientIdentificationModal";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import { useAuth } from "@/hooks/useAuth";
+import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { supabase } from "@/integrations/supabase/client";
 import Shepherd from 'shepherd.js';
 import 'shepherd.js/dist/css/shepherd.css';
@@ -22,6 +23,7 @@ const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { currentPatientUserId, isProfesional, loading: contextLoading } = useProfesionalContext();
+  usePageVisibility(); // Monitorear visibilidad de la página
   const [isMobile, setIsMobile] = useState(false);
   const [showIdentificationModal, setShowIdentificationModal] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);

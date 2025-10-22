@@ -113,6 +113,13 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
     };
   }, []);
   const loadProfileAndData = async () => {
+    // CRÍTICO: No cargar si es profesional y no hay paciente activo
+    if (isProfesional && !activePatient?.user_id) {
+      console.log('[DataSourcesPanel] Profesional sin paciente activo, saltando carga');
+      setLoading(false);
+      return;
+    }
+    
     // Reset para evitar datos obsoletos cuando cambia el paciente activo
     setHismartData(null);
     setHismartLastFetch(null);
@@ -123,11 +130,21 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
   const loadProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
       // CRÍTICO: Si es profesional y tiene paciente activo, NO hacer consultas adicionales
       // El activePatient YA tiene todos los datos necesarios del hook useActivePatient
       if (isProfesional && activePatient) {
+        // VALIDACIÓN: Verificar que realmente tenemos un paciente activo válido
+        if (!activePatient.user_id) {
+          console.warn('[DataSourcesPanel] Paciente activo sin user_id, saltando carga');
+          setLoading(false);
+          return;
+        }
+        
         // Usar directamente el activePatient sin hacer consultas adicionales
         setProfile(activePatient);
         setPhoneValue(activePatient.phone || "");
@@ -153,12 +170,14 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
 
       if (error) {
         console.error('Error cargando perfil:', error);
+        setLoading(false);
         return;
       }
 
       if (!data) {
         setProfile(null);
         window.dispatchEvent(new CustomEvent('profileMissing'));
+        setLoading(false);
         return;
       }
       
@@ -186,6 +205,12 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
 
       // Determinar de qué usuario cargar documentos
       const targetUserId = isProfesional && activePatient ? activePatient.user_id : user.id;
+      
+      // CRÍTICO: Si es profesional sin paciente activo, NO intentar cargar
+      if (isProfesional && !targetUserId) {
+        console.log('[DataSourcesPanel] Profesional sin paciente activo, saltando carga de documentos');
+        return;
+      }
 
       // Verificar cache primero
       const cacheKey = `documents_${targetUserId}`;
