@@ -213,7 +213,58 @@ export const useGlobalStore = create<GlobalStore>()(
         currentPatientUserId: state.currentPatientUserId,
         currentClinicaId: state.currentClinicaId,
         dataCache: state.dataCache
-      })
+      }),
+      // Importante: Hidratar el estado inmediatamente al cargar
+      onRehydrateStorage: () => {
+        console.log('[GlobalStore] Iniciando hidratación desde sessionStorage...');
+        return (state, error) => {
+          if (error) {
+            console.error('[GlobalStore] Error en hidratación:', error);
+          } else if (state) {
+            console.log('[GlobalStore] ✅ Estado hidratado correctamente');
+            if (state.activePatient) {
+              console.log('[GlobalStore] Paciente activo recuperado:', state.activePatient.full_name);
+            }
+            if (state.currentPatientUserId) {
+              console.log('[GlobalStore] Contexto de paciente recuperado:', state.currentPatientUserId);
+            }
+          }
+        };
+      }
     }
   )
 );
+
+// Listener para eventos de visibilidad
+if (typeof window !== 'undefined') {
+  let lastVisibilityChange = Date.now();
+  
+  document.addEventListener('visibilitychange', () => {
+    const now = Date.now();
+    const timeSinceLastChange = now - lastVisibilityChange;
+    lastVisibilityChange = now;
+    
+    if (document.hidden) {
+      console.log('[GlobalStore] Página oculta - preservando estado');
+    } else {
+      console.log('[GlobalStore] Página visible - verificando estado...');
+      
+      // Prevenir múltiples verificaciones rápidas
+      if (timeSinceLastChange < 500) {
+        console.log('[GlobalStore] Evento de visibilidad muy rápido, ignorando');
+        return;
+      }
+      
+      const state = useGlobalStore.getState();
+      
+      if (state.activePatient) {
+        console.log('[GlobalStore] ✅ Estado preservado al recuperar foco:', state.activePatient.full_name);
+      } else if (state.currentPatientUserId) {
+        console.log('[GlobalStore] ⚠️ Tenemos currentPatientUserId pero no activePatient, recargando...');
+        state.loadActivePatient(state.currentPatientUserId);
+      } else {
+        console.log('[GlobalStore] ℹ️ No hay paciente activo (esto es normal para pacientes no-profesionales)');
+      }
+    }
+  });
+}

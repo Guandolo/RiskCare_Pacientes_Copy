@@ -10,6 +10,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { QuickUploadModal } from "./QuickUploadModal";
+import { useActivePatient } from "@/hooks/useActivePatient";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface ClinicalDocument {
   id: string;
@@ -31,6 +33,8 @@ interface DocumentLibraryModalProps {
 }
 
 export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModalProps) => {
+  const { isProfesional } = useUserRole();
+  const { activePatient } = useActivePatient();
   const [documents, setDocuments] = useState<ClinicalDocument[]>([]);
   const [filteredDocuments, setFilteredDocuments] = useState<ClinicalDocument[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
@@ -51,7 +55,7 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
       
       return () => clearInterval(interval);
     }
-  }, [open]);
+  }, [open, isProfesional, activePatient?.user_id]); // Recargar cuando cambie el paciente activo
 
   useEffect(() => {
     filterDocuments();
@@ -60,15 +64,40 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
   const loadDocuments = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log('[DocumentLibraryModal] No hay usuario autenticado');
+        setLoadingDocs(false);
+        return;
+      }
+
+      // CRÍTICO: Determinar de qué usuario cargar documentos
+      const targetUserId = isProfesional && activePatient 
+        ? activePatient.user_id 
+        : user.id;
+      
+      // Si es profesional sin paciente activo, no cargar
+      if (isProfesional && !activePatient) {
+        console.log('[DocumentLibraryModal] Profesional sin paciente activo');
+        setDocuments([]);
+        setLoadingDocs(false);
+        return;
+      }
+
+      console.log('[DocumentLibraryModal] Cargando documentos para:', targetUserId, 
+        isProfesional ? `(Paciente: ${activePatient?.full_name})` : '(Usuario propio)');
 
       const { data, error } = await supabase
         .from('clinical_documents')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', targetUserId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[DocumentLibraryModal] Error cargando documentos:', error);
+        throw error;
+      }
+      
+      console.log('[DocumentLibraryModal] Documentos cargados:', data?.length || 0);
       
       // Procesar URLs públicas para cada documento
       const documentsWithUrls = (data || []).map(doc => {
@@ -84,7 +113,7 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
       
       setDocuments(documentsWithUrls);
     } catch (error) {
-      console.error('Error loading documents:', error);
+      console.error('[DocumentLibraryModal] Error loading documents:', error);
       toast.error('Error cargando documentos');
     } finally {
       setLoadingDocs(false);
