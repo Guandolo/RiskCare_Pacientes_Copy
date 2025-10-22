@@ -57,7 +57,7 @@ const Auth = () => {
           </div>
           <CardTitle className="text-2xl">Bienvenido a RiskCare Pacientes</CardTitle>
           <CardDescription className="text-base">
-            Tu asistente clínico personal para entender y gestionar tu historial de salud
+            Tu asistente clínico personal y profesional para entender y gestionar tu historial de salud
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -92,7 +92,18 @@ const Auth = () => {
 
           <div className="pt-4 border-t border-border">
             <p className="text-xs text-muted-foreground text-center leading-relaxed">
-              <strong>Aviso Legal:</strong> Esta herramienta es un apoyo educativo para entender tu información clínica. No reemplaza el consejo de un profesional médico cualificado. Siempre consulta con tu médico para cualquier decisión sobre tu salud.
+              <strong>Aviso Legal:</strong> Esta plataforma es una herramienta de apoyo 
+para la gestión y análisis de información clínica. Los análisis generados, 
+incluidos los basados en IA, <strong>son de carácter informativo y no 
+constituyen un diagnóstico</strong> ni reemplazan el juicio clínico, consejo 
+o diagnóstico de un profesional médico cualificado.
+
+Las decisiones sobre la salud y el tratamiento deben ser tomadas siempre en 
+consulta con un proveedor de salud. RiskCare es una plataforma desarrollada por 
+<br />
+<a href="https://www.ingenieria365.com" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>
+  Ingeniería 365
+</a>.
             </p>
           </div>
         </CardContent>
