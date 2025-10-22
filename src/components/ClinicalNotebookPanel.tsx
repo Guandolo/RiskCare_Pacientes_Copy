@@ -7,6 +7,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useActivePatient } from "@/hooks/useActivePatient";
 import { ClinicalMapViewer } from "./ClinicalMapViewer";
 import { DiagnosticAidsViewer } from "./DiagnosticAidsViewer";
 import { ParaclinicosViewer } from "./ParaclinicosViewer";
@@ -34,6 +36,8 @@ interface ClinicalNotebookPanelProps {
 }
 
 export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanelProps) => {
+  const { isProfesional } = useUserRole();
+  const { activePatient } = useActivePatient();
   const { toast } = useToast();
   const [generatingModule, setGeneratingModule] = useState<string | null>(null);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
@@ -50,6 +54,9 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
         return;
       }
 
+      // Determinar el userId correcto
+      const targetUserId = isProfesional && activePatient ? activePatient.user_id : session.user.id;
+
       const functionMap = {
         'mapa_clinico': 'generate-clinical-map',
         'ayudas_diagnosticas': 'generate-diagnostic-aids',
@@ -61,6 +68,7 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
       const functionName = functionMap[module.type];
       const { data, error } = await supabase.functions.invoke(functionName, {
         headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { userId: targetUserId }
       });
       if (error) throw error;
 
@@ -79,9 +87,9 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
       setGeneratedData({ type: module.type, title: module.title, content });
       setFullscreenOpen(true);
 
-      // Guardar la nota en la base de datos
+      // Guardar la nota en la base de datos (siempre del usuario target)
       const { error: saveError } = await supabase.from('clinical_notes').insert({
-        user_id: session.user.id,
+        user_id: targetUserId,
         type: module.type,
         title: module.title,
         content: content

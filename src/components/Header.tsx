@@ -89,10 +89,10 @@ export const Header = () => {
     
     if (!error && profile) {
       setActivePatient(profile);
+      toast.success(`Paciente activo: ${profile.full_name || 'Sin nombre'}`);
+    } else {
+      toast.error('Error al cargar el perfil del paciente');
     }
-    
-    // Recargar para actualizar todos los componentes
-    window.location.reload();
   };
 
 
@@ -136,7 +136,11 @@ export const Header = () => {
           <div className="flex items-center gap-3 px-4 py-2 bg-primary/5 rounded-lg border border-primary/20">
             <div className="text-sm">
               <p className="text-xs text-muted-foreground font-medium">Paciente Activo:</p>
-              <p className="font-semibold text-foreground">{activePatient.full_name || 'Paciente'}</p>
+              <p className="font-semibold text-foreground">
+                {activePatient.full_name || 
+                  `${activePatient.topus_data?.result?.nombre || ''} ${activePatient.topus_data?.result?.apellido || ''}`.trim() || 
+                  'Sin nombre'}
+              </p>
               <p className="text-xs text-muted-foreground">
                 {activePatient.document_type} {activePatient.identification} • {activePatient.age} años
               </p>

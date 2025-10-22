@@ -67,12 +67,14 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
   const [showPrescriptions, setShowPrescriptions] = useState(false);
   const [showUpdateClinicalData, setShowUpdateClinicalData] = useState(false);
 
+  // Efecto para recargar cuando cambie el paciente activo (profesional) o la sesión
   useEffect(() => {
     loadProfileAndData();
+  }, [isProfesional, activePatient]);
 
+  useEffect(() => {
     // Listener para recargar perfil cuando se cree por primera vez
     const handleProfileUpdate = () => {
-      // Cargar perfil y documentos, y abrir la sección automáticamente
       loadProfileAndData();
       setPatientInfoOpen(true);
     };
