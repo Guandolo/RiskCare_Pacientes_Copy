@@ -27,21 +27,45 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: Network-first para HTML, Cache-first con network fallback para assets
+// Fetch: Network-only for POST/JSON/API, Network-first for HTML, Cache-first for static assets
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // Ignore non-http(s) schemes (e.g., chrome-extension) and any non-GET requests
+  if ((url.protocol !== 'http:' && url.protocol !== 'https:') || request.method !== 'GET') {
+    return; // Let the browser handle it normally
+  }
+
+  const accept = request.headers.get('accept') || '';
+
+  // Bypass caching for backend/API/JSON/SSE requests (network-only)
+  const isBackend =
+    url.pathname.startsWith('/functions/v1/') ||
+    url.pathname.startsWith('/rest/v1/') ||
+    url.pathname.startsWith('/auth/') ||
+    url.pathname.startsWith('/api/') ||
+    url.hostname.includes('supabase');
+  const isJSON = accept.includes('application/json');
+  const isSSE = accept.includes('text/event-stream');
+
+  if (isBackend || isJSON || isSSE) {
+    event.respondWith(
+      fetch(request).catch(() => caches.match(request))
+    );
+    return;
+  }
+
   // Network-first para HTML y la página principal
-  if (request.mode === 'navigate' || request.headers.get('accept').includes('text/html')) {
+  if (request.mode === 'navigate' || accept.includes('text/html')) {
     event.respondWith(
       fetch(request)
         .then((response) => {
           // Clona la respuesta para cachearla
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseToCache);
-          });
+            cache.put(request, responseToCache).catch(() => {});
+          }).catch(() => {});
           return response;
         })
         .catch(() => {
@@ -52,16 +76,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Para JS, CSS y otros assets: Cache-first con network fallback
+  // Para assets estáticos: Cache-first con revalidación en background
+  const isStaticAsset = ['script', 'style', 'image', 'font'].includes(request.destination);
+  if (!isStaticAsset) {
+    // Anything else: network only to avoid caching dynamic data
+    event.respondWith(fetch(request));
+    return;
+  }
+
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
         // Revalidar en background
         fetch(request).then((response) => {
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, response);
-          });
-        });
+            cache.put(request, response).catch(() => {});
+          }).catch(() => {});
+        }).catch(() => {});
         return cachedResponse;
       }
 
@@ -74,8 +105,8 @@ self.addEventListener('fetch', (event) => {
 
         const responseToCache = response.clone();
         caches.open(CACHE_NAME).then((cache) => {
-          cache.put(request, responseToCache);
-        });
+          cache.put(request, responseToCache).catch(() => {});
+        }).catch(() => {});
 
         return response;
       });
