@@ -12,14 +12,23 @@ serve(async (req) => {
   }
 
   try {
-    const { identification, profesionalUserId, documentType } = await req.json();
+    console.log('=== search-patient-cascade START ===');
+    console.log('Request method:', req.method);
+    
+    const body = await req.json();
+    console.log('Request body:', JSON.stringify(body, null, 2));
+    
+    const { identification, profesionalUserId, documentType } = body;
 
     if (!identification || !profesionalUserId) {
+      console.log('ERROR: Missing required parameters');
       return new Response(
         JSON.stringify({ error: 'Faltan parámetros requeridos' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
+
+    console.log('Parameters:', { identification, profesionalUserId, documentType });
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -66,17 +75,21 @@ serve(async (req) => {
       `)
       .in('clinica_id', clinicaIds);
 
+    console.log('Local patients found:', localPatients?.length || 0);
+    
     if (!localError && localPatients) {
-      const localMatch = localPatients.find(p => 
-        p.patient_profiles?.identification === identification.trim()
-      );
+      const localMatch = localPatients.find((p: any) => {
+        const profile = Array.isArray(p.patient_profiles) ? p.patient_profiles[0] : p.patient_profiles;
+        return profile?.identification === identification.trim();
+      });
 
-      if (localMatch && localMatch.patient_profiles) {
+      if (localMatch) {
+        const profile = Array.isArray(localMatch.patient_profiles) ? localMatch.patient_profiles[0] : localMatch.patient_profiles;
         console.log('Nivel 1: Paciente encontrado localmente');
         return new Response(
           JSON.stringify({
             level: 1,
-            patient: localMatch.patient_profiles,
+            patient: profile,
             clinica: {
               clinica_id: localMatch.clinica_id,
               clinicas: localMatch.clinicas
