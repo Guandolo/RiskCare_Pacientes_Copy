@@ -27,8 +27,8 @@ export const ActivePatientProvider = ({ children }: { children: ReactNode }) => 
   const [activePatient, setActivePatientState] = useState<PatientProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Cargar paciente activo desde el contexto del profesional
   useEffect(() => {
+    // Para profesionales: priorizar paciente activo persistido en sessionStorage
     if (!isProfesional) {
       setLoading(false);
       return;
@@ -36,37 +36,49 @@ export const ActivePatientProvider = ({ children }: { children: ReactNode }) => 
 
     const loadActivePatient = async () => {
       try {
+        // 1) Leer del sessionStorage primero (fuente de verdad inmediata para evitar parpadeos)
+        const storedProfile = sessionStorage.getItem('rc_active_patient_profile');
+        if (storedProfile) {
+          try {
+            const parsed = JSON.parse(storedProfile);
+            if (parsed?.user_id) {
+              setActivePatientState(parsed);
+              setLoading(false); // ya tenemos un paciente activo para la UI
+            }
+          } catch {}
+        }
+
+        // 2) Validar contexto del profesional en segundo plano SIN sobrescribir a null
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           setLoading(false);
           return;
         }
 
-        // Obtener el contexto actual del profesional
         const { data: context, error } = await supabase
           .from('profesional_patient_context')
           .select('current_patient_user_id')
           .eq('profesional_user_id', user.id)
           .maybeSingle();
 
+        // Si no hay contexto, NO sobreescribir un paciente activo válido ya cargado
         if (error || !context || !context.current_patient_user_id) {
-          setActivePatientState(null);
-          setLoading(false);
-          return;
+          return; // respetar el almacenamiento previo
         }
 
-        // Cargar perfil completo del paciente activo
+        // 3) Cargar perfil del paciente activo desde BD solo si difiere del almacenado
+        const currentId = (storedProfile ? (JSON.parse(storedProfile)?.user_id) : activePatient?.user_id) || null;
+        if (currentId === context.current_patient_user_id) return;
+
         const { data: profile, error: profileError } = await supabase
           .from('patient_profiles')
           .select('*')
           .eq('user_id', context.current_patient_user_id)
           .single();
 
-        if (profileError) {
-          console.error('Error loading active patient profile:', profileError);
-          setActivePatientState(null);
-        } else {
+        if (!profileError && profile) {
           setActivePatientState(profile);
+          try { sessionStorage.setItem('rc_active_patient_profile', JSON.stringify(profile)); } catch {}
         }
       } catch (error) {
         console.error('Error in loadActivePatient:', error);
@@ -80,12 +92,19 @@ export const ActivePatientProvider = ({ children }: { children: ReactNode }) => 
 
   const setActivePatient = (patient: PatientProfile | null) => {
     setActivePatientState(patient);
+    try {
+      if (patient) {
+        sessionStorage.setItem('rc_active_patient_profile', JSON.stringify(patient));
+      } else {
+        sessionStorage.removeItem('rc_active_patient_profile');
+      }
+    } catch {}
   };
 
   const clearActivePatient = () => {
     setActivePatientState(null);
+    try { sessionStorage.removeItem('rc_active_patient_profile'); } catch {}
   };
-
   return (
     <ActivePatientContext.Provider value={{ activePatient, setActivePatient, clearActivePatient, loading }}>
       {children}

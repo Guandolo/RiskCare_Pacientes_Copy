@@ -101,10 +101,13 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
     };
   }, []);
   const loadProfileAndData = async () => {
+    // Reset para evitar datos obsoletos cuando cambia el paciente activo
+    setHismartData(null);
+    setHismartLastFetch(null);
+    setDocuments([]);
     await loadProfile();
     await loadDocuments();
   };
-
   const loadProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();

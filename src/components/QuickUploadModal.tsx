@@ -12,6 +12,7 @@ interface QuickUploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  targetUserId?: string; // subir para el paciente activo cuando aplica
 }
 
 interface UploadFile {
