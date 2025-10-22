@@ -56,3 +56,6 @@ verify_jwt = true
 
 [functions.list-clinic-professionals]
 verify_jwt = true
+
+[functions.search-patient-cascade]
+verify_jwt = true
