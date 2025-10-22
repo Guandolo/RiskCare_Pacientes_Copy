@@ -114,7 +114,7 @@ serve(async (req) => {
 
     const user = userData.user;
 
-    const { message, conversationId } = await req.json();
+    const { message, conversationId, targetUserId } = await req.json();
     if (!message || typeof message !== "string") {
       return new Response(JSON.stringify({ error: "Mensaje inválido" }), {
         status: 400,
@@ -137,21 +137,44 @@ serve(async (req) => {
       .eq("user_id", user.id);
 
     const isProfessional = userRoles?.some(r => r.role === 'profesional_clinico' || r.role === 'admin_clinica' || r.role === 'superadmin');
-    const SYSTEM_PROMPT = isProfessional ? PROFESSIONAL_SYSTEM_PROMPT : PATIENT_SYSTEM_PROMPT;
+    
+    // Determinar de qué usuario cargar los datos
+    let patientUserId = user.id;
+    let isViewingOtherPatient = false;
+    
+    if (isProfessional && targetUserId && targetUserId !== user.id) {
+      // Verificar que el profesional tiene acceso a este paciente
+      const { data: hasAccess } = await supabase
+        .from('clinica_pacientes')
+        .select('id')
+        .eq('paciente_user_id', targetUserId)
+        .or(`profesional_asignado_user_id.eq.${user.id}`)
+        .maybeSingle();
+      
+      if (hasAccess) {
+        patientUserId = targetUserId;
+        isViewingOtherPatient = true;
+        console.log(`Profesional ${user.id} accediendo a paciente ${targetUserId}`);
+      }
+    }
+    
+    const SYSTEM_PROMPT = (isProfessional && isViewingOtherPatient) 
+      ? PROFESSIONAL_SYSTEM_PROMPT 
+      : PATIENT_SYSTEM_PROMPT;
 
-    console.log(`Usuario ${user.id} - Rol profesional: ${isProfessional}`);
+    console.log(`Usuario ${user.id} - Rol profesional: ${isProfessional} - Viendo otro paciente: ${isViewingOtherPatient}`);
 
-    // Cargar contexto mínimo necesario
+    // Cargar contexto del paciente (propio o del paciente activo)
     const { data: profile } = await supabase
       .from("patient_profiles")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", patientUserId)
       .single();
 
     const { data: documents } = await supabase
       .from("clinical_documents")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", patientUserId)
       .order("created_at", { ascending: false })
       .limit(20);
 

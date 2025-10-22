@@ -17,18 +17,19 @@ import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfesionalContext } from "@/hooks/useProfesionalContext";
+import { useActivePatient } from "@/hooks/useActivePatient";
 import { Users } from "lucide-react";
 
 export const Header = () => {
   const { user, signOut } = useAuth();
   const { roles, isProfesional, isAdminClinica, isSuperAdmin } = useUserRole();
-  const { currentPatientUserId, setPatientContext } = useProfesionalContext();
+  const { setPatientContext } = useProfesionalContext();
+  const { activePatient, setActivePatient } = useActivePatient();
   const [showProfesionalModal, setShowProfesionalModal] = useState(false);
   const [showViewDataModal, setShowViewDataModal] = useState(false);
   const [showPatientSearchModal, setShowPatientSearchModal] = useState(false);
   const [profesionalData, setProfesionalData] = useState<any>(null);
   const [fullRethusData, setFullRethusData] = useState<any>(null);
-  const [currentPatientInfo, setCurrentPatientInfo] = useState<any>(null);
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
 
@@ -75,34 +76,23 @@ export const Header = () => {
     fetchProfesionalData();
   }, [isProfesional, user]);
 
-  // Cargar información del paciente actual si el profesional está viendo a alguien
-  useEffect(() => {
-    const fetchCurrentPatientInfo = async () => {
-      if (!isProfesional || !currentPatientUserId) {
-        setCurrentPatientInfo(null);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('patient_profiles')
-          .select('full_name, identification, document_type, age, eps')
-          .eq('user_id', currentPatientUserId)
-          .single();
-
-        if (error) throw error;
-        setCurrentPatientInfo(data);
-      } catch (error) {
-        console.error('Error fetching current patient info:', error);
-      }
-    };
-
-    fetchCurrentPatientInfo();
-  }, [isProfesional, currentPatientUserId]);
-
-  const handlePatientSelected = (patientUserId: string, clinicaId: string) => {
-    setPatientContext(patientUserId, clinicaId);
-    window.location.reload(); // Recargar para actualizar todos los componentes
+  const handlePatientSelected = async (patientUserId: string, clinicaId: string) => {
+    // Actualizar el contexto del profesional
+    await setPatientContext(patientUserId, clinicaId);
+    
+    // Cargar el perfil completo del paciente seleccionado
+    const { data: profile, error } = await supabase
+      .from('patient_profiles')
+      .select('*')
+      .eq('user_id', patientUserId)
+      .single();
+    
+    if (!error && profile) {
+      setActivePatient(profile);
+    }
+    
+    // Recargar para actualizar todos los componentes
+    window.location.reload();
   };
 
 
@@ -141,33 +131,34 @@ export const Header = () => {
           onClick={() => navigate("/")}
         />
         
-        {/* Información del paciente actual (solo para profesionales) */}
-        {isProfesional && currentPatientInfo && (
-          <div className="flex items-center gap-3 px-3 py-1.5 bg-muted/50 rounded-lg border border-border/50">
+        {/* Información del paciente activo (solo para profesionales) */}
+        {isProfesional && activePatient && (
+          <div className="flex items-center gap-3 px-4 py-2 bg-primary/5 rounded-lg border border-primary/20">
             <div className="text-sm">
-              <p className="font-semibold">{currentPatientInfo.full_name || 'Paciente'}</p>
+              <p className="text-xs text-muted-foreground font-medium">Paciente Activo:</p>
+              <p className="font-semibold text-foreground">{activePatient.full_name || 'Paciente'}</p>
               <p className="text-xs text-muted-foreground">
-                {currentPatientInfo.document_type} {currentPatientInfo.identification} • {currentPatientInfo.age} años
+                {activePatient.document_type} {activePatient.identification} • {activePatient.age} años
               </p>
             </div>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => setShowPatientSearchModal(true)}
-              className="h-auto py-1 px-2"
+              className="h-auto py-1.5 px-3"
             >
-              <Users className="h-4 w-4 mr-1" />
+              <Users className="h-4 w-4 mr-1.5" />
               <span className="text-xs">Cambiar</span>
             </Button>
           </div>
         )}
         
         {/* Botón para buscar paciente si no hay ninguno seleccionado */}
-        {isProfesional && !currentPatientInfo && (
+        {isProfesional && !activePatient && (
           <Button
-            variant="outline"
+            variant="default"
             onClick={() => setShowPatientSearchModal(true)}
-            className="h-auto py-2"
+            className="h-auto py-2 px-4"
           >
             <Users className="h-4 w-4 mr-2" />
             <span className="text-sm">Buscar Paciente</span>

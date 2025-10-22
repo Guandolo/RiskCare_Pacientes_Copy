@@ -14,6 +14,8 @@ import { toast } from "@/components/ui/sonner";
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useActivePatient } from "@/hooks/useActivePatient";
 
 interface PatientProfile {
   full_name: string | null;
@@ -40,6 +42,8 @@ interface DataSourcesPanelProps {
 }
 
 export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => {
+  const { isProfesional } = useUserRole();
+  const { activePatient } = useActivePatient();
   const [profile, setProfile] = useState<PatientProfile | null>(null);
   const [documents, setDocuments] = useState<ClinicalDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,6 +102,24 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Si es profesional y tiene paciente activo, cargar datos del paciente activo
+      if (isProfesional && activePatient) {
+        setProfile(activePatient);
+        setPhoneValue(activePatient.phone || "");
+        
+        // Cargar datos de HiSmart del paciente activo
+        if (activePatient.topus_data && typeof activePatient.topus_data === 'object') {
+          const topusData = activePatient.topus_data as any;
+          if (topusData.hismart_data) {
+            setHismartData(topusData.hismart_data);
+            setHismartLastFetch(topusData.hismart_last_fetch || null);
+          }
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Si no es profesional o no tiene paciente activo, cargar su propio perfil
       const { data, error } = await supabase
         .from('patient_profiles')
         .select('*')
@@ -110,7 +132,6 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
       }
 
       if (!data) {
-        // No hay perfil: notificar a la app para que muestre el modal
         setProfile(null);
         window.dispatchEvent(new CustomEvent('profileMissing'));
         return;
@@ -118,10 +139,8 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
       
       setProfile(data);
       setPhoneValue(data.phone || "");
-      // Notificar a la app que ya hay perfil cargado
       window.dispatchEvent(new CustomEvent('profileLoaded'));
       
-      // Cargar datos de HiSmart guardados si existen
       if (data.topus_data && typeof data.topus_data === 'object') {
         const topusData = data.topus_data as any;
         if (topusData.hismart_data) {
@@ -131,7 +150,6 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
       }
     } catch (error) {
       console.error('Error cargando perfil:', error);
-      // Evitar mostrar toast de error genérico en primer arranque sin perfil
     } finally {
       setLoading(false);
     }
@@ -141,10 +159,13 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Determinar de qué usuario cargar documentos
+      const targetUserId = isProfesional && activePatient ? activePatient.user_id : user.id;
+
       const { data, error } = await supabase
         .from('clinical_documents')
         .select('id, file_name, document_type, document_date, created_at, file_url, file_type, extracted_text, structured_data, processing_status, processing_error')
-        .eq('user_id', user.id)
+        .eq('user_id', targetUserId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -355,7 +376,9 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
               <FolderOpen className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-foreground">Mis Documentos Clínicos</h2>
+              <h2 className="text-sm font-semibold text-foreground">
+                {isProfesional && activePatient ? "Documentos del Paciente Activo" : "Mis Documentos Clínicos"}
+              </h2>
               <p className="text-xs text-muted-foreground">Fuentes de datos consolidadas</p>
             </div>
           </div>
@@ -372,14 +395,16 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
                     <Heart className="w-5 h-5 text-primary" />
                   </div>
                   <div className="flex-1 text-left">
-                    <h3 className="font-semibold text-sm">Información del Paciente</h3>
+                    <h3 className="font-semibold text-sm">
+                      {isProfesional && activePatient ? "Información del Paciente Activo" : "Información del Paciente"}
+                    </h3>
                     {profile && (
                       <>
                         <p className="text-base font-bold text-foreground mt-1">
                           {getTopusValue('result.nombre')} {getTopusValue('result.s_nombre')} {getTopusValue('result.apellido')} {getTopusValue('result.s_apellido')}
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          Cédula de Ciudadanía: {profile.identification}
+                          {profile.document_type}: {profile.identification}
                         </p>
                       </>
                     )}
@@ -546,7 +571,7 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
                   </div>
                   <div className="flex-1">
                     <h3 className="text-sm font-semibold text-foreground">
-                      Mis Documentos Cargados
+                      {isProfesional && activePatient ? "Documentos del Paciente" : "Mis Documentos Cargados"}
                     </h3>
                     <p className="text-xs text-muted-foreground">
                       {documents.length} {documents.length === 1 ? 'documento' : 'documentos'}
@@ -571,7 +596,7 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
                   onClick={() => setShowQuickUploadModal(true)}
                 >
                   <FilePlus2 className="w-4 h-4" />
-                  Carga Rápida de Documentos
+                  {isProfesional && activePatient ? "Cargar Documentos del Paciente" : "Carga Rápida de Documentos"}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -598,7 +623,10 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
                     </div>
                     <div className="flex-1">
                       <h3 className="text-sm font-semibold text-foreground">
-                        {hismartLastFetch ? 'Actualizar Datos Clínicos' : 'Consultar Datos Clínicos'}
+                        {hismartLastFetch 
+                          ? (isProfesional && activePatient ? 'Actualizar Datos del Paciente' : 'Actualizar Datos Clínicos')
+                          : (isProfesional && activePatient ? 'Consultar Datos del Paciente' : 'Consultar Datos Clínicos')
+                        }
                       </h3>
                       {hismartLastFetch && (
                         <p className="text-xs text-muted-foreground">
@@ -607,7 +635,7 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
                       )}
                       {!hismartLastFetch && (
                         <p className="text-xs text-muted-foreground">
-                          Obtener datos de Historia Clínica
+                          {isProfesional && activePatient ? 'Obtener datos del paciente' : 'Obtener datos de Historia Clínica'}
                         </p>
                       )}
                     </div>

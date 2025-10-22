@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check, Mic, MicOff, Paperclip, Clock, CheckCircle2, Loader2, ShieldCheck, ChevronLeft, ChevronRight, Copy, ThumbsUp, ThumbsDown, MoreVertical, Share2, User, Search } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useActivePatient } from "@/hooks/useActivePatient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +42,8 @@ interface ChatPanelProps {
 }
 
 export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
+  const { isProfesional } = useUserRole();
+  const { activePatient } = useActivePatient();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -131,10 +135,14 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
       }
       
       console.log('Loading suggestions with context...');
+      
+      // Si es profesional y tiene paciente activo, enviar ese userId
+      const targetUserId = isProfesional && activePatient ? activePatient.user_id : undefined;
+      
       const { data, error } = await supabase.functions.invoke('chat-suggestions', {
         body: { 
           conversationContext: conversationContext || messages,
-          targetUserId: displayedUserId // Enviar el usuario que se está visualizando
+          targetUserId: targetUserId // Enviar el paciente activo si aplica
         },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
@@ -464,6 +472,9 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
         step.id === 'searching' ? { ...step, status: 'in-progress' as const } : step
       ));
 
+      // Si es profesional y tiene paciente activo, enviar ese userId
+      const targetUserId = isProfesional && activePatient ? activePatient.user_id : undefined;
+      
       const CHAT_URL = `https://mixunsevvfenajctpdfq.functions.supabase.co/functions/v1/chat-stream`;
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
@@ -471,7 +482,11 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ message: userMessage, conversationId: convId }),
+        body: JSON.stringify({ 
+          message: userMessage, 
+          conversationId: convId,
+          targetUserId: targetUserId // Enviar paciente activo si aplica
+        }),
       });
 
       if (!resp.ok || !resp.body) {
@@ -720,7 +735,11 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-foreground">Asistente Clínico IA</h2>
-              <p className="text-xs text-muted-foreground">Pregunta sobre tu historial médico</p>
+              <p className="text-xs text-muted-foreground">
+                {isProfesional && activePatient 
+                  ? "Analiza la historia clínica del paciente" 
+                  : "Pregunta sobre tu historial médico"}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
