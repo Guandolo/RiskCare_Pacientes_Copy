@@ -116,7 +116,7 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isReval
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isRevalidation ? 'Actualizar Validación Profesional' : 'Validar como Profesional Clínico'}</DialogTitle>
           <DialogDescription>

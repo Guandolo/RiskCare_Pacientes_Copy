@@ -556,6 +556,7 @@ export default function ClinicAdmin() {
               <Input
                 id="profesionalEmail"
                 type="email"
+                required
                 value={profesionalEmail}
                 onChange={(e) => setProfesionalEmail(e.target.value)}
                 placeholder="usuario@correo.com"

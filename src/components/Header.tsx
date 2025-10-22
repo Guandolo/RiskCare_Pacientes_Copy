@@ -264,17 +264,8 @@ export const Header = () => {
                           {profesionalData.profesion && profesionalData.profesion !== 'No especificada' && (
                             <p><strong>Profesión:</strong> {profesionalData.profesion}</p>
                           )}
-                          {profesionalData.especialidad && profesionalData.especialidad !== 'No especificada' && (
-                            <p><strong>Ocupación:</strong> {profesionalData.especialidad}</p>
-                          )}
                           {profesionalData.registroProfesional && profesionalData.registroProfesional !== 'No especificado' && (
                             <p><strong>Registro:</strong> {profesionalData.registroProfesional}</p>
-                          )}
-                          {profesionalData.institucion && profesionalData.institucion !== 'No especificada' && (
-                            <p><strong>Institución:</strong> {profesionalData.institucion}</p>
-                          )}
-                          {profesionalData.totalTitulos && (
-                            <p className="pt-1"><strong>Total títulos:</strong> {profesionalData.totalTitulos}</p>
                           )}
                           {profesionalData.fechaValidacion && (
                             <p className="text-[10px] mt-1 pt-1 border-t opacity-70">

@@ -142,7 +142,7 @@ export const BulkProfessionalUploadModal = ({ open, onOpenChange, clinicaId, onS
             Carga Masiva de Profesionales
           </DialogTitle>
           <DialogDescription>
-            Formato: DOC_TIPO DOC_NUMERO EMAIL NOMBRE_OPCIONAL (uno por línea)
+            Formato: DOC_TIPO DOC_NUMERO EMAIL NOMBRE_OPCIONAL (uno por línea). Si el profesional aún no existe, el EMAIL es obligatorio.
           </DialogDescription>
         </DialogHeader>
 
