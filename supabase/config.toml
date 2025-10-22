@@ -44,3 +44,15 @@ verify_jwt = true
 
 [functions.generate-chat-title]
 verify_jwt = true
+
+[functions.admin-create-patient]
+verify_jwt = true
+
+[functions.admin-create-professional]
+verify_jwt = true
+
+[functions.admin-associate-professional]
+verify_jwt = true
+
+[functions.list-clinic-professionals]
+verify_jwt = true
