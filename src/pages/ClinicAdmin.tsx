@@ -65,7 +65,6 @@ export default function ClinicAdmin() {
   const [searchTerm, setSearchTerm] = useState("");
   const [pacienteDocument, setPacienteDocument] = useState("");
   const [profesionalDocument, setProfesionalDocument] = useState("");
-  const [profesionalEmail, setProfesionalEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -207,32 +206,41 @@ export default function ClinicAdmin() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Sesión no disponible');
 
-      const body: any = {
-        clinicaId: clinica!.id,
-        documentType: 'CC',
-        identification: profesionalDocument.trim(),
-      };
-      if (profesionalEmail.trim()) body.email = profesionalEmail.trim();
-
-      const { error: proErr } = await supabase.functions.invoke('admin-create-professional', {
-        body,
+      const { data, error: proErr } = await supabase.functions.invoke('admin-associate-professional', {
+        body: {
+          clinicaId: clinica!.id,
+          numeroDocumento: profesionalDocument.trim(),
+        },
         headers: { Authorization: `Bearer ${session.access_token}` }
       });
-      if (proErr) throw proErr;
 
-      toast.success("Profesional agregado exitosamente");
+      if (proErr) {
+        // Manejo específico de errores según el código
+        const errorCode = proErr.context?.code || proErr.code;
+        const errorMessage = proErr.message || "Error al asociar profesional";
+        
+        if (errorCode === 'PROFESSIONAL_NOT_FOUND') {
+          toast.error("No se encontró un profesional clínico registrado con el documento ingresado. Por favor, verifique el número o indique al profesional que debe completar su registro y validación en la plataforma.");
+        } else if (errorCode === 'ALREADY_ASSOCIATED') {
+          toast.error(errorMessage);
+        } else if (errorCode === 'NOT_PROFESSIONAL_ROLE') {
+          toast.error("El usuario encontrado no tiene el rol de profesional clínico. Por favor, verifique el documento.");
+        } else {
+          toast.error(errorMessage);
+        }
+        return;
+      }
+
+      // Mensaje de éxito
+      const successMessage = data?.message || "Profesional asociado exitosamente";
+      toast.success(successMessage);
+      
       setShowAddProfesional(false);
       setProfesionalDocument("");
-      setProfesionalEmail("");
       await loadClinicaData();
     } catch (error: any) {
       console.error('Error:', error);
-      const msg = error?.message || "Error al agregar profesional";
-      if (msg.toLowerCase().includes('email') && !profesionalEmail.trim()) {
-        toast.error("Si el profesional no existe aún, debes ingresar su email para crearlo.");
-      } else {
-        toast.error(msg);
-      }
+      toast.error("Ocurrió un error inesperado al intentar agregar al profesional. Por favor, intente más tarde.");
     } finally {
       setSubmitting(false);
     }
@@ -435,7 +443,7 @@ export default function ClinicAdmin() {
               <div className="flex gap-2">
                 <Button onClick={() => setShowAddProfesional(true)}>
                   <UserPlus className="h-4 w-4 mr-2" />
-                  Agregar Profesional
+                  Asociar Profesional
                 </Button>
                 <Button variant="outline" onClick={() => setShowBulkProfessionals(true)}>
                   <Upload className="h-4 w-4 mr-2" />
@@ -534,7 +542,7 @@ export default function ClinicAdmin() {
       <Dialog open={showAddProfesional} onOpenChange={setShowAddProfesional}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Agregar Profesional</DialogTitle>
+            <DialogTitle>Asociar Profesional</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -547,27 +555,12 @@ export default function ClinicAdmin() {
                 placeholder="Número de cédula"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                El profesional debe estar registrado y validado en RETHUS
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="profesionalEmail">Email del Profesional</Label>
-              <Input
-                id="profesionalEmail"
-                type="email"
-                required
-                value={profesionalEmail}
-                onChange={(e) => setProfesionalEmail(e.target.value)}
-                placeholder="usuario@correo.com"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Obligatorio solo si el profesional aún no existe en la plataforma.
+                Ingrese el documento del profesional clínico que desea agregar a su clínica.
               </p>
             </div>
 
             <Button onClick={handleAddProfesional} disabled={submitting} className="w-full">
-              {submitting ? "Agregando..." : "Agregar Profesional"}
+              {submitting ? "Asociando..." : "Asociar Profesional"}
             </Button>
           </div>
         </DialogContent>
