@@ -197,25 +197,46 @@ export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Buscar la conversación más reciente
-      const { data: latestConv } = await supabase
+      // 🆕 Determinar el patient_user_id según el contexto
+      const targetPatientId = isProfesional && activePatient 
+        ? activePatient.user_id 
+        : null; // Null para pacientes consultando su propio historial
+
+      console.log('[ChatPanel] 📂 Cargando conversación para:', {
+        userId: user.id,
+        patientId: targetPatientId,
+        context: isProfesional ? 'Profesional' : 'Paciente'
+      });
+
+      // 🆕 Buscar conversación según contexto (profesional + paciente específico, o paciente propio)
+      let query = supabase
         .from('conversations')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', user.id);
+      
+      if (isProfesional && targetPatientId) {
+        // Profesional: buscar conversaciones de este profesional sobre este paciente específico
+        query = query.eq('patient_user_id', targetPatientId);
+      } else {
+        // Paciente: buscar conversaciones propias (patient_user_id es NULL)
+        query = query.is('patient_user_id', null);
+      }
+
+      const { data: latestConv } = await query
         .order('updated_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (latestConv) {
+        console.log('[ChatPanel] ✅ Conversación encontrada:', latestConv.id);
         setCurrentConversationId(latestConv.id);
         await loadChatHistory(latestConv.id);
-        // Cargar sugerencias basadas en el contexto de la conversación cargada
-        // Las sugerencias se cargarán después de que los mensajes se hayan establecido
       } else {
+        console.log('[ChatPanel] 🆕 No hay conversación previa, creando nueva');
         await createNewConversation();
       }
     } catch (error) {
-      console.error('Error loading conversation:', error);
+      console.error('[ChatPanel] ❌ Error loading conversation:', error);
     }
   };
 
@@ -224,27 +245,48 @@ export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Usar cache para evitar recargas innecesarias
-      const cacheKey = `conversations_${user.id}`;
+      // 🆕 Determinar el patient_user_id según el contexto
+      const targetPatientId = isProfesional && activePatient 
+        ? activePatient.user_id 
+        : null;
+
+      // Usar cache específico por paciente para evitar recargas innecesarias
+      const cacheKey = `conversations_${user.id}_${targetPatientId || 'self'}`;
       const cachedConversations = getCacheData(cacheKey, 3 * 60 * 1000); // 3 minutos
       
       if (cachedConversations) {
+        console.log('[ChatPanel] 📦 Usando conversaciones en cache');
         setConversations(cachedConversations);
         return;
       }
 
-      const { data, error } = await supabase
+      console.log('[ChatPanel] 🔍 Cargando lista de conversaciones para paciente:', targetPatientId || 'self');
+
+      // 🆕 Filtrar conversaciones según contexto
+      let query = supabase
         .from('conversations')
         .select('*')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false });
+        .eq('user_id', user.id);
+      
+      if (isProfesional && targetPatientId) {
+        // Profesional: solo conversaciones sobre este paciente
+        query = query.eq('patient_user_id', targetPatientId);
+      } else {
+        // Paciente: solo sus conversaciones propias
+        query = query.is('patient_user_id', null);
+      }
+
+      const { data, error } = await query.order('updated_at', { ascending: false });
 
       if (!error && data) {
+        console.log('[ChatPanel] ✅ Conversaciones cargadas:', data.length);
         setConversations(data);
         setCacheData(cacheKey, data);
+      } else if (error) {
+        console.error('[ChatPanel] ❌ Error cargando conversaciones:', error);
       }
     } catch (error) {
-      console.error('Error loading conversations:', error);
+      console.error('[ChatPanel] ❌ Error loading conversations:', error);
     }
   };
 
@@ -457,18 +499,41 @@ export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: 
         return;
       }
 
+      // 🆕 Determinar patient_user_id al crear conversación
+      const targetPatientId = isProfesional && activePatient 
+        ? activePatient.user_id 
+        : null;
+
+      console.log('[ChatPanel] 🆕 Creando nueva conversación:', {
+        userId: user.id,
+        patientId: targetPatientId,
+        context: isProfesional ? 'Profesional' : 'Paciente'
+      });
+
       // Crear nueva conversación al enviar el primer mensaje
+      const insertData: any = {
+        user_id: user.id,
+        title: 'Nueva conversación'
+      };
+
+      // 🆕 Solo agregar patient_user_id si es profesional con paciente activo
+      if (isProfesional && targetPatientId) {
+        insertData.patient_user_id = targetPatientId;
+      }
+
       const { data, error } = await supabase
         .from('conversations')
-        .insert({ user_id: user.id, title: 'Nueva conversación' })
+        .insert(insertData)
         .select()
         .single();
 
       if (error || !data) {
+        console.error('[ChatPanel] ❌ Error creando conversación:', error);
         toast({ title: 'Error', description: 'No se pudo crear la conversación', variant: 'destructive' });
         return;
       }
 
+      console.log('[ChatPanel] ✅ Conversación creada:', data.id);
       convId = data.id;
       setCurrentConversationId(convId);
       await loadConversations();

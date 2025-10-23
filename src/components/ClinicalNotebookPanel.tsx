@@ -87,22 +87,46 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
       setGeneratedData({ type: module.type, title: module.title, content });
       setFullscreenOpen(true);
 
-      // Guardar la nota en la base de datos (siempre del usuario target)
-      const { error: saveError } = await supabase.from('clinical_notes').insert({
-        user_id: targetUserId,
+      // 🆕 Determinar patient_user_id según el contexto
+      // - Si es profesional viendo un paciente → patient_user_id = activePatient.user_id
+      // - Si es paciente viendo sus propios datos → patient_user_id = NULL
+      const currentUserId = session.user.id;
+      const isViewingPatient = isProfesional && activePatient && activePatient.user_id !== currentUserId;
+      
+      console.log('[ClinicalNotebook] 💾 Guardando nota clínica:', {
+        module: module.type,
+        creator_user_id: currentUserId,
+        patient_user_id: isViewingPatient ? activePatient.user_id : null,
+        is_professional: isProfesional,
+        active_patient: activePatient?.user_id
+      });
+
+      // Guardar la nota en la base de datos con asociación dual
+      const noteData: any = {
+        user_id: currentUserId, // ID del profesional/paciente que crea la nota
         type: module.type,
         title: module.title,
         content: content
-      });
+      };
+
+      // 🚨 CRÍTICO: Solo agregar patient_user_id si es profesional viendo paciente
+      if (isViewingPatient) {
+        noteData.patient_user_id = activePatient.user_id;
+      }
+
+      const { error: saveError } = await supabase
+        .from('clinical_notes')
+        .insert(noteData);
 
       if (saveError) {
-        console.error('Error guardando nota:', saveError);
+        console.error('[ClinicalNotebook] ❌ Error guardando nota:', saveError);
         toast({ 
           title: 'Advertencia', 
           description: 'El análisis se generó pero no se pudo guardar en el historial.',
           variant: 'default'
         });
       } else {
+        console.log('[ClinicalNotebook] ✅ Nota guardada exitosamente');
         toast({ 
           title: 'Guardado', 
           description: `${module.title} guardado en tu historial.`,

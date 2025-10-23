@@ -204,19 +204,24 @@ serve(async (req) => {
 
     console.log(`Usuario ${user.id} - Rol profesional: ${isProfessional} - Viendo otro paciente: ${isViewingOtherPatient}`);
 
-    // Cargar contexto del paciente (propio o del paciente activo)
+    // ========== FUENTE DE DATOS 1: PERFIL DEL PACIENTE ==========
     const { data: profile } = await supabase
       .from("patient_profiles")
       .select("*")
       .eq("user_id", patientUserId)
       .single();
 
+    // ========== FUENTE DE DATOS 2: DOCUMENTOS CLÍNICOS ==========
     const { data: documents } = await supabase
       .from("clinical_documents")
       .select("*")
       .eq("user_id", patientUserId)
       .order("created_at", { ascending: false })
       .limit(20);
+
+    // ========== FUENTE DE DATOS 3: DATOS HISMART/BDORO (via Topus) ==========
+    // Los datos de HiSmart/BDOro ya están integrados en topus_data del perfil
+    const externalData = profile?.topus_data || null;
 
     // Solo cargar historial para usuarios autenticados
     let chatHistory = null;
@@ -231,29 +236,91 @@ serve(async (req) => {
       chatHistory = data;
     }
 
-    let contextInfo = `INFORMACIÓN DEL PACIENTE:\n`;
+    // Construir contexto unificado con las 3 fuentes de datos
+    let contextInfo = `═══════════════════════════════════════════════════════════════
+CONTEXTO CLÍNICO DEL PACIENTE (3 FUENTES DE DATOS INTEGRADAS)
+═══════════════════════════════════════════════════════════════\n\n`;
+
+    // FUENTE 1: Perfil del Paciente
+    contextInfo += `📋 FUENTE 1: INFORMACIÓN DEL PERFIL DEL PACIENTE\n`;
+    contextInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     if (profile) {
-      contextInfo += `- Nombre: ${profile.full_name || "No disponible"}\n`;
-      contextInfo += `- Edad: ${profile.age || "No disponible"}\n`;
-      contextInfo += `- EPS: ${profile.eps || "No disponible"}\n`;
+      contextInfo += `• Nombre Completo: ${profile.full_name || "No disponible"}\n`;
+      contextInfo += `• Tipo de Documento: ${profile.document_type || "No disponible"}\n`;
+      contextInfo += `• Identificación: ${profile.identification || "No disponible"}\n`;
+      contextInfo += `• Edad: ${profile.age || "No disponible"} años\n`;
+      contextInfo += `• EPS/Aseguradora: ${profile.eps || "No disponible"}\n`;
+      contextInfo += `• Teléfono: ${profile.phone || "No disponible"}\n`;
+    } else {
+      contextInfo += `⚠️ No se encontró perfil del paciente\n`;
     }
 
+    // FUENTE 2: Documentos Clínicos
+    contextInfo += `\n📄 FUENTE 2: DOCUMENTOS CLÍNICOS DISPONIBLES\n`;
+    contextInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     if (documents && documents.length > 0) {
-      contextInfo += `\nDOCUMENTOS CLÍNICOS DISPONIBLES (usa estos nombres exactos para citar):\n`;
+      contextInfo += `Total de documentos: ${documents.length}\n\n`;
+      contextInfo += `INSTRUCCIÓN: Cuando cites información de estos documentos, usa el formato:\n`;
+      contextInfo += `"Según [Documento X: nombre_archivo]..." o referencia numerada al final.\n\n`;
+      
       documents.forEach((doc: any, idx: number) => {
-        contextInfo += `\n[Documento ${idx + 1}: "${doc.file_name}"]\n`;
-        contextInfo += `Fecha: ${doc.document_date || doc.created_at}\n`;
-        contextInfo += `Tipo: ${doc.document_type || "no especificado"}\n`;
+        contextInfo += `────────────────────────────────────────────────────────────\n`;
+        contextInfo += `[Documento ${idx + 1}: "${doc.file_name}"]\n`;
+        contextInfo += `  • Fecha del Documento: ${doc.document_date || "No especificada"}\n`;
+        contextInfo += `  • Fecha de Carga: ${new Date(doc.created_at).toLocaleDateString('es-CO')}\n`;
+        contextInfo += `  • Tipo: ${doc.document_type || "No especificado"}\n`;
+        
         if (doc.extracted_text) {
-          contextInfo += `Contenido: ${doc.extracted_text.substring(0, 1500)}...\n`;
+          contextInfo += `  • Contenido Extraído (primeros 1500 caracteres):\n`;
+          contextInfo += `    ${doc.extracted_text.substring(0, 1500)}${doc.extracted_text.length > 1500 ? '...' : ''}\n`;
         }
-        if (doc.structured_data) {
-          contextInfo += `Datos estructurados: ${JSON.stringify(doc.structured_data).substring(0, 800)}...\n`;
+        
+        if (doc.structured_data && Object.keys(doc.structured_data).length > 0) {
+          contextInfo += `  • Datos Estructurados:\n`;
+          contextInfo += `    ${JSON.stringify(doc.structured_data, null, 2).substring(0, 800)}${JSON.stringify(doc.structured_data).length > 800 ? '...' : ''}\n`;
         }
+        contextInfo += `\n`;
       });
     } else {
-      contextInfo += `\nNo hay documentos clínicos cargados aún.\n`;
+      contextInfo += `⚠️ No hay documentos clínicos cargados aún.\n`;
     }
+
+    // FUENTE 3: Datos Externos (HiSmart/BDOro via Topus)
+    contextInfo += `\n🏥 FUENTE 3: DATOS DE SISTEMAS EXTERNOS (HiSmart/BDOro via Topus)\n`;
+    contextInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    if (externalData && typeof externalData === 'object' && Object.keys(externalData).length > 0) {
+      contextInfo += `Fuente: Sistema Topus (integración con bases de datos externas)\n\n`;
+      
+      // Estructurar datos de Topus de manera legible
+      if (externalData.nombre) contextInfo += `• Nombre Registrado: ${externalData.nombre}\n`;
+      if (externalData.identificacion) contextInfo += `• Identificación: ${externalData.identificacion}\n`;
+      if (externalData.fecha_nacimiento) contextInfo += `• Fecha de Nacimiento: ${externalData.fecha_nacimiento}\n`;
+      if (externalData.sexo) contextInfo += `• Sexo: ${externalData.sexo}\n`;
+      if (externalData.estado_civil) contextInfo += `• Estado Civil: ${externalData.estado_civil}\n`;
+      if (externalData.direccion) contextInfo += `• Dirección: ${externalData.direccion}\n`;
+      if (externalData.telefono) contextInfo += `• Teléfono: ${externalData.telefono}\n`;
+      if (externalData.email) contextInfo += `• Email: ${externalData.email}\n`;
+      if (externalData.eps) contextInfo += `• EPS: ${externalData.eps}\n`;
+      if (externalData.regimen) contextInfo += `• Régimen: ${externalData.regimen}\n`;
+      
+      // Información médica adicional si existe
+      if (externalData.tipo_sangre) contextInfo += `• Tipo de Sangre: ${externalData.tipo_sangre}\n`;
+      if (externalData.alergias) contextInfo += `• Alergias Registradas: ${externalData.alergias}\n`;
+      if (externalData.medicamentos_actuales) contextInfo += `• Medicamentos Actuales: ${externalData.medicamentos_actuales}\n`;
+      if (externalData.diagnosticos_previos) contextInfo += `• Diagnósticos Previos: ${externalData.diagnosticos_previos}\n`;
+      
+      // Dump completo de datos adicionales (por si hay campos no mapeados)
+      contextInfo += `\n• Datos Completos de Topus:\n`;
+      contextInfo += `  ${JSON.stringify(externalData, null, 2).substring(0, 1000)}${JSON.stringify(externalData).length > 1000 ? '...' : ''}\n`;
+    } else {
+      contextInfo += `⚠️ No hay datos disponibles de sistemas externos.\n`;
+      contextInfo += `ℹ️ Esto puede significar que el paciente aún no ha sido consultado en HiSmart/BDOro,\n`;
+      contextInfo += `   o que la integración está pendiente de configuración.\n`;
+    }
+
+    contextInfo += `\n═══════════════════════════════════════════════════════════════\n`;
+    contextInfo += `FIN DEL CONTEXTO CLÍNICO\n`;
+    contextInfo += `═══════════════════════════════════════════════════════════════\n`;
 
     // Guardar mensaje del usuario inmediatamente (solo para usuarios autenticados, no invitados)
     if (!user.isGuest) {
