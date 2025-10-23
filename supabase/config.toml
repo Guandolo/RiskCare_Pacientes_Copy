@@ -71,3 +71,6 @@ verify_jwt = true
 
 [functions.get-shared-accesses]
 verify_jwt = true
+
+[functions.guest-download-document]
+verify_jwt = false

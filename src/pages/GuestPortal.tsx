@@ -147,43 +147,41 @@ export const GuestPortal = () => {
     }
 
     try {
-      // Registrar el acceso
-      await supabase.functions.invoke('validate-shared-access', {
-        body: { 
-          token,
-          action: 'download_document',
-          actionDetails: {
-            documentId,
-            fileName,
-            timestamp: new Date().toISOString()
-          }
+      // Descargar el documento a través de la edge function
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/guest-download-document`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            token,
+            documentId
+          })
         }
-      });
+      );
 
-      // Descargar el documento desde storage
-      const { data: { user } } = await supabase.auth.getUser();
-      const userId = accessData.patientUserId;
-      
-      if (userId) {
-        const { data, error } = await supabase.storage
-          .from('clinical-documents')
-          .download(`${userId}/${fileName}`);
-
-        if (error) throw error;
-
-        // Crear un enlace de descarga
-        const url = URL.createObjectURL(data);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al descargar el documento');
       }
+
+      // Obtener el blob del archivo
+      const blob = await response.blob();
+      
+      // Crear un enlace de descarga
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Error downloading document:', err);
-      alert('Error al descargar el documento');
+      alert(err instanceof Error ? err.message : 'Error al descargar el documento');
     }
   };
 
