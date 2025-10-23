@@ -270,11 +270,11 @@ export const Header = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate("/superadmin")}
+                      onClick={() => navigate("/settings?section=manage-clinics")}
                       className="w-full justify-start"
                     >
                       <Building2 className="h-4 w-4 mr-2" />
-                      Portal SuperAdmin
+                      Administración Global
                     </Button>
                     <SuperAdminPanel />
                   </div>
@@ -290,11 +290,11 @@ export const Header = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate("/admin-clinica")}
+                      onClick={() => navigate("/settings?section=clinic-info")}
                       className="w-full justify-start"
                     >
                       <Hospital className="h-4 w-4 mr-2" />
-                      Mi Clínica
+                      Configuración de Clínica
                     </Button>
                   </div>
                 </>

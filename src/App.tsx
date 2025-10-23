@@ -9,6 +9,7 @@ import Logout from "./pages/Logout";
 import NotFound from "./pages/NotFound";
 import SuperAdmin from "./pages/SuperAdmin";
 import ClinicAdmin from "./pages/ClinicAdmin";
+import Settings from "./pages/Settings";
 import { GuestPortal } from "./pages/GuestPortal";
 
 // 🚨 CONFIGURACIÓN CRÍTICA DE SEGURIDAD: Prevenir race conditions y mezcla de datos PII
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/logout" element={<Logout />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/superadmin" element={<SuperAdmin />} />
             <Route path="/admin-clinica" element={<ClinicAdmin />} />
             <Route path="/guest/:token" element={<GuestPortal />} />
