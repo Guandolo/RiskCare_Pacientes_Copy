@@ -500,10 +500,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      user_has_profile: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
+      user_has_profile: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role:
