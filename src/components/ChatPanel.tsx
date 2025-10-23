@@ -209,20 +209,14 @@ export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: 
       });
 
       // 🆕 Buscar conversación según contexto (profesional + paciente específico, o paciente propio)
-      let query = supabase
+      const baseQuery = supabase
         .from('conversations')
         .select('*')
         .eq('user_id', user.id);
       
-      if (isProfesional && targetPatientId) {
-        // Profesional: buscar conversaciones de este profesional sobre este paciente específico
-        query = query.eq('patient_user_id', targetPatientId);
-      } else {
-        // Paciente: buscar conversaciones propias (patient_user_id es NULL)
-        query = query.is('patient_user_id', null);
-      }
-
-      const { data: latestConv } = await query
+      const { data: latestConv } = await (isProfesional && targetPatientId
+        ? baseQuery.eq('patient_user_id', targetPatientId)
+        : baseQuery.is('patient_user_id', null))
         .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle();

@@ -196,6 +196,7 @@ export type Database = {
           content: Json
           created_at: string
           id: string
+          patient_user_id: string | null
           title: string
           type: string
           updated_at: string
@@ -205,6 +206,7 @@ export type Database = {
           content: Json
           created_at?: string
           id?: string
+          patient_user_id?: string | null
           title: string
           type: string
           updated_at?: string
@@ -214,6 +216,7 @@ export type Database = {
           content?: Json
           created_at?: string
           id?: string
+          patient_user_id?: string | null
           title?: string
           type?: string
           updated_at?: string
@@ -291,6 +294,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          patient_user_id: string | null
           title: string | null
           updated_at: string
           user_id: string
@@ -298,6 +302,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          patient_user_id?: string | null
           title?: string | null
           updated_at?: string
           user_id: string
@@ -305,6 +310,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          patient_user_id?: string | null
           title?: string | null
           updated_at?: string
           user_id?: string
@@ -563,6 +569,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_conversation_access: {
+        Args: { conv_id: string }
+        Returns: {
+          can_edit: boolean
+          can_view: boolean
+          reason: string
+        }[]
+      }
       cleanup_expired_tokens: { Args: never; Returns: undefined }
       has_any_role: {
         Args: {
