@@ -130,28 +130,25 @@ export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: 
     };
   }, [isProfesional, activePatient?.user_id]); // 🚨 SOLO estos dos, NO currentConversationId ni messages.length
 
-  // Reaccionar a cambios de autenticación (centralizado)
+  // 🚨 ELIMINADO: authChanged listener
+  // Este listener causaba recargas innecesarias
+  // Las conversaciones se cargan solo al montar el componente
+  // Si hay nuevo login, el componente se desmonta y vuelve a montar
+  
   useEffect(() => {
-    const handle = (e: any) => {
-      const event = e?.detail?.event;
-      if (event === 'SIGNED_IN' && !hasLoadedInitialSuggestions) {
+    // Solo cargar al montar el componente
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && !hasLoadedInitialSuggestions) {
         loadOrCreateConversation();
         loadConversations();
         loadSuggestions();
         setHasLoadedInitialSuggestions(true);
       }
-      if (event === 'SIGNED_OUT') {
-        setMessages([]);
-        setSuggestions([]);
-        setCurrentConversationId(null);
-        setConversations([]);
-        setHasLoadedInitialSuggestions(false);
-        try { sessionStorage.removeItem('rc_suggestions_loaded'); } catch {}
-      }
     };
-    window.addEventListener('authChanged', handle);
-    return () => window.removeEventListener('authChanged', handle);
-  }, []); // Sin dependencias para evitar re-suscripciones
+    init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Solo al montar
 
   const loadSuggestions = async (conversationContext?: Message[]) => {
     try {

@@ -3,58 +3,9 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useGlobalStore } from "@/stores/globalStore";
 
-// Singleton auth listener to avoid multiple subscriptions across components
-let authInitialized = false;
-let currentSession: Session | null = null;
-let currentUser: User | null = null;
-
-// 🚨 THROTTLING: Prevenir notificaciones excesivas
-let lastNotificationTime = 0;
-const NOTIFICATION_THROTTLE_MS = 1000; // 1 segundo entre notificaciones
-
-const ensureAuthListener = () => {
-  if (authInitialized) return;
-  
-  console.log('[useAuth] 🔧 Inicializando listener único de autenticación');
-  
-  supabase.auth.onAuthStateChange((event, session) => {
-    console.log('[useAuth] 🔔 Auth event:', event);
-    
-    currentSession = session;
-    currentUser = session?.user ?? null;
-    
-    // 🚨 THROTTLING: Solo notificar si ha pasado suficiente tiempo
-    const now = Date.now();
-    const timeSinceLastNotification = now - lastNotificationTime;
-    
-    if (timeSinceLastNotification < NOTIFICATION_THROTTLE_MS && event !== 'SIGNED_OUT') {
-      console.log('[useAuth] ⏭️ Notificación throttled (hace', timeSinceLastNotification, 'ms)');
-      return;
-    }
-    
-    lastNotificationTime = now;
-    
-    // Notificar a la app sin crear múltiples listeners por componente
-    window.dispatchEvent(new CustomEvent('authChanged', { detail: { event, hasSession: !!session } }));
-
-    // Seguridad: al cerrar sesión desde cualquier pestaña/contexto, limpiar y redirigir de inmediato
-    if (event === 'SIGNED_OUT') {
-      console.log('[useAuth] 🚪 SIGNED_OUT detectado - limpiando y redirigiendo');
-      try {
-        // Limpiar el store global primero
-        useGlobalStore.getState().resetStore();
-        localStorage.clear();
-        sessionStorage.clear();
-      } catch {}
-      if (window.top) {
-        (window.top as Window).location.href = '/auth';
-      } else {
-        window.location.href = '/auth';
-      }
-    }
-  });
-  authInitialized = true;
-};
+// 🚨 ELIMINADO: Singleton auth listener (causaba recargas constantes)
+// Ya NO necesitamos escuchar eventos de Supabase constantemente
+// La sesión se verifica solo al montar y se maneja con SessionManager
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -62,24 +13,10 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Usar un único listener global y escuchar eventos en cada componente
-    ensureAuthListener();
-
-    const handleAuthChanged = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      console.log('[useAuth] 📥 Evento authChanged recibido:', customEvent.detail?.event);
+    // 🚨 SOLO cargar sesión inicial - NO escuchar eventos
+    const initSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       
-      setSession(currentSession);
-      setUser(currentUser);
-      setLoading(false);
-    };
-
-    window.addEventListener('authChanged', handleAuthChanged);
-
-    // Inicializar estado con la sesión actual (solo UNA vez al montar)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      currentSession = session;
-      currentUser = session?.user ?? null;
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -89,13 +26,16 @@ export const useAuth = () => {
       } else {
         console.log('[useAuth] 🚫 No hay sesión inicial');
       }
-    });
-
-    return () => {
-      window.removeEventListener('authChanged', handleAuthChanged);
-      // Nota: no desuscribimos el listener global para evitar perder eventos
     };
-  }, []);
+
+    initSession();
+    
+    // 🚨 ELIMINADO: onAuthStateChange listener
+    // Ese listener causaba recargas al cambiar de ventana
+    // El SessionManager maneja los refreshes de token
+    
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Solo al montar
 
   const signInWithGoogle = async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -116,7 +56,6 @@ export const useAuth = () => {
 
     if (data?.url) {
       console.log('[useAuth] 🔗 Redirigiendo a Google OAuth');
-      // Redirige en el contexto top para evitar el bloqueo de Google dentro del iframe del preview
       if (window.top) {
         (window.top as Window).location.href = data.url;
       } else {
@@ -127,11 +66,22 @@ export const useAuth = () => {
 
   const signOut = async () => {
     console.log('[useAuth] 🚪 Iniciando sign out');
-    // Usa la ruta dedicada para un cierre de sesión profundo
+    
+    // Limpiar store y storage
+    try {
+      useGlobalStore.getState().resetStore();
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {}
+    
+    // Cerrar sesión en Supabase
+    await supabase.auth.signOut();
+    
+    // Redirigir a login
     if (window.top) {
-      (window.top as Window).location.href = "/logout";
+      (window.top as Window).location.href = '/auth';
     } else {
-      window.location.href = "/logout";
+      window.location.href = '/auth';
     }
   };
 

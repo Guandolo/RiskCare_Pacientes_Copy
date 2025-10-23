@@ -141,19 +141,14 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
     };
     window.addEventListener('profileUpdated', handleProfileUpdate);
 
-    // Suscripción a cambios de sesión centralizados
-    const handleAuth = () => {
-      setProfile(null);
-      setDocuments([]);
-      setLoading(true);
-      loadProfileAndData();
-    };
-    window.addEventListener('authChanged', handleAuth);
-
+    // 🚨 ELIMINADO: authChanged listener
+    // Este listener causaba recargas constantes al cambiar de ventana
+    // Ya NO necesitamos recargar en cada evento de auth
+    
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
-      window.removeEventListener('authChanged', handleAuth);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   // 🚨 NUEVO: Validación de coherencia de datos
