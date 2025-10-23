@@ -500,6 +500,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_can_view_clinica: {
+        Args: { _clinica_id: string; _user_id: string }
+        Returns: boolean
+      }
       user_has_profile: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
