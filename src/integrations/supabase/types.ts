@@ -311,6 +311,47 @@ export type Database = {
         }
         Relationships: []
       }
+      guest_access_logs: {
+        Row: {
+          accessed_at: string
+          action_details: Json | null
+          action_type: string
+          id: string
+          ip_address: string | null
+          patient_user_id: string
+          token_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          accessed_at?: string
+          action_details?: Json | null
+          action_type: string
+          id?: string
+          ip_address?: string | null
+          patient_user_id: string
+          token_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          accessed_at?: string
+          action_details?: Json | null
+          action_type?: string
+          id?: string
+          ip_address?: string | null
+          patient_user_id?: string
+          token_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_access_logs_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "shared_access_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_access_logs: {
         Row: {
           access_details: Json | null
@@ -460,6 +501,42 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_access_tokens: {
+        Row: {
+          access_count: number
+          created_at: string
+          expires_at: string
+          id: string
+          last_accessed_at: string | null
+          patient_user_id: string
+          permissions: Json
+          revoked_at: string | null
+          token: string
+        }
+        Insert: {
+          access_count?: number
+          created_at?: string
+          expires_at: string
+          id?: string
+          last_accessed_at?: string | null
+          patient_user_id: string
+          permissions?: Json
+          revoked_at?: string | null
+          token: string
+        }
+        Update: {
+          access_count?: number
+          created_at?: string
+          expires_at?: string
+          id?: string
+          last_accessed_at?: string | null
+          patient_user_id?: string
+          permissions?: Json
+          revoked_at?: string | null
+          token?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -486,6 +563,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_tokens: { Args: never; Returns: undefined }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]

@@ -9,6 +9,7 @@ import Logout from "./pages/Logout";
 import NotFound from "./pages/NotFound";
 import SuperAdmin from "./pages/SuperAdmin";
 import ClinicAdmin from "./pages/ClinicAdmin";
+import { GuestPortal } from "./pages/GuestPortal";
 
 // 🚨 CONFIGURACIÓN CRÍTICA DE SEGURIDAD: Prevenir race conditions y mezcla de datos PII
 const queryClient = new QueryClient({
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/logout" element={<Logout />} />
             <Route path="/superadmin" element={<SuperAdmin />} />
             <Route path="/admin-clinica" element={<ClinicAdmin />} />
+            <Route path="/guest/:token" element={<GuestPortal />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

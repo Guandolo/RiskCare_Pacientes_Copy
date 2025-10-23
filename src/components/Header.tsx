@@ -4,7 +4,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
-import { Sun, Moon, LogOut, MessageCircle, UserCog, Hospital, Shield, Building2, GraduationCap } from "lucide-react";
+import { Sun, Moon, LogOut, MessageCircle, UserCog, Hospital, Shield, Building2, GraduationCap, Share2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import riskCareIcon from "@/assets/riskcare-icon.png";
@@ -12,6 +12,7 @@ import { ProfesionalClinicoModal } from "./ProfesionalClinicoModal";
 import { ViewProfesionalDataModal } from "./ViewProfesionalDataModal";
 import { SuperAdminPanel } from "./SuperAdminPanel";
 import { PatientSearchModal } from "./PatientSearchModal";
+import { ShareHistoryModal } from "./ShareHistoryModal";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
@@ -28,6 +29,7 @@ export const Header = () => {
   const [showProfesionalModal, setShowProfesionalModal] = useState(false);
   const [showViewDataModal, setShowViewDataModal] = useState(false);
   const [showPatientSearchModal, setShowPatientSearchModal] = useState(false);
+  const [showShareHistoryModal, setShowShareHistoryModal] = useState(false);
   const [profesionalData, setProfesionalData] = useState<any>(null);
   const [fullRethusData, setFullRethusData] = useState<any>(null);
   const navigate = useNavigate();
@@ -303,6 +305,16 @@ export const Header = () => {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setShowShareHistoryModal(true)}
+                className="w-full justify-start"
+              >
+                <Share2 className="h-4 w-4 mr-2" />
+                Compartir Mi Historial
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleWhatsAppSupport}
                 className="w-full justify-start"
               >
@@ -364,6 +376,12 @@ export const Header = () => {
             profesionalUserId={user.id}
           />
         )}
+
+        {/* Modal de Compartir Historial */}
+        <ShareHistoryModal
+          open={showShareHistoryModal}
+          onOpenChange={setShowShareHistoryModal}
+        />
       </div>
     </header>
   );
