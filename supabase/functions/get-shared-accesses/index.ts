@@ -53,8 +53,8 @@ serve(async (req) => {
     
     const revokedTokens = tokens?.filter(t => t.revoked_at) || [];
 
-    // Generar URLs para tokens activos
-    const baseUrl = `${supabaseUrl.replace('https://', 'https://').split('.supabase.co')[0]}.lovable.app`;
+    // Generar URLs para tokens activos usando el dominio personalizado
+    const baseUrl = 'https://riskcare.ai';
     
     const activeWithUrls = activeTokens.map(token => ({
       ...token,
