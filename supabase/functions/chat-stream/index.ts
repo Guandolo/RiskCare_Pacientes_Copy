@@ -91,30 +91,73 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "No authorization header" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const jwt = authHeader.replace("Bearer ", "").trim();
-    const { data: userData, error: userErr } = await supabase.auth.getUser(jwt);
-    if (userErr || !userData?.user) {
-      return new Response(JSON.stringify({ error: "Usuario no autenticado" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const { message, conversationId, targetUserId, isGuestAccess, guestToken } = await req.json();
+    
+    let user: any;
+    let isProfessional = false;
+    
+    // Manejo de acceso de invitado
+    if (isGuestAccess && guestToken) {
+      console.log("Acceso de invitado detectado, validando token...");
+      
+      // Validar el token de invitado
+      const { data: tokenData, error: tokenError } = await supabase
+        .from('shared_access_tokens')
+        .select('*, patient_profiles!shared_access_tokens_patient_user_id_fkey(user_id, full_name)')
+        .eq('token', guestToken)
+        .eq('revoked_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .single();
+      
+      if (tokenError || !tokenData || !tokenData.permissions?.allow_chat) {
+        console.error("Token inválido o sin permiso de chat:", tokenError);
+        return new Response(JSON.stringify({ error: "Acceso no autorizado" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      // Crear objeto de usuario simulado para el invitado
+      user = {
+        id: `guest_${tokenData.token}`,
+        isGuest: true,
+        guestPatientUserId: tokenData.patient_user_id
+      };
+      
+      console.log("Invitado validado exitosamente, accediendo a paciente:", tokenData.patient_user_id);
+    } else {
+      // Autenticación normal para usuarios registrados
+      const authHeader = req.headers.get("authorization");
+      if (!authHeader) {
+        return new Response(JSON.stringify({ error: "No authorization header" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const jwt = authHeader.replace("Bearer ", "").trim();
+      const { data: userData, error: userErr } = await supabase.auth.getUser(jwt);
+      if (userErr || !userData?.user) {
+        return new Response(JSON.stringify({ error: "Usuario no autenticado" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      user = userData.user;
+      
+      // Detectar si es profesional
+      const { data: userRoles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+
+      isProfessional = userRoles?.some(r => r.role === 'profesional_clinico' || r.role === 'admin_clinica' || r.role === 'superadmin') || false;
     }
-
-    const user = userData.user;
-
-    const { message, conversationId, targetUserId } = await req.json();
     if (!message || typeof message !== "string") {
       return new Response(JSON.stringify({ error: "Mensaje inválido" }), {
         status: 400,
@@ -129,20 +172,17 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // Detectar rol del usuario para usar el prompt correcto
-    const { data: userRoles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id);
-
-    const isProfessional = userRoles?.some(r => r.role === 'profesional_clinico' || r.role === 'admin_clinica' || r.role === 'superadmin');
     
     // Determinar de qué usuario cargar los datos
     let patientUserId = user.id;
     let isViewingOtherPatient = false;
     
-    if (isProfessional && targetUserId && targetUserId !== user.id) {
+    if (user.isGuest) {
+      // Para invitados, siempre cargar datos del paciente asociado al token
+      patientUserId = user.guestPatientUserId;
+      isViewingOtherPatient = false; // Los invitados usan el prompt de paciente
+      console.log(`Invitado accediendo a paciente ${patientUserId}`);
+    } else if (isProfessional && targetUserId && targetUserId !== user.id) {
       // Verificar que el profesional tiene acceso a este paciente
       const { data: hasAccess } = await supabase
         .from('clinica_pacientes')
@@ -178,13 +218,18 @@ serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(20);
 
-    const { data: chatHistory } = await supabase
-      .from("chat_messages")
-      .select("role, content, created_at")
-      .eq("user_id", user.id)
-      .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: true })
-      .limit(50);
+    // Solo cargar historial para usuarios autenticados
+    let chatHistory = null;
+    if (!user.isGuest && conversationId) {
+      const { data } = await supabase
+        .from("chat_messages")
+        .select("role, content, created_at")
+        .eq("user_id", user.id)
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: true })
+        .limit(50);
+      chatHistory = data;
+    }
 
     let contextInfo = `INFORMACIÓN DEL PACIENTE:\n`;
     if (profile) {
@@ -210,10 +255,12 @@ serve(async (req) => {
       contextInfo += `\nNo hay documentos clínicos cargados aún.\n`;
     }
 
-    // Guardar mensaje del usuario inmediatamente
-    await supabase.from("chat_messages").insert([
-      { user_id: user.id, role: "user", content: message, conversation_id: conversationId },
-    ]);
+    // Guardar mensaje del usuario inmediatamente (solo para usuarios autenticados, no invitados)
+    if (!user.isGuest) {
+      await supabase.from("chat_messages").insert([
+        { user_id: user.id, role: "user", content: message, conversation_id: conversationId },
+      ]);
+    }
 
     const messages: Array<{ role: string; content: string }> = [
       { role: "system", content: SYSTEM_PROMPT },
@@ -396,10 +443,12 @@ serve(async (req) => {
       }
     }
 
-    // Guardar mensaje del asistente en DB
-    await supabase.from("chat_messages").insert([
-      { user_id: user.id, role: "assistant", content: finalResponse, conversation_id: conversationId },
-    ]);
+    // Guardar mensaje del asistente en DB (solo para usuarios autenticados)
+    if (!user.isGuest) {
+      await supabase.from("chat_messages").insert([
+        { user_id: user.id, role: "assistant", content: finalResponse, conversation_id: conversationId },
+      ]);
+    }
 
     // Paso 4: Simular streaming de la respuesta validada
     const responseStream = simulateStream(finalResponse);

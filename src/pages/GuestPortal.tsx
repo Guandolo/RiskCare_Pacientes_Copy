@@ -11,8 +11,8 @@ import {
   Eye
 } from "lucide-react";
 import riskCareLogo from "@/assets/riskcare-logo.png";
-import { GuestDataSourcesPanel } from "@/components/GuestDataSourcesPanel";
-import { GuestChatPanel } from "@/components/GuestChatPanel";
+import { DataSourcesPanel } from "@/components/DataSourcesPanel";
+import { ChatPanel } from "@/components/ChatPanel";
 
 interface PatientData {
   full_name: string;
@@ -22,6 +22,7 @@ interface PatientData {
   eps: string | null;
   phone: string | null;
   topus_data: any;
+  user_id?: string;
 }
 
 interface Document {
@@ -116,46 +117,6 @@ export const GuestPortal = () => {
     }
   };
 
-  const handleDownloadDocument = async (documentId: string, fileName: string) => {
-    if (!accessData?.permissions?.allow_download) {
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/guest-download-document`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            token,
-            documentId
-          })
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al descargar el documento');
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Error downloading document:', err);
-      alert(err instanceof Error ? err.message : 'Error al descargar el documento');
-    }
-  };
-
   const formatTimeRemaining = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -199,7 +160,7 @@ export const GuestPortal = () => {
     );
   }
 
-  const { patient, documents, permissions } = accessData;
+  const { patient, permissions } = accessData;
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -235,25 +196,17 @@ export const GuestPortal = () => {
         </div>
       </div>
 
-      {/* Layout Principal con Componentes Reutilizados */}
+      {/* Layout Principal - Mismo diseño que la app principal */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Panel Izquierdo - Reutilizar diseño de DataSourcesPanel */}
-        <div className="w-80 border-r bg-muted/20 overflow-hidden">
-          <GuestDataSourcesPanel
-            patient={patient}
-            documents={documents}
-            permissions={permissions}
-            onDownloadDocument={handleDownloadDocument}
-          />
+        {/* Panel Izquierdo */}
+        <div className="w-80 border-r overflow-hidden">
+          <DataSourcesPanel displayedUserId={accessData?.patientUserId} />
         </div>
 
-        {/* Panel Central - Reutilizar diseño de ChatPanel */}
+        {/* Panel Central */}
         <div className="flex-1 overflow-hidden">
           {permissions?.allow_chat ? (
-            <GuestChatPanel
-              patientUserId={accessData?.patientUserId}
-              guestToken={token}
-            />
+            <ChatPanel displayedUserId={accessData?.patientUserId} />
           ) : (
             <div className="flex-1 flex items-center justify-center h-full">
               <div className="text-center text-muted-foreground">
