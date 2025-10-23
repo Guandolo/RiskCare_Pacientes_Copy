@@ -31,11 +31,11 @@ interface DocumentLibraryModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   isGuestMode?: boolean;
-  guestDocuments?: ClinicalDocument[];
+  guestDocuments?: any[];
   allowDownload?: boolean;
 }
 
-export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModalProps) => {
+export const DocumentLibraryModal = ({ open, onOpenChange, isGuestMode = false, guestDocuments = [], allowDownload = true }: DocumentLibraryModalProps) => {
   const { isProfesional } = useUserRole();
   const { activePatient } = useActivePatient();
   const [documents, setDocuments] = useState<ClinicalDocument[]>([]);
@@ -48,17 +48,22 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
   const [viewerOpen, setViewerOpen] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      loadDocuments();
-      
-      // Auto-refresco cada 5 segundos cuando el modal está abierto
-      const interval = setInterval(() => {
-        loadDocuments();
-      }, 5000);
-      
-      return () => clearInterval(interval);
+    if (!open) return;
+
+    if (isGuestMode) {
+      setDocuments((guestDocuments as any) || []);
+      setLoadingDocs(false);
+      return;
     }
-  }, [open, isProfesional, activePatient?.user_id]); // Recargar cuando cambie el paciente activo
+
+    loadDocuments();
+    // Auto-refresco cada 5 segundos cuando el modal está abierto (solo modo autenticado)
+    const interval = setInterval(() => {
+      loadDocuments();
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [open, isGuestMode, guestDocuments, isProfesional, activePatient?.user_id]); // Recargar cuando cambie el paciente activo
 
   useEffect(() => {
     filterDocuments();
@@ -380,13 +385,15 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
                 </SelectContent>
               </Select>
 
-              <Button 
-                onClick={() => setShowUploadModal(true)}
-                className="gap-2 bg-primary hover:bg-primary/90"
-              >
-                <Upload className="w-4 h-4" />
-                Subir Documento
-              </Button>
+              {!isGuestMode && (
+                <Button 
+                  onClick={() => setShowUploadModal(true)}
+                  className="gap-2 bg-primary hover:bg-primary/90"
+                >
+                  <Upload className="w-4 h-4" />
+                  Subir Documento
+                </Button>
+              )}
             </div>
           </div>
 
@@ -409,7 +416,7 @@ export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModa
                       ? "No se encontraron documentos con los filtros aplicados" 
                       : "Comienza subiendo tu primer documento clínico"}
                   </p>
-                  {!searchQuery && filterType === "all" && (
+                  {!searchQuery && filterType === "all" && !isGuestMode && (
                     <Button onClick={() => setShowUploadModal(true)} className="gap-2">
                       <Upload className="w-4 h-4" />
                       Subir Documento

@@ -206,11 +206,13 @@ export const GuestPortal = () => {
         <div className="flex-1 flex flex-col overflow-hidden pb-16">
           {mobileTab === "documents" && (
             <div className="flex-1 overflow-hidden">
-              <DataSourcesPanel 
-                displayedUserId={patient?.user_id || accessData?.patientUserId} 
-                isGuestMode={true}
-                allowDownload={permissions?.allow_download || false}
-              />
+          <DataSourcesPanel 
+            displayedUserId={patient?.user_id || accessData?.patientUserId} 
+            isGuestMode={true}
+            allowDownload={permissions?.allow_download || false}
+            guestPatient={patient as any}
+            guestDocuments={accessData?.documents as any}
+          />
             </div>
           )}
           
