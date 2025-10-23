@@ -34,6 +34,10 @@ interface GlobalStore {
   currentPatientUserId: string | null;
   currentClinicaId: string | null;
   
+  // Estado del modal de settings
+  settingsModalOpen: boolean;
+  settingsActiveSection: string | null;
+  
   // Cache de datos para evitar recargas
   dataCache: {
     documents?: any[];
@@ -51,6 +55,11 @@ interface GlobalStore {
   
   // Acciones para el contexto del profesional
   setPatientContext: (patientUserId: string, clinicaId: string) => Promise<void>;
+  
+  // Acciones para el modal de settings
+  openSettingsModal: (section?: string) => void;
+  closeSettingsModal: () => void;
+  setSettingsSection: (section: string) => void;
   
   // Acciones para el cache
   setCacheData: (key: string, data: any) => void;
@@ -70,6 +79,8 @@ export const useGlobalStore = create<GlobalStore>()(
       currentUser: null,
       currentPatientUserId: null,
       currentClinicaId: null,
+      settingsModalOpen: false,
+      settingsActiveSection: null,
       dataCache: {},
       
       // Acciones del paciente activo
@@ -192,6 +203,28 @@ export const useGlobalStore = create<GlobalStore>()(
         }
       },
       
+      // Acciones del modal de settings
+      openSettingsModal: (section?: string) => {
+        console.log('[GlobalStore] 🔓 Abriendo modal de settings:', section || 'default');
+        set({ 
+          settingsModalOpen: true,
+          settingsActiveSection: section || null
+        });
+      },
+      
+      closeSettingsModal: () => {
+        console.log('[GlobalStore] 🔒 Cerrando modal de settings');
+        set({ 
+          settingsModalOpen: false,
+          settingsActiveSection: null
+        });
+      },
+      
+      setSettingsSection: (section: string) => {
+        console.log('[GlobalStore] 📍 Cambiando sección de settings:', section);
+        set({ settingsActiveSection: section });
+      },
+      
       // Acciones del cache
       setCacheData: (key: string, data: any) => {
         const currentCache = get().dataCache;
@@ -231,6 +264,8 @@ export const useGlobalStore = create<GlobalStore>()(
           currentUser: null,
           currentPatientUserId: null,
           currentClinicaId: null,
+          settingsModalOpen: false,
+          settingsActiveSection: null,
           dataCache: {}
         });
       }

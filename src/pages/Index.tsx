@@ -8,6 +8,7 @@ import { CollapsibleNotebookPanel } from "@/components/CollapsibleNotebookPanel"
 import { Header } from "@/components/Header";
 import { PatientIdentificationModal } from "@/components/PatientIdentificationModal";
 import { MobileNavigation } from "@/components/MobileNavigation";
+import { SettingsModal } from "@/components/SettingsModal";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { supabase } from "@/integrations/supabase/client";
@@ -284,6 +285,9 @@ const Index = () => {
         onComplete={() => setShowIdentificationModal(false)}
         userId={user.id}
       />
+      
+      {/* Settings Modal - Floats over everything */}
+      <SettingsModal />
       
       <div className="flex flex-col h-screen bg-gradient-subtle">
         <Header />

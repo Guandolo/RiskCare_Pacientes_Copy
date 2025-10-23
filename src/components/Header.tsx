@@ -19,6 +19,7 @@ import { useTheme } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfesionalContext } from "@/hooks/useProfesionalContext";
 import { useActivePatient } from "@/hooks/useActivePatient";
+import { useGlobalStore } from "@/stores/globalStore";
 import { Users } from "lucide-react";
 
 export const Header = () => {
@@ -26,6 +27,7 @@ export const Header = () => {
   const { roles, isProfesional, isAdminClinica, isSuperAdmin } = useUserRole();
   const { setPatientContext } = useProfesionalContext();
   const { activePatient, setActivePatient } = useActivePatient();
+  const { openSettingsModal } = useGlobalStore();
   const [showProfesionalModal, setShowProfesionalModal] = useState(false);
   const [showViewDataModal, setShowViewDataModal] = useState(false);
   const [showPatientSearchModal, setShowPatientSearchModal] = useState(false);
@@ -270,7 +272,7 @@ export const Header = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate("/settings?section=manage-clinics")}
+                      onClick={() => openSettingsModal("manage-clinics")}
                       className="w-full justify-start"
                     >
                       <Building2 className="h-4 w-4 mr-2" />
@@ -290,7 +292,7 @@ export const Header = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate("/settings?section=clinic-info")}
+                      onClick={() => openSettingsModal("clinic-info")}
                       className="w-full justify-start"
                     >
                       <Hospital className="h-4 w-4 mr-2" />
