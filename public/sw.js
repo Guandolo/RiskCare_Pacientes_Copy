@@ -1,13 +1,14 @@
-const CACHE_VERSION = 'riskcare-v2-' + new Date().getTime();
+// Versión estática del cache - cambiar manualmente cuando se necesite actualizar
+const CACHE_VERSION = 'riskcare-v3-stable';
 const CACHE_NAME = CACHE_VERSION;
 
-// Install: Skip waiting para activar inmediatamente
+// Install: NO usar skipWaiting automáticamente para evitar recargas forzadas
 self.addEventListener('install', (event) => {
   console.log('[SW] Installing new version:', CACHE_VERSION);
-  self.skipWaiting(); // Activa el nuevo SW inmediatamente
+  // Removido: self.skipWaiting() - solo se activa cuando el usuario cierra todas las pestañas
 });
 
-// Activate: Limpia caches antiguos y toma control inmediatamente
+// Activate: Limpia caches antiguos solo cuando se activa naturalmente
 self.addEventListener('activate', (event) => {
   console.log('[SW] Activating new version:', CACHE_VERSION);
   event.waitUntil(
@@ -20,10 +21,8 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => {
-      // Toma control de todos los clientes inmediatamente
-      return self.clients.claim();
     })
+    // Removido: clients.claim() - evita tomar control forzado de pestañas existentes
   );
 });
 

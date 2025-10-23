@@ -200,7 +200,7 @@ export const PatientSearchModal = ({ open, onOpenChange, onPatientSelected, prof
                 disabled={loading}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               />
-              <Button onClick={handleSearch} disabled={loading}>
+              <Button onClick={handleSearch} disabled={loading} aria-label="Buscar paciente">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               </Button>
             </div>
@@ -232,7 +232,10 @@ export const PatientSearchModal = ({ open, onOpenChange, onPatientSelected, prof
                     searchResult.patient.nombre || 
                     searchResult.patient.name ||
                     `${searchResult.patient.primer_nombre || ''} ${searchResult.patient.primer_apellido || ''}`.trim() ||
-                    'No disponible'
+                    // Intentar extraer desde topus_data si existe
+                    (searchResult.patient.topus_data?.primer_nombre && searchResult.patient.topus_data?.primer_apellido
+                      ? `${searchResult.patient.topus_data.primer_nombre || ''} ${searchResult.patient.topus_data.segundo_nombre || ''} ${searchResult.patient.topus_data.primer_apellido || ''} ${searchResult.patient.topus_data.segundo_apellido || ''}`.trim()
+                      : 'No disponible')
                   }</p>
                   <p><strong>Documento:</strong> {searchResult.patient.document_type} {searchResult.patient.identification}</p>
                   <p><strong>Edad:</strong> {searchResult.patient.age || searchResult.patient.edad || 'N/A'} años</p>
