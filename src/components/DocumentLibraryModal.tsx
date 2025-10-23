@@ -30,6 +30,9 @@ interface ClinicalDocument {
 interface DocumentLibraryModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  isGuestMode?: boolean;
+  guestDocuments?: ClinicalDocument[];
+  allowDownload?: boolean;
 }
 
 export const DocumentLibraryModal = ({ open, onOpenChange }: DocumentLibraryModalProps) => {

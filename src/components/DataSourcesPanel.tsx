@@ -45,9 +45,11 @@ interface DataSourcesPanelProps {
   displayedUserId?: string;
   isGuestMode?: boolean;
   allowDownload?: boolean;
+  guestPatient?: PatientProfile | (PatientProfile & { user_id?: string });
+  guestDocuments?: ClinicalDocument[];
 }
 
-export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDownload = true }: DataSourcesPanelProps) => {
+export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDownload = true, guestPatient, guestDocuments }: DataSourcesPanelProps) => {
   const { user } = useAuth();
   const { isProfesional } = useUserRole();
   const { activePatient, setActivePatient } = useActivePatient();
@@ -150,36 +152,55 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
   };
   const loadProfile = async () => {
     try {
-      // En modo invitado, cargar directamente con displayedUserId
-      if (isGuestMode && displayedUserId) {
-        const { data, error } = await supabase
-          .from('patient_profiles')
-          .select('*')
-          .eq('user_id', displayedUserId)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Error cargando perfil invitado:', error);
-          setLoading(false);
-          return;
-        }
-
-        if (!data) {
-          setProfile(null);
-          setLoading(false);
-          return;
-        }
-        
-        setProfile(data);
-        setPhoneValue(data.phone || "");
-        
-        if (data.topus_data && typeof data.topus_data === 'object') {
-          const topusData = data.topus_data as any;
-          if (topusData.hismart_data) {
-            setHismartData(topusData.hismart_data);
-            setHismartLastFetch(topusData.hismart_last_fetch || null);
+      // En modo invitado, usar datos ya validados por el backend si están disponibles
+      if (isGuestMode) {
+        if (guestPatient) {
+          setProfile(guestPatient as PatientProfile);
+          setPhoneValue(guestPatient.phone || "");
+          if (guestPatient.topus_data && typeof guestPatient.topus_data === 'object') {
+            const topusData = guestPatient.topus_data as any;
+            if (topusData.hismart_data) {
+              setHismartData(topusData.hismart_data);
+              setHismartLastFetch(topusData.hismart_last_fetch || null);
+            }
           }
+          setLoading(false);
+          return;
         }
+        // Fallback: cargar por displayedUserId solo si se proporcionó
+        if (displayedUserId) {
+          const { data, error } = await supabase
+            .from('patient_profiles')
+            .select('*')
+            .eq('user_id', displayedUserId)
+            .maybeSingle();
+
+          if (error) {
+            console.error('Error cargando perfil invitado:', error);
+            setLoading(false);
+            return;
+          }
+
+          if (!data) {
+            setProfile(null);
+            setLoading(false);
+            return;
+          }
+
+          setProfile(data);
+          setPhoneValue(data.phone || "");
+
+          if (data.topus_data && typeof data.topus_data === 'object') {
+            const topusData = data.topus_data as any;
+            if (topusData.hismart_data) {
+              setHismartData(topusData.hismart_data);
+              setHismartLastFetch(topusData.hismart_last_fetch || null);
+            }
+          }
+          setLoading(false);
+          return;
+        }
+        // Si no hay datos ni id, terminar
         setLoading(false);
         return;
       }
@@ -199,11 +220,11 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
           setLoading(false);
           return;
         }
-        
+
         // Usar directamente el activePatient sin hacer consultas adicionales
         setProfile(activePatient);
         setPhoneValue(activePatient.phone || "");
-        
+
         // Cargar datos de HiSmart del paciente activo
         if (activePatient.topus_data && typeof activePatient.topus_data === 'object') {
           const topusData = activePatient.topus_data as any;
@@ -235,11 +256,11 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
         setLoading(false);
         return;
       }
-      
+
       setProfile(data);
       setPhoneValue(data.phone || "");
       window.dispatchEvent(new CustomEvent('profileLoaded'));
-      
+
       if (data.topus_data && typeof data.topus_data === 'object') {
         const topusData = data.topus_data as any;
         if (topusData.hismart_data) {
@@ -255,23 +276,30 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
   };
   const loadDocuments = async () => {
     try {
-      // En modo invitado, usar displayedUserId directamente
-      let targetUserId: string;
-      
-      if (isGuestMode && displayedUserId) {
-        targetUserId = displayedUserId;
-      } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        // Determinar de qué usuario cargar documentos
-        targetUserId = isProfesional && activePatient ? activePatient.user_id : user.id;
-        
-        // CRÍTICO: Si es profesional sin paciente activo, NO intentar cargar
-        if (isProfesional && !targetUserId) {
-          console.log('[DataSourcesPanel] Profesional sin paciente activo, saltando carga de documentos');
-          return;
+      // En modo invitado, usar datos provistos por el backend y NO consultar la BD (RLS bloquearía)
+      if (isGuestMode) {
+        if (guestDocuments) {
+          setDocuments(guestDocuments);
+          if (displayedUserId) setCacheData(`documents_${displayedUserId}`, guestDocuments);
+        } else {
+          console.log('[DataSourcesPanel] Invitado sin documentos provistos');
+          setDocuments([]);
         }
+        return;
+      }
+
+      // Modo autenticado normal
+      let targetUserId: string;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Determinar de qué usuario cargar documentos
+      targetUserId = isProfesional && activePatient ? activePatient.user_id : user.id;
+      
+      // CRÍTICO: Si es profesional sin paciente activo, NO intentar cargar
+      if (isProfesional && !targetUserId) {
+        console.log('[DataSourcesPanel] Profesional sin paciente activo, saltando carga de documentos');
+        return;
       }
 
       // Verificar cache primero
@@ -939,6 +967,9 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
       <DocumentLibraryModal
         open={showDocumentLibrary}
         onOpenChange={setShowDocumentLibrary}
+        isGuestMode={isGuestMode}
+        guestDocuments={isGuestMode ? documents : undefined}
+        allowDownload={allowDownload}
       />
 
       {/* Update Clinical Data Modal */}
