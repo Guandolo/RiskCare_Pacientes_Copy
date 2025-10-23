@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { Network, FlaskConical, ScanSearch, Pill, Activity, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Network, FlaskConical, ScanSearch, Pill, Activity, Loader2, History, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -35,6 +36,16 @@ interface ClinicalNotebookPanelProps {
   displayedUserId?: string;
 }
 
+interface SavedNote {
+  id: string;
+  type: string;
+  title: string;
+  content: any;
+  created_at: string;
+  user_id: string;
+  patient_user_id: string | null;
+}
+
 export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanelProps) => {
   const { isProfesional } = useUserRole();
   const { activePatient } = useActivePatient();
@@ -42,6 +53,97 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
   const [generatingModule, setGeneratingModule] = useState<string | null>(null);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const [generatedData, setGeneratedData] = useState<{ type: string; title: string; content: any } | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [savedNotes, setSavedNotes] = useState<SavedNote[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // 🆕 Cargar historial al montar y cuando cambia el paciente activo
+  useEffect(() => {
+    loadHistory();
+  }, [isProfesional, activePatient?.user_id]);
+
+  const loadHistory = async () => {
+    try {
+      setLoadingHistory(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const currentUserId = session.user.id;
+      const targetPatientId = isProfesional && activePatient ? activePatient.user_id : null;
+
+      console.log('[ClinicalNotebook] 📚 Cargando historial para:', {
+        currentUserId,
+        targetPatientId,
+        isProfesional,
+        context: targetPatientId ? 'Profesional -> Paciente' : 'Paciente propio'
+      });
+
+      // Construir query según contexto
+      let query = supabase
+        .from('clinical_notes')
+        .select('*')
+        .eq('user_id', currentUserId);
+
+      if (isProfesional && targetPatientId) {
+        // Profesional: notas sobre el paciente activo
+        query = query.eq('patient_user_id', targetPatientId);
+      } else {
+        // Paciente: solo sus notas propias (patient_user_id IS NULL)
+        query = query.is('patient_user_id', null);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      console.log('[ClinicalNotebook] ✅ Historial cargado:', data?.length || 0, 'notas');
+      setSavedNotes(data || []);
+    } catch (error) {
+      console.error('[ClinicalNotebook] ❌ Error cargando historial:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo cargar el historial.',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      const { error } = await supabase
+        .from('clinical_notes')
+        .delete()
+        .eq('id', noteId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Eliminado',
+        description: 'Nota eliminada del historial.',
+      });
+
+      await loadHistory();
+    } catch (error) {
+      console.error('[ClinicalNotebook] Error eliminando nota:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo eliminar la nota.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleViewNote = (note: SavedNote) => {
+    setGeneratedData({
+      type: note.type,
+      title: note.title,
+      content: note.content
+    });
+    setFullscreenOpen(true);
+    setHistoryOpen(false);
+  };
 
   const handleGenerate = async (module: AnalysisModule) => {
     try {
@@ -54,8 +156,10 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
         return;
       }
 
-      // Determinar el userId correcto
+      // 🆕 Determinar el userId correcto: siempre el del paciente cuyos datos se analizan
       const targetUserId = isProfesional && activePatient ? activePatient.user_id : session.user.id;
+      
+      console.log('[ClinicalNotebook] 📊 Generando', module.type, 'para paciente:', targetUserId);
 
       const functionMap = {
         'mapa_clinico': 'generate-clinical-map',
@@ -87,9 +191,9 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
       setGeneratedData({ type: module.type, title: module.title, content });
       setFullscreenOpen(true);
 
-      // 🆕 Determinar patient_user_id según el contexto
-      // - Si es profesional viendo un paciente → patient_user_id = activePatient.user_id
-      // - Si es paciente viendo sus propios datos → patient_user_id = NULL
+      // 🆕 LÓGICA DE ASOCIACIÓN DUAL (profesional + paciente)
+      // - user_id: SIEMPRE el que crea/genera la nota (profesional o paciente)
+      // - patient_user_id: SOLO si es profesional generando sobre un paciente diferente
       const currentUserId = session.user.id;
       const isViewingPatient = isProfesional && activePatient && activePatient.user_id !== currentUserId;
       
@@ -98,20 +202,25 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
         creator_user_id: currentUserId,
         patient_user_id: isViewingPatient ? activePatient.user_id : null,
         is_professional: isProfesional,
-        active_patient: activePatient?.user_id
+        active_patient_id: activePatient?.user_id,
+        active_patient_name: activePatient?.full_name,
+        context: isViewingPatient ? 'Profesional -> Paciente' : 'Paciente propio'
       });
 
-      // Guardar la nota en la base de datos con asociación dual
+      // Construir objeto de inserción
       const noteData: any = {
-        user_id: currentUserId, // ID del profesional/paciente que crea la nota
+        user_id: currentUserId, // Quién crea la nota
         type: module.type,
         title: module.title,
         content: content
       };
 
-      // 🚨 CRÍTICO: Solo agregar patient_user_id si es profesional viendo paciente
+      // 🚨 CRÍTICO: Solo agregar patient_user_id si es profesional viendo paciente diferente
       if (isViewingPatient) {
         noteData.patient_user_id = activePatient.user_id;
+        console.log('[ClinicalNotebook] ✅ Nota asociada a paciente:', activePatient.full_name);
+      } else {
+        console.log('[ClinicalNotebook] ✅ Nota propia del paciente (sin patient_user_id)');
       }
 
       const { error: saveError } = await supabase
@@ -132,6 +241,8 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
           description: `${module.title} guardado en tu historial.`,
           variant: 'default'
         });
+        // 🆕 Recargar historial después de guardar
+        await loadHistory();
       }
     } catch (e: any) {
       console.error('Error al generar análisis:', e);
@@ -145,14 +256,109 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
     <div className="flex flex-col h-full bg-card/50" data-tour="notebook-panel">
       {/* Header */}
       <div className="p-4 border-b border-border bg-background shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
-            <Network className="w-5 h-5 text-primary-foreground" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
+              <Network className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Bitácora Clínica</h2>
+              <p className="text-xs text-muted-foreground">Herramientas de análisis</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Bitácora Clínica</h2>
-            <p className="text-xs text-muted-foreground">Herramientas de análisis</p>
-          </div>
+          
+          {/* Botón de Historial */}
+          <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+            <SheetTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="gap-2"
+                onClick={loadHistory}
+              >
+                <History className="w-4 h-4" />
+                <span className="text-xs">Historial</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[400px] sm:w-[540px]">
+              <SheetHeader>
+                <SheetTitle>Historial de Análisis</SheetTitle>
+              </SheetHeader>
+              
+              <ScrollArea className="h-[calc(100vh-100px)] mt-6">
+                {loadingHistory ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : savedNotes.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No hay análisis guardados aún.</p>
+                    <p className="text-xs mt-2">Los análisis se guardarán automáticamente al generarlos.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {savedNotes.map((note) => {
+                      const module = analysisModules.find(m => m.type === note.type);
+                      const Icon = module?.icon || Network;
+                      
+                      return (
+                        <Card 
+                          key={note.id} 
+                          className="p-4 hover:shadow-md transition-shadow cursor-pointer"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div 
+                              className="flex-1"
+                              onClick={() => handleViewNote(note)}
+                            >
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className={`w-8 h-8 rounded flex items-center justify-center ${
+                                  note.type === 'mapa_clinico' ? 'bg-purple-50 dark:bg-purple-950/30' :
+                                  note.type === 'paraclinicos' ? 'bg-blue-50 dark:bg-blue-950/30' :
+                                  note.type === 'ayudas_diagnosticas' ? 'bg-amber-50 dark:bg-amber-950/30' :
+                                  note.type === 'analisis_corporal' ? 'bg-pink-50 dark:bg-pink-950/30' :
+                                  'bg-green-50 dark:bg-green-950/30'
+                                }`}>
+                                  <Icon className={`w-4 h-4 ${
+                                    note.type === 'mapa_clinico' ? 'text-purple-600 dark:text-purple-400' :
+                                    note.type === 'paraclinicos' ? 'text-blue-600 dark:text-blue-400' :
+                                    note.type === 'ayudas_diagnosticas' ? 'text-amber-600 dark:text-amber-400' :
+                                    note.type === 'analisis_corporal' ? 'text-pink-600 dark:text-pink-400' :
+                                    'text-green-600 dark:text-green-400'
+                                  }`} />
+                                </div>
+                                <span className="font-medium text-sm">{note.title}</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(note.created_at).toLocaleDateString('es-CO', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                            </div>
+                            
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteNote(note.id);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </ScrollArea>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
 

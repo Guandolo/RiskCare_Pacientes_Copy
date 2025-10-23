@@ -205,7 +205,8 @@ export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: 
       console.log('[ChatPanel] 📂 Cargando conversación para:', {
         userId: user.id,
         patientId: targetPatientId,
-        context: isProfesional ? 'Profesional' : 'Paciente'
+        isProfesional: isProfesional,
+        context: isProfesional ? 'Profesional viendo paciente' : 'Paciente propio'
       });
 
       // 🆕 Buscar conversación según contexto (profesional + paciente específico, o paciente propio)
@@ -216,8 +217,10 @@ export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: 
       
       if (isProfesional && targetPatientId) {
         conversationQuery = conversationQuery.eq('patient_user_id', targetPatientId);
+        console.log('[ChatPanel] 🔍 Buscando conversación de profesional sobre paciente:', targetPatientId);
       } else {
         conversationQuery = conversationQuery.is('patient_user_id', null);
+        console.log('[ChatPanel] 🔍 Buscando conversación propia del paciente');
       }
       
       const { data: latestConv } = await conversationQuery
@@ -226,12 +229,13 @@ export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: 
         .maybeSingle();
 
       if (latestConv) {
-        console.log('[ChatPanel] ✅ Conversación encontrada:', latestConv.id);
+        console.log('[ChatPanel] ✅ Conversación encontrada:', latestConv.id, 'patient_user_id:', latestConv.patient_user_id);
         setCurrentConversationId(latestConv.id);
         await loadChatHistory(latestConv.id);
       } else {
-        console.log('[ChatPanel] 🆕 No hay conversación previa, creando nueva');
-        await createNewConversation();
+        console.log('[ChatPanel] 🆕 No hay conversación previa para este contexto, se creará al enviar primer mensaje');
+        setCurrentConversationId(null);
+        setMessages([]);
       }
     } catch (error) {
       console.error('[ChatPanel] ❌ Error loading conversation:', error);
