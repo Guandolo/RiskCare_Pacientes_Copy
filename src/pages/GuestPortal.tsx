@@ -201,7 +201,7 @@ export const GuestPortal = () => {
         {/* Panel Izquierdo */}
         <div className="w-80 border-r overflow-hidden">
           <DataSourcesPanel 
-            displayedUserId={accessData?.patientUserId} 
+            displayedUserId={patient?.user_id || accessData?.patientUserId} 
             isGuestMode={true}
             allowDownload={permissions?.allow_download || false}
           />
@@ -211,7 +211,7 @@ export const GuestPortal = () => {
         <div className="flex-1 overflow-hidden">
           {permissions?.allow_chat ? (
             <ChatPanel 
-              displayedUserId={accessData?.patientUserId} 
+              displayedUserId={patient?.user_id || accessData?.patientUserId} 
               isGuestMode={true}
               guestToken={token}
             />

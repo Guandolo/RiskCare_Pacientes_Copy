@@ -245,24 +245,6 @@ export const ShareHistoryModal = ({ open, onOpenChange }: ShareHistoryModalProps
                       </p>
                     </div>
                   </div>
-
-                  <div className="flex items-start space-x-3">
-                    <Checkbox
-                      id="notebook"
-                      checked={permissions.allow_notebook}
-                      onCheckedChange={(checked) =>
-                        setPermissions({ ...permissions, allow_notebook: checked as boolean })
-                      }
-                    />
-                    <div className="grid gap-1.5 leading-none">
-                      <Label htmlFor="notebook" className="cursor-pointer">
-                        Permitir Acceso a Bitácora
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        El invitado podrá ver análisis y gráficas clínicas
-                      </p>
-                    </div>
-                  </div>
                 </div>
               </div>
 
