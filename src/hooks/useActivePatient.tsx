@@ -32,15 +32,22 @@ export const ActivePatientProvider = ({ children }: { children: ReactNode }) => 
   } = useGlobalStore();
 
   useEffect(() => {
+    // 🚨 SOLO ejecutar UNA VEZ al montar
+    // NO incluir loadActivePatient en dependencias para evitar loops infinitos
+    
     // Para profesionales: cargar paciente activo si existe contexto pero no hay paciente cargado
     if (!isProfesional) return;
 
     const initializePatient = async () => {
       // Si ya hay un paciente activo en el store, no hacer nada
-      if (activePatient?.user_id) return;
+      if (activePatient?.user_id) {
+        console.log('[ActivePatientProvider] ⏭️ Ya hay paciente activo, saltando inicialización');
+        return;
+      }
 
       // Si hay un contexto de paciente pero no está cargado, cargar el perfil
       if (currentPatientUserId && !activePatient) {
+        console.log('[ActivePatientProvider] 🔄 Cargando paciente desde contexto:', currentPatientUserId);
         await loadActivePatient(currentPatientUserId);
         return;
       }
@@ -56,12 +63,16 @@ export const ActivePatientProvider = ({ children }: { children: ReactNode }) => 
         .maybeSingle();
 
       if (!error && context?.current_patient_user_id) {
+        console.log('[ActivePatientProvider] 🔄 Cargando paciente desde BD:', context.current_patient_user_id);
         await loadActivePatient(context.current_patient_user_id);
       }
     };
 
     initializePatient();
-  }, [isProfesional, activePatient, currentPatientUserId, loadActivePatient]);
+    
+    // 🚨 CRÍTICO: Solo ejecutar al montar, NO en cada cambio
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Array vacío = solo al montar
 
   return <>{children}</>;
 };

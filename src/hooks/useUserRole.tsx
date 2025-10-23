@@ -95,27 +95,19 @@ export const useUserRole = () => {
       }
     };
 
+    // 🚨 SOLO cargar UNA VEZ al montar
     fetchRoles();
 
-    // 🚨 OPTIMIZACIÓN: Solo suscribirse a cambios SIGNED_IN y SIGNED_OUT
-    // NO refrescar en otros eventos para evitar recargas innecesarias
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      console.log('[useUserRole] 🔔 Auth event:', event);
-      
-      // Solo refrescar en cambios significativos
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
-        console.log('[useUserRole] 🔄 Evento significativo, recargando roles');
-        roleCache = null; // Invalidar cache
-        fetchRoles();
-      } else {
-        console.log('[useUserRole] ⏭️ Evento', event, '- no requiere recarga de roles');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+    // 🚨 CRÍTICO: ELIMINADO onAuthStateChange
+    // Las recargas constantes de roles eran causadas por este listener
+    // Los roles NO cambian frecuentemente, el cache de 10 min es suficiente
+    // Si se necesita recargar, usar invalidateRoleCache()
+    
+    // 🚨 SOLO recargar cuando el componente se monta (nuevo login)
+    // NO recargar en cada evento de auth (TOKEN_REFRESHED, etc.)
+    
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 🚨 Array vacío = solo al montar
 
   const hasRole = (role: UserRole) => roles.includes(role);
   const hasAnyRole = (checkRoles: UserRole[]) => checkRoles.some(r => roles.includes(r));
