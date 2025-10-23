@@ -12,6 +12,9 @@ import ClinicAdmin from "./pages/ClinicAdmin";
 import Settings from "./pages/Settings";
 import { GuestPortal } from "./pages/GuestPortal";
 
+// 🚨 IMPORTAR SESSION MANAGER: Control manual de refresh de sesión
+import './lib/sessionManager';
+
 // 🚨 CONFIGURACIÓN CRÍTICA DE SEGURIDAD: Prevenir race conditions y mezcla de datos PII
 const queryClient = new QueryClient({
   defaultOptions: {

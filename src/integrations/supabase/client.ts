@@ -8,10 +8,32 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// 🚨 OPTIMIZACIÓN CRÍTICA: Configuración de auth para prevenir recargas agresivas
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
     persistSession: true,
-    autoRefreshToken: true,
-  }
+    // 🚨 CRÍTICO: autoRefreshToken en false para control manual
+    // Supabase por defecto refresca cada vez que cambias de ventana
+    // Esto causa las recargas reportadas en el análisis del navegador
+    autoRefreshToken: false,
+    // 🚨 Detectar cambios de sesión pero sin refrescar agresivamente
+    detectSessionInUrl: true,
+    // 🚨 Reducir frecuencia de verificación de sesión
+    flowType: 'pkce',
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'riskcare-pacientes',
+    },
+  },
+  db: {
+    schema: 'public',
+  },
+  // 🚨 OPTIMIZACIÓN: Configurar realtime para que no sobreescriba configuración
+  realtime: {
+    params: {
+      eventsPerSecond: 2, // Limitar eventos por segundo
+    },
+  },
 });

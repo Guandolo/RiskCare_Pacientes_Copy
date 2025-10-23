@@ -8,16 +8,38 @@ let authInitialized = false;
 let currentSession: Session | null = null;
 let currentUser: User | null = null;
 
+// 🚨 THROTTLING: Prevenir notificaciones excesivas
+let lastNotificationTime = 0;
+const NOTIFICATION_THROTTLE_MS = 1000; // 1 segundo entre notificaciones
+
 const ensureAuthListener = () => {
   if (authInitialized) return;
+  
+  console.log('[useAuth] 🔧 Inicializando listener único de autenticación');
+  
   supabase.auth.onAuthStateChange((event, session) => {
+    console.log('[useAuth] 🔔 Auth event:', event);
+    
     currentSession = session;
     currentUser = session?.user ?? null;
+    
+    // 🚨 THROTTLING: Solo notificar si ha pasado suficiente tiempo
+    const now = Date.now();
+    const timeSinceLastNotification = now - lastNotificationTime;
+    
+    if (timeSinceLastNotification < NOTIFICATION_THROTTLE_MS && event !== 'SIGNED_OUT') {
+      console.log('[useAuth] ⏭️ Notificación throttled (hace', timeSinceLastNotification, 'ms)');
+      return;
+    }
+    
+    lastNotificationTime = now;
+    
     // Notificar a la app sin crear múltiples listeners por componente
     window.dispatchEvent(new CustomEvent('authChanged', { detail: { event, hasSession: !!session } }));
 
     // Seguridad: al cerrar sesión desde cualquier pestaña/contexto, limpiar y redirigir de inmediato
     if (event === 'SIGNED_OUT') {
+      console.log('[useAuth] 🚪 SIGNED_OUT detectado - limpiando y redirigiendo');
       try {
         // Limpiar el store global primero
         useGlobalStore.getState().resetStore();
@@ -43,7 +65,10 @@ export const useAuth = () => {
     // Usar un único listener global y escuchar eventos en cada componente
     ensureAuthListener();
 
-    const handleAuthChanged = () => {
+    const handleAuthChanged = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log('[useAuth] 📥 Evento authChanged recibido:', customEvent.detail?.event);
+      
       setSession(currentSession);
       setUser(currentUser);
       setLoading(false);
@@ -51,13 +76,19 @@ export const useAuth = () => {
 
     window.addEventListener('authChanged', handleAuthChanged);
 
-    // Inicializar estado con la sesión actual
+    // Inicializar estado con la sesión actual (solo UNA vez al montar)
     supabase.auth.getSession().then(({ data: { session } }) => {
       currentSession = session;
       currentUser = session?.user ?? null;
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      if (session?.user) {
+        console.log('[useAuth] ✅ Sesión inicial cargada para usuario:', session.user.id);
+      } else {
+        console.log('[useAuth] 🚫 No hay sesión inicial');
+      }
     });
 
     return () => {
@@ -79,11 +110,12 @@ export const useAuth = () => {
     });
     
     if (error) {
-      console.error("Error al iniciar sesión con Google:", error.message);
+      console.error("[useAuth] ❌ Error al iniciar sesión con Google:", error.message);
       throw error;
     }
 
     if (data?.url) {
+      console.log('[useAuth] 🔗 Redirigiendo a Google OAuth');
       // Redirige en el contexto top para evitar el bloqueo de Google dentro del iframe del preview
       if (window.top) {
         (window.top as Window).location.href = data.url;
@@ -94,6 +126,7 @@ export const useAuth = () => {
   };
 
   const signOut = async () => {
+    console.log('[useAuth] 🚪 Iniciando sign out');
     // Usa la ruta dedicada para un cierre de sesión profundo
     if (window.top) {
       (window.top as Window).location.href = "/logout";
