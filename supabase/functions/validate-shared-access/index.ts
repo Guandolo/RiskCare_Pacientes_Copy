@@ -65,6 +65,25 @@ serve(async (req) => {
       throw new Error('Patient profile not found');
     }
 
+    // Extraer nombre completo de topus_data si está disponible
+    let fullName = patientProfile.full_name;
+    if (!fullName && patientProfile.topus_data) {
+      try {
+        const topusData = typeof patientProfile.topus_data === 'string' 
+          ? JSON.parse(patientProfile.topus_data) 
+          : patientProfile.topus_data;
+        
+        if (topusData.data?.afiliado?.NombreCompleto) {
+          fullName = topusData.data.afiliado.NombreCompleto;
+        } else if (topusData.data?.afiliado) {
+          const afiliado = topusData.data.afiliado;
+          fullName = `${afiliado.PrimerNombre || ''} ${afiliado.SegundoNombre || ''} ${afiliado.PrimerApellido || ''} ${afiliado.SegundoApellido || ''}`.trim();
+        }
+      } catch (e) {
+        console.error('Error extracting name from topus_data:', e);
+      }
+    }
+
     // Obtener documentos si se permite
     let documents = null;
     const { data: docs } = await supabase
@@ -113,7 +132,7 @@ serve(async (req) => {
       JSON.stringify({
         valid: true,
         patient: {
-          full_name: patientProfile.full_name,
+          full_name: fullName,
           identification: patientProfile.identification,
           document_type: patientProfile.document_type,
           age: patientProfile.age,
@@ -125,7 +144,8 @@ serve(async (req) => {
         permissions: sharedAccess.permissions,
         expiresAt: sharedAccess.expires_at,
         timeRemaining,
-        accessCount: sharedAccess.access_count + 1
+        accessCount: sharedAccess.access_count + 1,
+        patientUserId: sharedAccess.patient_user_id
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

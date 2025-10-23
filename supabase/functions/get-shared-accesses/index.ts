@@ -53,8 +53,8 @@ serve(async (req) => {
     
     const revokedTokens = tokens?.filter(t => t.revoked_at) || [];
 
-    // Generar URLs para tokens activos usando el dominio personalizado
-    const baseUrl = 'https://riskcare.ai';
+    // Generar URLs para tokens activos usando el subdominio de la aplicación
+    const baseUrl = 'https://pacientes.riskcare.ai';
     
     const activeWithUrls = activeTokens.map(token => ({
       ...token,

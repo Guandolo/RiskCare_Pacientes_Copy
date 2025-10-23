@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
+import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
 import { 
   AlertCircle, 
   Clock, 
@@ -13,9 +15,14 @@ import {
   FileText, 
   Download,
   Shield,
-  Eye
+  Eye,
+  Send,
+  Loader2,
+  Sparkles
 } from "lucide-react";
 import riskCareLogo from "@/assets/riskcare-logo.png";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface PatientData {
   full_name: string;
@@ -34,6 +41,7 @@ interface Document {
   document_type: string | null;
   document_date: string | null;
   created_at: string;
+  file_url?: string;
 }
 
 interface AccessData {
@@ -49,15 +57,26 @@ interface AccessData {
   expiresAt?: string;
   timeRemaining?: number;
   accessCount?: number;
+  patientUserId?: string;
+}
+
+interface Message {
+  role: "user" | "assistant";
+  content: string;
 }
 
 export const GuestPortal = () => {
   const { token } = useParams<{ token: string }>();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [accessData, setAccessData] = useState<AccessData | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+  
+  // Chat state
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputMessage, setInputMessage] = useState("");
+  const [isLoadingChat, setIsLoadingChat] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!token) {
@@ -87,6 +106,10 @@ export const GuestPortal = () => {
       return () => clearInterval(interval);
     }
   }, [accessData]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const validateAccess = async () => {
     setLoading(true);
@@ -137,11 +160,110 @@ export const GuestPortal = () => {
         }
       });
 
-      // Aquí iría la lógica de descarga del documento
-      // Por ahora solo mostramos un mensaje
-      alert(`Descargando: ${fileName}`);
+      // Descargar el documento desde storage
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = accessData.patientUserId;
+      
+      if (userId) {
+        const { data, error } = await supabase.storage
+          .from('clinical-documents')
+          .download(`${userId}/${fileName}`);
+
+        if (error) throw error;
+
+        // Crear un enlace de descarga
+        const url = URL.createObjectURL(data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
     } catch (err) {
       console.error('Error downloading document:', err);
+      alert('Error al descargar el documento');
+    }
+  };
+
+  const handleSendMessage = async () => {
+    const text = inputMessage.trim();
+    if (!text || !accessData?.permissions?.allow_chat) return;
+
+    const userMessage: Message = { role: "user", content: text };
+    setMessages(prev => [...prev, userMessage]);
+    setInputMessage("");
+    setIsLoadingChat(true);
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-stream`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            messages: [...messages, userMessage],
+            targetUserId: accessData.patientUserId,
+            isGuestAccess: true,
+            guestToken: token
+          })
+        }
+      );
+
+      if (!response.ok || !response.body) {
+        throw new Error('Error en la respuesta del servidor');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantMessage = '';
+
+      // Agregar mensaje del asistente vacío
+      setMessages(prev => [...prev, { role: "assistant", content: "" }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
+            
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.content) {
+                assistantMessage += parsed.content;
+                setMessages(prev => {
+                  const newMessages = [...prev];
+                  newMessages[newMessages.length - 1] = {
+                    role: "assistant",
+                    content: assistantMessage
+                  };
+                  return newMessages;
+                });
+              }
+            } catch (e) {
+              // Ignorar errores de parsing
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error sending message:', err);
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: "Lo siento, ocurrió un error al procesar tu pregunta."
+      }]);
+    } finally {
+      setIsLoadingChat(false);
     }
   };
 
@@ -182,9 +304,6 @@ export const GuestPortal = () => {
             <p className="text-muted-foreground">
               {error || 'El enlace ha expirado, ha sido revocado o no es válido.'}
             </p>
-            <Button onClick={() => navigate('/')} variant="outline" className="w-full">
-              Volver al Inicio
-            </Button>
           </div>
         </Card>
       </div>
@@ -194,149 +313,227 @@ export const GuestPortal = () => {
   const { patient, documents, permissions } = accessData;
 
   return (
-    <div className="min-h-screen bg-gradient-subtle">
-      {/* Header del Portal de Invitado */}
+    <div className="h-screen flex flex-col bg-background">
+      {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between px-4">
+        <div className="container flex h-14 items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <img src={riskCareLogo} alt="RiskCare" className="h-8" />
-            <Badge variant="secondary" className="gap-1">
+            <img src={riskCareLogo} alt="RiskCare" className="h-6" />
+            <Badge variant="outline" className="gap-1 text-xs">
               <Eye className="w-3 h-3" />
               Portal de Invitado
             </Badge>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-sm">
             <Clock className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm font-medium">
+            <span className="font-medium">
               Expira en: {formatTimeRemaining(timeRemaining)}
             </span>
           </div>
         </div>
       </header>
 
-      <main className="container max-w-6xl mx-auto p-4 md:p-8 space-y-6">
-        {/* Banner de Aviso */}
-        <Alert className="border-primary">
-          <Shield className="h-4 w-4" />
-          <AlertDescription>
-            Está viendo el historial de <strong>{patient?.full_name}</strong> como invitado.
-            Este acceso es temporal y de solo lectura.
-          </AlertDescription>
-        </Alert>
+      <div className="flex-1 flex overflow-hidden">
+        {/* Panel Izquierdo - Información del Paciente */}
+        <div className="w-80 border-r flex flex-col bg-muted/20">
+          <ScrollArea className="flex-1 p-4">
+            <div className="space-y-4">
+              {/* Banner de Aviso */}
+              <Alert className="border-primary/50 bg-primary/5">
+                <Shield className="h-4 w-4 text-primary" />
+                <AlertDescription className="text-xs">
+                  Acceso temporal de solo lectura
+                </AlertDescription>
+              </Alert>
 
-        {/* Información del Paciente */}
-        <Card className="p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <User className="w-5 h-5 text-primary" />
-            <h2 className="text-xl font-semibold">Información del Paciente</h2>
-          </div>
-          <Separator className="mb-4" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm text-muted-foreground">Nombre Completo</Label>
-              <p className="font-medium">{patient?.full_name || 'No especificado'}</p>
-            </div>
-            <div>
-              <Label className="text-sm text-muted-foreground">Documento de Identidad</Label>
-              <p className="font-medium">
-                {patient?.document_type || 'CC'} {patient?.identification}
-              </p>
-            </div>
-            <div>
-              <Label className="text-sm text-muted-foreground">Edad</Label>
-              <p className="font-medium">{patient?.age ? `${patient.age} años` : 'No especificada'}</p>
-            </div>
-            <div>
-              <Label className="text-sm text-muted-foreground">EPS</Label>
-              <p className="font-medium">{patient?.eps || 'No especificada'}</p>
-            </div>
-            {patient?.phone && (
-              <div>
-                <Label className="text-sm text-muted-foreground">Teléfono</Label>
-                <p className="font-medium">{patient.phone}</p>
-              </div>
-            )}
-          </div>
-        </Card>
-
-        {/* Documentos Clínicos */}
-        <Card className="p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <FileText className="w-5 h-5 text-primary" />
-            <h2 className="text-xl font-semibold">Documentos Clínicos</h2>
-            {!permissions?.allow_download && (
-              <Badge variant="secondary" className="ml-auto text-xs">
-                Solo visualización
-              </Badge>
-            )}
-          </div>
-          <Separator className="mb-4" />
-          
-          {documents && documents.length > 0 ? (
-            <div className="space-y-3">
-              {documents.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex-1">
-                    <p className="font-medium">{doc.file_name}</p>
-                    <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
-                      {doc.document_type && (
-                        <span>Tipo: {doc.document_type}</span>
-                      )}
-                      {doc.document_date && (
-                        <span>Fecha: {new Date(doc.document_date).toLocaleDateString('es-CO')}</span>
-                      )}
-                      <span>Subido: {new Date(doc.created_at).toLocaleDateString('es-CO')}</span>
+              {/* Información del Paciente */}
+              <Card className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <User className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-semibold">Información del Paciente</h3>
+                </div>
+                <Separator className="mb-3" />
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Nombre Completo</Label>
+                    <p className="font-medium">{patient?.full_name || 'No especificado'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Documento</Label>
+                    <p className="font-medium">
+                      {patient?.document_type || 'CC'} {patient?.identification}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Edad</Label>
+                      <p className="font-medium">{patient?.age ? `${patient.age} años` : 'N/A'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">EPS</Label>
+                      <p className="font-medium text-xs">{patient?.eps || 'N/A'}</p>
                     </div>
                   </div>
-                  {permissions?.allow_download && (
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => handleDownloadDocument(doc.id, doc.file_name)}
-                    >
-                      <Download className="w-4 h-4" />
-                    </Button>
+                </div>
+              </Card>
+
+              {/* Documentos */}
+              <Card className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-semibold">Documentos</h3>
+                  {!permissions?.allow_download && (
+                    <Badge variant="secondary" className="ml-auto text-xs">
+                      Solo lectura
+                    </Badge>
                   )}
                 </div>
-              ))}
+                <Separator className="mb-3" />
+                
+                {documents && documents.length > 0 ? (
+                  <div className="space-y-2">
+                    {documents.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="p-3 border rounded-lg hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-xs truncate">{doc.file_name}</p>
+                            <div className="flex flex-col gap-0.5 mt-1">
+                              {doc.document_type && (
+                                <span className="text-xs text-muted-foreground">
+                                  {doc.document_type}
+                                </span>
+                              )}
+                              {doc.document_date && (
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(doc.document_date).toLocaleDateString('es-CO')}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {permissions?.allow_download && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 shrink-0"
+                              onClick={() => handleDownloadDocument(doc.id, doc.file_name)}
+                            >
+                              <Download className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-xs text-muted-foreground">
+                    No hay documentos disponibles
+                  </div>
+                )}
+              </Card>
             </div>
+          </ScrollArea>
+        </div>
+
+        {/* Panel Central - Chat */}
+        <div className="flex-1 flex flex-col">
+          {permissions?.allow_chat ? (
+            <>
+              <div className="border-b bg-muted/30 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  <h2 className="font-semibold">Asistente Clínico</h2>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Pregunta sobre la información clínica del paciente
+                </p>
+              </div>
+
+              <ScrollArea className="flex-1 p-4">
+                <div className="max-w-3xl mx-auto space-y-4">
+                  {messages.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Sparkles className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                      <p className="text-muted-foreground text-sm">
+                        Haz una pregunta sobre el historial clínico
+                      </p>
+                    </div>
+                  ) : (
+                    messages.map((msg, idx) => (
+                      <div
+                        key={idx}
+                        className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`rounded-lg px-4 py-2 max-w-[80%] ${
+                            msg.role === 'user'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted'
+                          }`}
+                        >
+                          <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {msg.content}
+                            </ReactMarkdown>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  {isLoadingChat && (
+                    <div className="flex justify-start">
+                      <div className="bg-muted rounded-lg px-4 py-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              </ScrollArea>
+
+              <div className="border-t p-4">
+                <div className="max-w-3xl mx-auto">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Escribe tu pregunta..."
+                      value={inputMessage}
+                      onChange={(e) => setInputMessage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      disabled={isLoadingChat}
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={!inputMessage.trim() || isLoadingChat}
+                      size="icon"
+                    >
+                      {isLoadingChat ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              No hay documentos disponibles
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center text-muted-foreground">
+                <Shield className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                <p className="text-sm">El chat no está habilitado para este acceso</p>
+              </div>
             </div>
           )}
-        </Card>
-
-        {/* Información de Acceso */}
-        <Card className="p-6">
-          <div className="text-center text-sm text-muted-foreground space-y-2">
-            <p>Este es un portal de acceso temporal y de solo lectura</p>
-            <p>Veces accedido: {accessData.accessCount || 1}</p>
-            <p className="text-xs">
-              Expira: {accessData.expiresAt ? new Date(accessData.expiresAt).toLocaleString('es-CO') : 'N/A'}
-            </p>
-          </div>
-        </Card>
-      </main>
-
-      <footer className="border-t mt-12 py-6">
-        <div className="container text-center text-sm text-muted-foreground">
-          <p>
-            Portal de invitado de{' '}
-            <a 
-              href="https://ingenieria365.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="hover:text-primary transition-colors underline"
-            >
-              Ingenieria 365
-            </a>
-          </p>
         </div>
-      </footer>
+      </div>
     </div>
   );
 };

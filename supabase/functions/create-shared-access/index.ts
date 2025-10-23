@@ -81,8 +81,8 @@ serve(async (req) => {
 
     console.log(`Created shared access token for user ${user.id}, expires at ${expiresAt}`);
 
-    // Generar URL del portal usando el dominio personalizado
-    const shareUrl = `https://riskcare.ai/guest/${token}`;
+    // Generar URL del portal usando el subdominio de la aplicación
+    const shareUrl = `https://pacientes.riskcare.ai/guest/${token}`;
 
     return new Response(
       JSON.stringify({
