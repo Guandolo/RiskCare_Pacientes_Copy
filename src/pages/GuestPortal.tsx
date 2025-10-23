@@ -10,7 +10,7 @@ import {
   Shield,
   Eye
 } from "lucide-react";
-import riskcareLogo from "@/assets/riskcare-logo.png";
+import riskcareLogo from "@/assets/riskcare-icon.png";
 import { DataSourcesPanel } from "@/components/DataSourcesPanel";
 import { ChatPanel } from "@/components/ChatPanel";
 import { MobileNavigation } from "@/components/MobileNavigation";
