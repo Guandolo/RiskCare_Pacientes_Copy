@@ -43,9 +43,11 @@ interface ClinicalDocument {
 
 interface DataSourcesPanelProps {
   displayedUserId?: string;
+  isGuestMode?: boolean;
+  allowDownload?: boolean;
 }
 
-export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => {
+export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDownload = true }: DataSourcesPanelProps) => {
   const { user } = useAuth();
   const { isProfesional } = useUserRole();
   const { activePatient, setActivePatient } = useActivePatient();
@@ -80,7 +82,10 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
   const lastLoadedPatientRef = useRef<string | null>(null);
   
   useEffect(() => {
-    const patientId = isProfesional && activePatient ? activePatient.user_id : user?.id;
+    // En modo invitado, usar displayedUserId directamente
+    const patientId = isGuestMode 
+      ? displayedUserId 
+      : (isProfesional && activePatient ? activePatient.user_id : user?.id);
     
     if (!patientId) {
       console.log('[DataSourcesPanel] 🚫 Sin paciente/usuario - no cargar');
@@ -104,7 +109,7 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
     }
     
     loadProfileAndData();
-  }, [isProfesional, activePatient?.user_id, user?.id]); // Incluir user?.id para pacientes no-profesionales
+  }, [isProfesional, activePatient?.user_id, user?.id, displayedUserId, isGuestMode]); // Incluir displayedUserId e isGuestMode
 
   useEffect(() => {
     // Listener para recargar perfil cuando se cree por primera vez
@@ -130,7 +135,7 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
   }, []);
   const loadProfileAndData = async () => {
     // CRÍTICO: No cargar si es profesional y no hay paciente activo
-    if (isProfesional && !activePatient?.user_id) {
+    if (!isGuestMode && isProfesional && !activePatient?.user_id) {
       console.log('[DataSourcesPanel] Profesional sin paciente activo, saltando carga');
       setLoading(false);
       return;
@@ -145,6 +150,40 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
   };
   const loadProfile = async () => {
     try {
+      // En modo invitado, cargar directamente con displayedUserId
+      if (isGuestMode && displayedUserId) {
+        const { data, error } = await supabase
+          .from('patient_profiles')
+          .select('*')
+          .eq('user_id', displayedUserId)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error cargando perfil invitado:', error);
+          setLoading(false);
+          return;
+        }
+
+        if (!data) {
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+        
+        setProfile(data);
+        setPhoneValue(data.phone || "");
+        
+        if (data.topus_data && typeof data.topus_data === 'object') {
+          const topusData = data.topus_data as any;
+          if (topusData.hismart_data) {
+            setHismartData(topusData.hismart_data);
+            setHismartLastFetch(topusData.hismart_last_fetch || null);
+          }
+        }
+        setLoading(false);
+        return;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setLoading(false);
@@ -216,16 +255,23 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
   };
   const loadDocuments = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Determinar de qué usuario cargar documentos
-      const targetUserId = isProfesional && activePatient ? activePatient.user_id : user.id;
+      // En modo invitado, usar displayedUserId directamente
+      let targetUserId: string;
       
-      // CRÍTICO: Si es profesional sin paciente activo, NO intentar cargar
-      if (isProfesional && !targetUserId) {
-        console.log('[DataSourcesPanel] Profesional sin paciente activo, saltando carga de documentos');
-        return;
+      if (isGuestMode && displayedUserId) {
+        targetUserId = displayedUserId;
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Determinar de qué usuario cargar documentos
+        targetUserId = isProfesional && activePatient ? activePatient.user_id : user.id;
+        
+        // CRÍTICO: Si es profesional sin paciente activo, NO intentar cargar
+        if (isProfesional && !targetUserId) {
+          console.log('[DataSourcesPanel] Profesional sin paciente activo, saltando carga de documentos');
+          return;
+        }
       }
 
       // Verificar cache primero
@@ -699,30 +745,32 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
           </Tooltip>
 
           {/* Upload Section - Quick Upload*/}
-          <div className="space-y-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  className="w-full gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all shadow-md" 
-                  size="lg"
-                  onClick={() => setShowQuickUploadModal(true)}
-                >
-                  <FilePlus2 className="w-4 h-4" />
-                  {isProfesional && activePatient ? "Cargar Documentos del Paciente" : "Carga Rápida de Documentos"}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Sube múltiples documentos de forma rápida. Se procesarán en segundo plano.</p>
-              </TooltipContent>
-            </Tooltip>
-            <p className="text-xs text-muted-foreground text-center">
-              Carga múltiple - Se procesan automáticamente
-            </p>
-          </div>
-
+          {!isGuestMode && (
+            <div className="space-y-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    className="w-full gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all shadow-md" 
+                    size="lg"
+                    onClick={() => setShowQuickUploadModal(true)}
+                  >
+                    <FilePlus2 className="w-4 h-4" />
+                    {isProfesional && activePatient ? "Cargar Documentos del Paciente" : "Carga Rápida de Documentos"}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Sube múltiples documentos de forma rápida. Se procesarán en segundo plano.</p>
+                </TooltipContent>
+              </Tooltip>
+              <p className="text-xs text-muted-foreground text-center">
+                Carga múltiple - Se procesan automáticamente
+              </p>
+            </div>
+          )}
 
           {/* Botón consultar/actualizar HiSmart */}
-          <div className="space-y-2">
+          {!isGuestMode && (
+            <div className="space-y-2">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Card 
@@ -759,7 +807,8 @@ export const DataSourcesPanel = ({ displayedUserId }: DataSourcesPanelProps) => 
                 <p>Sincronizar tus datos médicos desde el sistema de Historia Clínica</p>
               </TooltipContent>
             </Tooltip>
-          </div>
+            </div>
+          )}
         </div>
       </ScrollArea>
 

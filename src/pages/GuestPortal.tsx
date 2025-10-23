@@ -10,7 +10,7 @@ import {
   Shield,
   Eye
 } from "lucide-react";
-import riskCareLogo from "@/assets/riskcare-logo.png";
+import riskcareLogo from "@/assets/riskcare-logo.png";
 import { DataSourcesPanel } from "@/components/DataSourcesPanel";
 import { ChatPanel } from "@/components/ChatPanel";
 
@@ -168,7 +168,7 @@ export const GuestPortal = () => {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <img src={riskCareLogo} alt="RiskCare" className="h-6" />
+            <img src={riskcareLogo} alt="RiskCare" className="h-8" />
             <Badge variant="outline" className="gap-1 text-xs">
               <Eye className="w-3 h-3" />
               Portal de Invitado
@@ -200,13 +200,21 @@ export const GuestPortal = () => {
       <div className="flex-1 flex overflow-hidden">
         {/* Panel Izquierdo */}
         <div className="w-80 border-r overflow-hidden">
-          <DataSourcesPanel displayedUserId={accessData?.patientUserId} />
+          <DataSourcesPanel 
+            displayedUserId={accessData?.patientUserId} 
+            isGuestMode={true}
+            allowDownload={permissions?.allow_download || false}
+          />
         </div>
 
         {/* Panel Central */}
         <div className="flex-1 overflow-hidden">
           {permissions?.allow_chat ? (
-            <ChatPanel displayedUserId={accessData?.patientUserId} />
+            <ChatPanel 
+              displayedUserId={accessData?.patientUserId} 
+              isGuestMode={true}
+              guestToken={token}
+            />
           ) : (
             <div className="flex-1 flex items-center justify-center h-full">
               <div className="text-center text-muted-foreground">

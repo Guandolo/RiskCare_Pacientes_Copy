@@ -40,9 +40,11 @@ type ProgressStep = {
 
 interface ChatPanelProps {
   displayedUserId?: string;
+  isGuestMode?: boolean;
+  guestToken?: string;
 }
 
-export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
+export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: ChatPanelProps) => {
   const { isProfesional } = useUserRole();
   const { activePatient } = useActivePatient();
   const { getCacheData, setCacheData } = useGlobalStore();
@@ -509,20 +511,28 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
       ));
 
       // Si es profesional y tiene paciente activo, enviar ese userId
-      const targetUserId = isProfesional && activePatient ? activePatient.user_id : undefined;
+      const targetUserId = isProfesional && activePatient ? activePatient.user_id : displayedUserId;
       
       const CHAT_URL = `https://mixunsevvfenajctpdfq.functions.supabase.co/functions/v1/chat-stream`;
+      const requestBody: any = { 
+        message: userMessage, 
+        conversationId: isGuestMode ? null : convId,
+        targetUserId: targetUserId // Enviar paciente activo o displayedUserId si aplica
+      };
+
+      // En modo invitado, agregar parámetros especiales
+      if (isGuestMode && guestToken) {
+        requestBody.isGuestAccess = true;
+        requestBody.guestToken = guestToken;
+      }
+
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ 
-          message: userMessage, 
-          conversationId: convId,
-          targetUserId: targetUserId // Enviar paciente activo si aplica
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!resp.ok || !resp.body) {
@@ -779,23 +789,25 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={createNewConversation}
-              className="gap-2 bg-background hover:bg-accent"
-              disabled={isLoading}
-            >
-              <RotateCw className="w-4 h-4" />
-              Nuevo chat
-            </Button>
-            <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2 bg-background hover:bg-accent">
-                  <History className="w-4 h-4" />
-                  Historial
+            {!isGuestMode && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={createNewConversation}
+                  className="gap-2 bg-background hover:bg-accent"
+                  disabled={isLoading}
+                >
+                  <RotateCw className="w-4 h-4" />
+                  Nuevo chat
                 </Button>
-              </SheetTrigger>
+                <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 bg-background hover:bg-accent">
+                      <History className="w-4 h-4" />
+                      Historial
+                    </Button>
+                  </SheetTrigger>
               <SheetContent>
                 <SheetHeader>
                   <SheetTitle>Historial de Conversaciones</SheetTitle>
@@ -914,6 +926,8 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
                 </ScrollArea>
               </SheetContent>
             </Sheet>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -1091,7 +1105,7 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
       <div className="border-t border-border bg-background shadow-sm">{/* Fondo blanco input */}
         <div className="max-w-3xl mx-auto">
           {/* Preguntas sugeridas - Carrusel horizontal compacto */}
-          {suggestions.length > 0 && (
+          {!isGuestMode && suggestions.length > 0 && (
             <div className="px-4 pt-2 pb-2 border-b border-border/30">
               <div className="relative">
                 <div 
@@ -1148,15 +1162,17 @@ export const ChatPanel = ({ displayedUserId }: ChatPanelProps) => {
 
           <div className="p-4">
             <div className="flex gap-2">
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={() => setShowUploadModal(true)}
-                disabled={isLoading}
-                title="Adjuntar documento"
-              >
-                <Paperclip className="w-4 h-4" />
-              </Button>
+              {!isGuestMode && (
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() => setShowUploadModal(true)}
+                  disabled={isLoading}
+                  title="Adjuntar documento"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </Button>
+              )}
               <Textarea
                 placeholder="Escribe tu pregunta sobre tu historial médico..."
                 value={message}
