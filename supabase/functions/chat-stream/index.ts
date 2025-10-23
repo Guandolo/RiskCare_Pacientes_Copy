@@ -288,10 +288,71 @@ CONTEXTO CLÍNICO DEL PACIENTE (3 FUENTES DE DATOS INTEGRADAS)
     // FUENTE 3: Datos Externos (HiSmart/BDOro via Topus)
     contextInfo += `\n🏥 FUENTE 3: DATOS DE SISTEMAS EXTERNOS (HiSmart/BDOro via Topus)\n`;
     contextInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    if (externalData && typeof externalData === 'object' && Object.keys(externalData).length > 0) {
-      contextInfo += `Fuente: Sistema Topus (integración con bases de datos externas)\n\n`;
+    
+    // Extraer datos de HiSmart si existen
+    const hismartData = externalData?.hismart_data;
+    
+    if (hismartData && typeof hismartData === 'object') {
+      contextInfo += `✅ Datos obtenidos de HiSmart/BDOro (Historia Clínica Electrónica)\n\n`;
       
-      // Estructurar datos de Topus de manera legible
+      // Registros Clínicos
+      if (hismartData.records && Array.isArray(hismartData.records) && hismartData.records.length > 0) {
+        contextInfo += `📝 REGISTROS CLÍNICOS (${hismartData.records.length} registros):\n`;
+        contextInfo += `────────────────────────────────────────────────────────────\n`;
+        hismartData.records.forEach((record: any, idx: number) => {
+          contextInfo += `\nRegistro ${idx + 1}:\n`;
+          if (record.fecha) contextInfo += `  • Fecha: ${record.fecha}\n`;
+          if (record.tipo) contextInfo += `  • Tipo: ${record.tipo}\n`;
+          if (record.profesional) contextInfo += `  • Profesional: ${record.profesional}\n`;
+          if (record.especialidad) contextInfo += `  • Especialidad: ${record.especialidad}\n`;
+          if (record.diagnostico) contextInfo += `  • Diagnóstico: ${record.diagnostico}\n`;
+          if (record.motivo_consulta) contextInfo += `  • Motivo de Consulta: ${record.motivo_consulta}\n`;
+          if (record.hallazgos) contextInfo += `  • Hallazgos: ${record.hallazgos}\n`;
+          if (record.plan_tratamiento) contextInfo += `  • Plan de Tratamiento: ${record.plan_tratamiento}\n`;
+          if (record.observaciones) contextInfo += `  • Observaciones: ${record.observaciones}\n`;
+          
+          // Incluir todos los datos del registro
+          contextInfo += `  • Datos Completos: ${JSON.stringify(record, null, 2).substring(0, 500)}\n`;
+        });
+        contextInfo += `\n`;
+      }
+      
+      // Prescripciones
+      if (hismartData.prescriptions && Array.isArray(hismartData.prescriptions) && hismartData.prescriptions.length > 0) {
+        contextInfo += `💊 PRESCRIPCIONES MÉDICAS (${hismartData.prescriptions.length} prescripciones):\n`;
+        contextInfo += `────────────────────────────────────────────────────────────\n`;
+        hismartData.prescriptions.forEach((prescription: any, idx: number) => {
+          contextInfo += `\nPrescripción ${idx + 1}:\n`;
+          if (prescription.fecha) contextInfo += `  • Fecha: ${prescription.fecha}\n`;
+          if (prescription.medicamento) contextInfo += `  • Medicamento: ${prescription.medicamento}\n`;
+          if (prescription.dosis) contextInfo += `  • Dosis: ${prescription.dosis}\n`;
+          if (prescription.frecuencia) contextInfo += `  • Frecuencia: ${prescription.frecuencia}\n`;
+          if (prescription.duracion) contextInfo += `  • Duración: ${prescription.duracion}\n`;
+          if (prescription.indicaciones) contextInfo += `  • Indicaciones: ${prescription.indicaciones}\n`;
+          if (prescription.profesional) contextInfo += `  • Prescrito por: ${prescription.profesional}\n`;
+          
+          // Incluir todos los datos de la prescripción
+          contextInfo += `  • Datos Completos: ${JSON.stringify(prescription, null, 2).substring(0, 500)}\n`;
+        });
+        contextInfo += `\n`;
+      }
+      
+      // Otros datos de HiSmart
+      if (hismartData.summary) {
+        contextInfo += `📊 RESUMEN CLÍNICO:\n`;
+        contextInfo += `${JSON.stringify(hismartData.summary, null, 2)}\n\n`;
+      }
+      
+      // Dump completo de datos de HiSmart (limitado)
+      contextInfo += `📦 Datos Completos de HiSmart:\n`;
+      contextInfo += `${JSON.stringify(hismartData, null, 2).substring(0, 2000)}${JSON.stringify(hismartData).length > 2000 ? '...\n(Datos adicionales disponibles)' : ''}\n\n`;
+    }
+    
+    // Datos demográficos de Topus (fuera de hismart_data)
+    if (externalData && typeof externalData === 'object') {
+      contextInfo += `📋 DATOS DEMOGRÁFICOS (Topus):\n`;
+      contextInfo += `────────────────────────────────────────────────────────────\n`;
+      
       if (externalData.nombre) contextInfo += `• Nombre Registrado: ${externalData.nombre}\n`;
       if (externalData.identificacion) contextInfo += `• Identificación: ${externalData.identificacion}\n`;
       if (externalData.fecha_nacimiento) contextInfo += `• Fecha de Nacimiento: ${externalData.fecha_nacimiento}\n`;
@@ -309,10 +370,19 @@ CONTEXTO CLÍNICO DEL PACIENTE (3 FUENTES DE DATOS INTEGRADAS)
       if (externalData.medicamentos_actuales) contextInfo += `• Medicamentos Actuales: ${externalData.medicamentos_actuales}\n`;
       if (externalData.diagnosticos_previos) contextInfo += `• Diagnósticos Previos: ${externalData.diagnosticos_previos}\n`;
       
-      // Dump completo de datos adicionales (por si hay campos no mapeados)
-      contextInfo += `\n• Datos Completos de Topus:\n`;
-      contextInfo += `  ${JSON.stringify(externalData, null, 2).substring(0, 1000)}${JSON.stringify(externalData).length > 1000 ? '...' : ''}\n`;
-    } else {
+      // Incluir datos adicionales de topus_data si existen
+      const topusKeys = Object.keys(externalData).filter(k => k !== 'hismart_data');
+      if (topusKeys.length > 0) {
+        contextInfo += `\n• Otros Datos de Topus:\n`;
+        contextInfo += `  ${JSON.stringify(
+          Object.fromEntries(topusKeys.map(k => [k, externalData[k]])),
+          null, 
+          2
+        ).substring(0, 1000)}${JSON.stringify(externalData).length > 1000 ? '...' : ''}\n`;
+      }
+    }
+    
+    if (!hismartData && (!externalData || Object.keys(externalData).length === 0)) {
       contextInfo += `⚠️ No hay datos disponibles de sistemas externos.\n`;
       contextInfo += `ℹ️ Esto puede significar que el paciente aún no ha sido consultado en HiSmart/BDOro,\n`;
       contextInfo += `   o que la integración está pendiente de configuración.\n`;
