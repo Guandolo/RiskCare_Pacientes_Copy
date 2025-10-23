@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { Network, FlaskConical, ScanSearch, Pill, Activity, Loader2, History, Trash2 } from "lucide-react";
+import { Network, FlaskConical, ScanSearch, Pill, Activity, Loader2, History, Trash2, Pencil, Check, ThumbsUp, ThumbsDown, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -46,6 +48,11 @@ interface SavedNote {
   patient_user_id: string | null;
 }
 
+interface NoteFeedback {
+  noteId: string;
+  type: 'positive' | 'negative' | null;
+}
+
 export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanelProps) => {
   const { isProfesional } = useUserRole();
   const { activePatient } = useActivePatient();
@@ -56,6 +63,13 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
   const [historyOpen, setHistoryOpen] = useState(false);
   const [savedNotes, setSavedNotes] = useState<SavedNote[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteTitle, setEditingNoteTitle] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  const [feedbackNoteId, setFeedbackNoteId] = useState<string | null>(null);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [noteFeedback, setNoteFeedback] = useState<Record<string, 'positive' | 'negative' | null>>({});
 
   // 🆕 Cargar historial al montar y cuando cambia el paciente activo
   useEffect(() => {
@@ -143,6 +157,113 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
     });
     setFullscreenOpen(true);
     setHistoryOpen(false);
+  };
+
+  const handleEditNoteTitle = async (noteId: string, newTitle: string) => {
+    try {
+      const { error } = await supabase
+        .from('clinical_notes')
+        .update({ title: newTitle })
+        .eq('id', noteId);
+
+      if (error) throw error;
+
+      toast({
+        description: '✓ Título actualizado',
+        duration: 1500,
+      });
+
+      await loadHistory();
+      setEditingNoteId(null);
+    } catch (error) {
+      console.error('[ClinicalNotebook] Error actualizando título:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar el título.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleNoteFeedback = async (noteId: string, feedbackType: 'positive' | 'negative') => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const currentFeedback = noteFeedback[noteId];
+      
+      if (feedbackType === 'positive' || currentFeedback === feedbackType) {
+        const newFeedback = currentFeedback === feedbackType ? null : feedbackType;
+        
+        setNoteFeedback(prev => ({
+          ...prev,
+          [noteId]: newFeedback
+        }));
+
+        if (newFeedback === 'positive') {
+          await supabase.from('clinical_notes_feedback').insert({
+            user_id: user.id,
+            note_id: noteId,
+            feedback_type: 'positive',
+            comment: null
+          });
+
+          toast({
+            description: "✓ Feedback guardado",
+            duration: 1500,
+          });
+        } else if (newFeedback === null) {
+          await supabase
+            .from('clinical_notes_feedback')
+            .delete()
+            .eq('note_id', noteId)
+            .eq('user_id', user.id);
+        }
+      } else {
+        // Feedback negativo - abrir dialog
+        setFeedbackNoteId(noteId);
+        setFeedbackDialogOpen(true);
+      }
+    } catch (error) {
+      console.error('Error guardando feedback:', error);
+    }
+  };
+
+  const handleSubmitNegativeFeedback = async () => {
+    if (!feedbackNoteId) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      setNoteFeedback(prev => ({
+        ...prev,
+        [feedbackNoteId]: 'negative'
+      }));
+
+      await supabase.from('clinical_notes_feedback').insert({
+        user_id: user.id,
+        note_id: feedbackNoteId,
+        feedback_type: 'negative',
+        comment: feedbackComment || 'Sin comentario'
+      });
+
+      toast({
+        title: "Gracias por tu feedback",
+        description: "Usaremos esta información para mejorar",
+      });
+
+      setFeedbackDialogOpen(false);
+      setFeedbackNoteId(null);
+      setFeedbackComment("");
+    } catch (error) {
+      console.error('Error guardando feedback negativo:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo guardar el feedback",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleGenerate = async (module: AnalysisModule) => {
@@ -285,7 +406,20 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
                 <SheetTitle>Historial de Análisis</SheetTitle>
               </SheetHeader>
               
-              <ScrollArea className="h-[calc(100vh-100px)] mt-6">
+              {/* Barra de búsqueda */}
+              <div className="mt-4 mb-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar análisis..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+              
+              <ScrollArea className="h-[calc(100vh-180px)]">
                 {loadingHistory ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -297,19 +431,25 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {savedNotes.map((note) => {
+                    {savedNotes
+                      .filter(note => 
+                        searchQuery === "" || 
+                        note.title.toLowerCase().includes(searchQuery.toLowerCase())
+                      )
+                      .map((note) => {
                       const module = analysisModules.find(m => m.type === note.type);
                       const Icon = module?.icon || Network;
+                      const isEditing = editingNoteId === note.id;
                       
                       return (
                         <Card 
                           key={note.id} 
-                          className="p-4 hover:shadow-md transition-shadow cursor-pointer"
+                          className="p-4 hover:shadow-md transition-shadow"
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div 
-                              className="flex-1"
-                              onClick={() => handleViewNote(note)}
+                              className="flex-1 cursor-pointer"
+                              onClick={() => !isEditing && handleViewNote(note)}
                             >
                               <div className="flex items-center gap-2 mb-2">
                                 <div className={`w-8 h-8 rounded flex items-center justify-center ${
@@ -327,7 +467,44 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
                                     'text-green-600 dark:text-green-400'
                                   }`} />
                                 </div>
-                                <span className="font-medium text-sm">{note.title}</span>
+                                
+                                {isEditing ? (
+                                  <div className="flex items-center gap-2 flex-1">
+                                    <Input
+                                      value={editingNoteTitle}
+                                      onChange={(e) => setEditingNoteTitle(e.target.value)}
+                                      className="h-7 text-sm"
+                                      onClick={(e) => e.stopPropagation()}
+                                      autoFocus
+                                    />
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditNoteTitle(note.id, editingNoteTitle);
+                                      }}
+                                    >
+                                      <Check className="w-4 h-4 text-green-600" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span className="font-medium text-sm">{note.title}</span>
+                                )}
+                                
+                                {!isEditing && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingNoteId(note.id);
+                                      setEditingNoteTitle(note.title);
+                                    }}
+                                  >
+                                    <Pencil className="w-3 h-3" />
+                                  </Button>
+                                )}
                               </div>
                               <p className="text-xs text-muted-foreground">
                                 {new Date(note.created_at).toLocaleDateString('es-CO', {
@@ -340,16 +517,40 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
                               </p>
                             </div>
                             
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteNote(note.id);
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleNoteFeedback(note.id, 'positive');
+                                }}
+                                className={noteFeedback[note.id] === 'positive' ? 'text-green-600' : ''}
+                              >
+                                <ThumbsUp className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleNoteFeedback(note.id, 'negative');
+                                }}
+                                className={noteFeedback[note.id] === 'negative' ? 'text-red-600' : ''}
+                              >
+                                <ThumbsDown className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteNote(note.id);
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
                           </div>
                         </Card>
                       );
@@ -433,6 +634,41 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
               <BodyAnalysisViewer data={generatedData.content} />
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Feedback Dialog */}
+      <Dialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿Qué salió mal?</DialogTitle>
+            <DialogDescription>
+              Tu feedback nos ayuda a mejorar los análisis clínicos
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Textarea
+              placeholder="Describe qué podría mejorar en este análisis..."
+              value={feedbackComment}
+              onChange={(e) => setFeedbackComment(e.target.value)}
+              className="min-h-[100px]"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFeedbackDialogOpen(false);
+                setFeedbackNoteId(null);
+                setFeedbackComment("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleSubmitNegativeFeedback}>
+              Enviar Feedback
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

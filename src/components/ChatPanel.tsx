@@ -685,6 +685,22 @@ export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: 
       await new Promise(resolve => setTimeout(resolve, 500));
       setProgressSteps([]);
 
+      // 🆕 CRÍTICO: Guardar mensaje del usuario en la BD
+      await supabase.from('chat_messages').insert({
+        conversation_id: convId,
+        user_id: session.user.id,
+        role: 'user',
+        content: userMessage
+      });
+
+      // 🆕 CRÍTICO: Guardar respuesta del asistente en la BD
+      await supabase.from('chat_messages').insert({
+        conversation_id: convId,
+        user_id: session.user.id,
+        role: 'assistant',
+        content: assistantSoFar
+      });
+
       if (isFirstMessage && convId) {
         const title = await generateTitle(userMessage);
         await supabase
