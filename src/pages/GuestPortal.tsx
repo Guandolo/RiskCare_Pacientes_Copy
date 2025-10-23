@@ -13,6 +13,8 @@ import {
 import riskcareLogo from "@/assets/riskcare-logo.png";
 import { DataSourcesPanel } from "@/components/DataSourcesPanel";
 import { ChatPanel } from "@/components/ChatPanel";
+import { MobileNavigation } from "@/components/MobileNavigation";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface PatientData {
   full_name: string;
@@ -57,6 +59,8 @@ export const GuestPortal = () => {
   const [accessData, setAccessData] = useState<AccessData | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const [mobileTab, setMobileTab] = useState<"documents" | "chat" | "notebook">("chat");
 
   useEffect(() => {
     if (!token) {
@@ -196,35 +200,81 @@ export const GuestPortal = () => {
         </div>
       </div>
 
-      {/* Layout Principal - Mismo diseño que la app principal */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Panel Izquierdo */}
-        <div className="w-80 border-r overflow-hidden">
-          <DataSourcesPanel 
-            displayedUserId={patient?.user_id || accessData?.patientUserId} 
-            isGuestMode={true}
-            allowDownload={permissions?.allow_download || false}
-          />
-        </div>
-
-        {/* Panel Central */}
-        <div className="flex-1 overflow-hidden">
-          {permissions?.allow_chat ? (
-            <ChatPanel 
-              displayedUserId={patient?.user_id || accessData?.patientUserId} 
-              isGuestMode={true}
-              guestToken={token}
-            />
-          ) : (
-            <div className="flex-1 flex items-center justify-center h-full">
+      {/* Layout Principal */}
+      {isMobile ? (
+        // Vista Móvil con navegación inferior
+        <div className="flex-1 flex flex-col overflow-hidden pb-16">
+          {mobileTab === "documents" && (
+            <div className="flex-1 overflow-hidden">
+              <DataSourcesPanel 
+                displayedUserId={patient?.user_id || accessData?.patientUserId} 
+                isGuestMode={true}
+                allowDownload={permissions?.allow_download || false}
+              />
+            </div>
+          )}
+          
+          {mobileTab === "chat" && (
+            <div className="flex-1 overflow-hidden">
+              {permissions?.allow_chat ? (
+                <ChatPanel 
+                  displayedUserId={patient?.user_id || accessData?.patientUserId} 
+                  isGuestMode={true}
+                  guestToken={token}
+                />
+              ) : (
+                <div className="flex-1 flex items-center justify-center h-full">
+                  <div className="text-center text-muted-foreground p-4">
+                    <Shield className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                    <p className="text-sm">El chat no está habilitado para este acceso</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {mobileTab === "notebook" && (
+            <div className="flex-1 flex items-center justify-center p-4">
               <div className="text-center text-muted-foreground">
                 <Shield className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                <p className="text-sm">El chat no está habilitado para este acceso</p>
+                <p className="text-sm">La bitácora no está disponible en modo invitado</p>
               </div>
             </div>
           )}
+          
+          <MobileNavigation activeTab={mobileTab} onTabChange={setMobileTab} />
         </div>
-      </div>
+      ) : (
+        // Vista Desktop con paneles lado a lado
+        <div className="flex-1 flex overflow-hidden">
+          {/* Panel Izquierdo */}
+          <div className="w-80 border-r overflow-hidden">
+            <DataSourcesPanel 
+              displayedUserId={patient?.user_id || accessData?.patientUserId} 
+              isGuestMode={true}
+              allowDownload={permissions?.allow_download || false}
+            />
+          </div>
+
+          {/* Panel Central */}
+          <div className="flex-1 overflow-hidden">
+            {permissions?.allow_chat ? (
+              <ChatPanel 
+                displayedUserId={patient?.user_id || accessData?.patientUserId} 
+                isGuestMode={true}
+                guestToken={token}
+              />
+            ) : (
+              <div className="flex-1 flex items-center justify-center h-full">
+                <div className="text-center text-muted-foreground">
+                  <Shield className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                  <p className="text-sm">El chat no está habilitado para este acceso</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
