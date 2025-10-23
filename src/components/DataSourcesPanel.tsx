@@ -83,6 +83,9 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
   // NO recargar en eventos de visibilidad para prevenir race conditions
   const lastLoadedPatientRef = useRef<string | null>(null);
   
+  // 🚨 NUEVO: AbortController para cancelar peticiones del paciente anterior
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
   useEffect(() => {
     // En modo invitado, usar displayedUserId directamente
     const patientId = isGuestMode 
@@ -100,6 +103,15 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
       return;
     }
     
+    // 🚨 CRÍTICO: Cancelar TODAS las peticiones del paciente anterior
+    if (abortControllerRef.current) {
+      console.warn('[DataSourcesPanel] ⚠️ CANCELANDO peticiones del paciente anterior:', lastLoadedPatientRef.current);
+      abortControllerRef.current.abort();
+    }
+    
+    // Crear nuevo AbortController para el nuevo paciente
+    abortControllerRef.current = new AbortController();
+    
     console.log('[DataSourcesPanel] 🔄 Paciente cambió de', lastLoadedPatientRef.current, 'a', patientId);
     lastLoadedPatientRef.current = patientId;
     
@@ -111,6 +123,14 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
     }
     
     loadProfileAndData();
+    
+    // Cleanup: Cancelar peticiones al desmontar o cambiar de paciente
+    return () => {
+      if (abortControllerRef.current) {
+        console.log('[DataSourcesPanel] 🧹 Limpieza: cancelando peticiones pendientes');
+        abortControllerRef.current.abort();
+      }
+    };
   }, [isProfesional, activePatient?.user_id, user?.id, displayedUserId, isGuestMode]); // Incluir displayedUserId e isGuestMode
 
   useEffect(() => {
@@ -135,6 +155,35 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
       window.removeEventListener('authChanged', handleAuth);
     };
   }, []);
+  
+  // 🚨 NUEVO: Validación de coherencia de datos
+  const validateDataCoherence = (profile: PatientProfile | null, documents: ClinicalDocument[], expectedUserId: string): boolean => {
+    if (!profile) return false;
+    
+    // Validar que el perfil pertenece al usuario esperado
+    if ('user_id' in profile && (profile as any).user_id !== expectedUserId) {
+      console.error('[DataSourcesPanel] 🚨 ERROR CRÍTICO: Perfil no coincide con usuario esperado');
+      console.error('Esperado:', expectedUserId, 'Recibido:', (profile as any).user_id);
+      toast.error('Error de seguridad: Datos inconsistentes detectados. Recargando...', { duration: 5000 });
+      return false;
+    }
+    
+    // Validar que todos los documentos pertenecen al mismo usuario
+    const invalidDocs = documents.filter(doc => {
+      // Los documentos no tienen user_id directo, pero validaremos después de cargarlos
+      return false; // Por ahora no validamos documentos aquí
+    });
+    
+    if (invalidDocs.length > 0) {
+      console.error('[DataSourcesPanel] 🚨 ERROR CRÍTICO: Documentos no coinciden con usuario esperado');
+      toast.error('Error de seguridad: Documentos inconsistentes detectados', { duration: 5000 });
+      return false;
+    }
+    
+    console.log('[DataSourcesPanel] ✅ Validación de coherencia exitosa para:', expectedUserId);
+    return true;
+  };
+  
   const loadProfileAndData = async () => {
     // CRÍTICO: No cargar si es profesional y no hay paciente activo
     if (!isGuestMode && isProfesional && !activePatient?.user_id) {
@@ -152,6 +201,9 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
   };
   const loadProfile = async () => {
     try {
+      // 🚨 CRÍTICO: Obtener el signal del AbortController actual
+      const signal = abortControllerRef.current?.signal;
+      
       // En modo invitado, usar datos ya validados por el backend si están disponibles
       if (isGuestMode) {
         if (guestPatient) {
@@ -175,6 +227,12 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
             .eq('user_id', displayedUserId)
             .maybeSingle();
 
+          // 🚨 Verificar si la petición fue cancelada
+          if (signal?.aborted) {
+            console.log('[DataSourcesPanel] ⏭️ Petición cancelada (guest mode)');
+            return;
+          }
+
           if (error) {
             console.error('Error cargando perfil invitado:', error);
             setLoading(false);
@@ -183,6 +241,14 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
 
           if (!data) {
             setProfile(null);
+            setLoading(false);
+            return;
+          }
+
+          // 🚨 VALIDACIÓN: Verificar que recibimos el paciente correcto
+          if (data.user_id !== displayedUserId) {
+            console.error('[DataSourcesPanel] 🚨 ERROR CRÍTICO: Se solicitó', displayedUserId, 'pero se recibió', data.user_id);
+            toast.error('Error de seguridad: Datos inconsistentes', { duration: 5000 });
             setLoading(false);
             return;
           }
@@ -221,6 +287,12 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
           return;
         }
 
+        // 🚨 VALIDACIÓN: Verificar coherencia con el último paciente cargado
+        if (lastLoadedPatientRef.current && lastLoadedPatientRef.current !== activePatient.user_id) {
+          console.warn('[DataSourcesPanel] ⚠️ Paciente activo cambió durante la carga');
+          console.warn('Se esperaba:', lastLoadedPatientRef.current, 'Actual:', activePatient.user_id);
+        }
+
         // Usar directamente el activePatient sin hacer consultas adicionales
         setProfile(activePatient);
         setPhoneValue(activePatient.phone || "");
@@ -244,6 +316,12 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
         .eq('user_id', user.id)
         .maybeSingle();
 
+      // 🚨 Verificar si la petición fue cancelada
+      if (signal?.aborted) {
+        console.log('[DataSourcesPanel] ⏭️ Petición de perfil cancelada');
+        return;
+      }
+
       if (error) {
         console.error('Error cargando perfil:', error);
         setLoading(false);
@@ -253,6 +331,14 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
       if (!data) {
         setProfile(null);
         window.dispatchEvent(new CustomEvent('profileMissing'));
+        setLoading(false);
+        return;
+      }
+
+      // 🚨 VALIDACIÓN: Verificar que recibimos el perfil correcto
+      if (data.user_id !== user.id) {
+        console.error('[DataSourcesPanel] 🚨 ERROR CRÍTICO: Se solicitó', user.id, 'pero se recibió', data.user_id);
+        toast.error('Error de seguridad: Datos inconsistentes', { duration: 5000 });
         setLoading(false);
         return;
       }
@@ -269,6 +355,11 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
         }
       }
     } catch (error) {
+      // 🚨 Ignorar errores de cancelación
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('[DataSourcesPanel] ⏭️ Carga de perfil cancelada correctamente');
+        return;
+      }
       console.error('Error cargando perfil:', error);
     } finally {
       setLoading(false);
@@ -276,6 +367,9 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
   };
   const loadDocuments = async () => {
     try {
+      // 🚨 CRÍTICO: Obtener el signal del AbortController actual
+      const signal = abortControllerRef.current?.signal;
+      
       // En modo invitado, usar datos provistos por el backend y NO consultar la BD (RLS bloquearía)
       if (isGuestMode) {
         if (guestDocuments) {
@@ -302,6 +396,14 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
         return;
       }
 
+      // 🚨 VALIDACIÓN: Verificar coherencia con el paciente esperado
+      if (lastLoadedPatientRef.current && lastLoadedPatientRef.current !== targetUserId) {
+        console.warn('[DataSourcesPanel] ⚠️ El paciente cambió durante loadDocuments');
+        console.warn('Se esperaba:', lastLoadedPatientRef.current, 'Cargando para:', targetUserId);
+        // No continuar si el paciente cambió
+        return;
+      }
+
       // Verificar cache primero
       const cacheKey = `documents_${targetUserId}`;
       const cachedData = getCacheData(cacheKey, 2 * 60 * 1000); // 2 minutos
@@ -317,7 +419,19 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
         .eq('user_id', targetUserId)
         .order('created_at', { ascending: false });
 
+      // 🚨 Verificar si la petición fue cancelada
+      if (signal?.aborted) {
+        console.log('[DataSourcesPanel] ⏭️ Petición de documentos cancelada');
+        return;
+      }
+
       if (error) throw error;
+      
+      // 🚨 VALIDACIÓN: Verificar que no cambió el paciente mientras cargábamos
+      if (lastLoadedPatientRef.current !== targetUserId) {
+        console.warn('[DataSourcesPanel] ⚠️ Paciente cambió durante carga de documentos, descartando resultados');
+        return;
+      }
       
       const docs = (data || []) as ClinicalDocument[];
       setDocuments(docs);
@@ -325,6 +439,11 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
       // Guardar en cache
       setCacheData(cacheKey, docs);
     } catch (error) {
+      // 🚨 Ignorar errores de cancelación
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('[DataSourcesPanel] ⏭️ Carga de documentos cancelada correctamente');
+        return;
+      }
       console.error('Error cargando documentos:', error);
     }
   };

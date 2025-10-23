@@ -2,6 +2,29 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
 
+// 🚨 SISTEMA DE AISLAMIENTO POR PESTAÑA
+// Cada pestaña/ventana tendrá su propio ID único para evitar mezcla de contextos
+const TAB_ID_KEY = 'riskcare_tab_id';
+const getOrCreateTabId = (): string => {
+  if (typeof window === 'undefined') return 'server';
+  
+  // Buscar en sessionStorage (único por pestaña)
+  let tabId = sessionStorage.getItem(TAB_ID_KEY);
+  
+  if (!tabId) {
+    // Crear nuevo ID único para esta pestaña
+    tabId = `tab_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    sessionStorage.setItem(TAB_ID_KEY, tabId);
+    console.log('[GlobalStore] 🆕 Nueva pestaña creada con ID:', tabId);
+  } else {
+    console.log('[GlobalStore] 📋 Pestaña existente con ID:', tabId);
+  }
+  
+  return tabId;
+};
+
+export const CURRENT_TAB_ID = getOrCreateTabId();
+
 interface PatientProfile {
   user_id: string;
   full_name: string | null;
@@ -89,14 +112,35 @@ export const useGlobalStore = create<GlobalStore>()(
         
         // 🚨 VALIDACIÓN CRÍTICA: Prevenir sobrescrituras accidentales
         if (current && patient && current.user_id !== patient.user_id) {
-          console.warn('[GlobalStore] ⚠️ ALERTA: Intentando cambiar paciente de', 
-            current.full_name, '(', current.user_id, ') a', 
-            patient.full_name, '(', patient.user_id, ')');
-          console.warn('[GlobalStore] ⚠️ Stack trace:', new Error().stack);
+          console.error('[GlobalStore] 🚨 ALERTA CRÍTICA: Intentando cambiar paciente');
+          console.error('[GlobalStore] 🚨 Actual:', current.full_name, '(', current.user_id, ')');
+          console.error('[GlobalStore] 🚨 Nuevo:', patient.full_name, '(', patient.user_id, ')');
+          console.error('[GlobalStore] 🚨 Stack trace:', new Error().stack);
+          
+          // 🚨 BLOQUEO DE SEGURIDAD: Si es un cambio no intencional, rechazar
+          // Solo permitir si la cédula también coincide (validación cruzada)
+          const currentId = current.identification;
+          const newId = patient.identification;
+          if (currentId !== newId) {
+            console.error('[GlobalStore] 🚨 MEZCLA DE DATOS DETECTADA - CAMBIO BLOQUEADO');
+            console.error('[GlobalStore] 🚨 CC Actual:', currentId, 'CC Nueva:', newId);
+            // No permitir el cambio - posible corrupción de datos
+            return;
+          }
         }
         
+        // 🚨 VALIDACIÓN: Verificar integridad interna del paciente
         if (patient) {
-          console.log('[GlobalStore] ✅ Paciente activo actualizado:', patient.full_name, '(', patient.user_id, ')');
+          if (!patient.user_id) {
+            console.error('[GlobalStore] 🚨 ERROR: Paciente sin user_id - RECHAZADO');
+            return;
+          }
+          if (!patient.identification) {
+            console.error('[GlobalStore] 🚨 ERROR: Paciente sin identificación - RECHAZADO');
+            return;
+          }
+          
+          console.log('[GlobalStore] ✅ Paciente activo actualizado:', patient.full_name, '(', patient.user_id, ') CC:', patient.identification);
         } else {
           console.log('[GlobalStore] 🔄 Paciente activo limpiado');
         }
@@ -116,6 +160,12 @@ export const useGlobalStore = create<GlobalStore>()(
       loadActivePatient: async (userId: string) => {
         const current = get();
         
+        // 🚨 VALIDACIÓN 0: userId debe ser válido
+        if (!userId || typeof userId !== 'string') {
+          console.error('[GlobalStore] 🚨 ERROR: userId inválido:', userId);
+          return;
+        }
+        
         // 🚨 VALIDACIÓN 1: Si ya está cargando el mismo paciente, no hacer nada
         if (current.activePatientLoading && current.activePatient?.user_id === userId) {
           console.log('[GlobalStore] ⏭️ Paciente ya en proceso de carga, saltando...');
@@ -130,9 +180,10 @@ export const useGlobalStore = create<GlobalStore>()(
         
         // 🚨 VALIDACIÓN 3: Si estamos cambiando de paciente, log de advertencia
         if (current.activePatient && current.activePatient.user_id !== userId) {
-          console.warn('[GlobalStore] ⚠️ CAMBIO DE PACIENTE: de', 
-            current.activePatient.full_name, '(', current.activePatient.user_id, ')',
-            'a userId:', userId);
+          console.warn('[GlobalStore] ⚠️ CAMBIO DE PACIENTE DETECTADO:');
+          console.warn('[GlobalStore] ⚠️ De:', current.activePatient.full_name, '(', current.activePatient.user_id, ')');
+          console.warn('[GlobalStore] ⚠️ A: userId:', userId);
+          console.warn('[GlobalStore] ⚠️ Stack trace:', new Error().stack);
         }
         
         set({ activePatientLoading: true });
@@ -145,21 +196,43 @@ export const useGlobalStore = create<GlobalStore>()(
             .eq('user_id', userId)
             .single();
           
+          // 🚨 VALIDACIÓN 4: Verificar que cargamos el paciente correcto
           if (!error && profile) {
-            // 🚨 VALIDACIÓN 4: Verificar que cargamos el paciente correcto
             if (profile.user_id !== userId) {
-              console.error('[GlobalStore] 🚨 ERROR CRÍTICO: Se solicitó userId', userId, 
-                'pero se recibió', profile.user_id, '- DATOS MEZCLADOS');
+              console.error('[GlobalStore] 🚨 ERROR CRÍTICO: Se solicitó userId', userId);
+              console.error('[GlobalStore] 🚨 Pero se recibió:', profile.user_id);
+              console.error('[GlobalStore] 🚨 Nombre recibido:', profile.full_name);
+              console.error('[GlobalStore] 🚨 DATOS MEZCLADOS - CARGA RECHAZADA');
+              set({ activePatientLoading: false });
+              return;
+            }
+            
+            // 🚨 VALIDACIÓN 5: Verificar integridad de datos del perfil
+            if (!profile.identification) {
+              console.error('[GlobalStore] 🚨 ERROR: Perfil sin identificación - RECHAZADO');
+              set({ activePatientLoading: false });
+              return;
+            }
+            
+            // 🚨 VALIDACIÓN 6: Verificar que no cambió el contexto durante la carga
+            const currentAfterLoad = get();
+            if (currentAfterLoad.activePatient && 
+                currentAfterLoad.activePatient.user_id !== userId &&
+                currentAfterLoad.activePatient.user_id !== profile.user_id) {
+              console.warn('[GlobalStore] ⚠️ El contexto cambió durante la carga, descartando resultado');
+              set({ activePatientLoading: false });
               return;
             }
             
             set({ activePatient: profile });
-            console.log('[GlobalStore] ✅ Paciente cargado exitosamente:', profile.full_name, '(', profile.user_id, ')');
+            console.log('[GlobalStore] ✅ Paciente cargado exitosamente:', profile.full_name, '(', profile.user_id, ') CC:', profile.identification);
           } else {
             console.error('[GlobalStore] ❌ Error cargando paciente:', error);
+            set({ activePatientLoading: false });
           }
         } catch (error) {
           console.error('[GlobalStore] ❌ Excepción cargando paciente:', error);
+          set({ activePatientLoading: false });
         } finally {
           set({ activePatientLoading: false });
         }
@@ -271,7 +344,7 @@ export const useGlobalStore = create<GlobalStore>()(
       }
     }),
     {
-      name: 'riskcare-global-store',
+      name: `riskcare-global-store-${CURRENT_TAB_ID}`, // 🚨 Storage único por pestaña
       storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
         activePatient: state.activePatient,
@@ -282,13 +355,14 @@ export const useGlobalStore = create<GlobalStore>()(
       // Importante: Hidratar el estado inmediatamente al cargar
       onRehydrateStorage: () => {
         console.log('[GlobalStore] Iniciando hidratación desde sessionStorage...');
+        console.log('[GlobalStore] Tab ID:', CURRENT_TAB_ID);
         return (state, error) => {
           if (error) {
             console.error('[GlobalStore] Error en hidratación:', error);
           } else if (state) {
-            console.log('[GlobalStore] ✅ Estado hidratado correctamente');
+            console.log('[GlobalStore] ✅ Estado hidratado correctamente para pestaña:', CURRENT_TAB_ID);
             if (state.activePatient) {
-              console.log('[GlobalStore] Paciente activo recuperado:', state.activePatient.full_name);
+              console.log('[GlobalStore] Paciente activo recuperado:', state.activePatient.full_name, '(', state.activePatient.user_id, ')');
             }
             if (state.currentPatientUserId) {
               console.log('[GlobalStore] Contexto de paciente recuperado:', state.currentPatientUserId);
@@ -308,14 +382,18 @@ if (typeof window !== 'undefined') {
   // Solo logging, SIN recargas automáticas
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-      console.log('[GlobalStore] 🔒 Página oculta - estado congelado (NO se recargará automáticamente)');
+      console.log('[GlobalStore] 🔒 Página oculta [Tab:', CURRENT_TAB_ID, '] - estado congelado (NO se recargará automáticamente)');
     } else {
       const state = useGlobalStore.getState();
-      console.log('[GlobalStore] 👁️ Página visible - estado actual:', {
+      console.log('[GlobalStore] 👁️ Página visible [Tab:', CURRENT_TAB_ID, '] - estado actual:', {
         activePatient: state.activePatient?.full_name || 'ninguno',
         currentPatientUserId: state.currentPatientUserId || 'ninguno'
       });
       console.log('[GlobalStore] ⚠️ NO se realizarán recargas automáticas para prevenir mezcla de datos');
     }
   });
+  
+  // 🆕 Logging al cargar la pestaña
+  console.log('[GlobalStore] 🚀 Store inicializado con Tab ID:', CURRENT_TAB_ID);
+  console.log('[GlobalStore] 🔐 Esta pestaña tiene su propio contexto aislado en sessionStorage');
 }
