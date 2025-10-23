@@ -69,7 +69,7 @@ interface GlobalStore {
   };
   
   // Acciones para el paciente activo
-  setActivePatient: (patient: PatientProfile | null) => void;
+  setActivePatient: (patient: PatientProfile | null, force?: boolean) => void;
   clearActivePatient: () => void;
   loadActivePatient: (userId: string) => Promise<void>;
   
@@ -107,25 +107,30 @@ export const useGlobalStore = create<GlobalStore>()(
       dataCache: {},
       
       // Acciones del paciente activo
-      setActivePatient: (patient) => {
+      setActivePatient: (patient, force = false) => {
         const current = get().activePatient;
         
         // 🚨 VALIDACIÓN CRÍTICA: Prevenir sobrescrituras accidentales
         if (current && patient && current.user_id !== patient.user_id) {
-          console.error('[GlobalStore] 🚨 ALERTA CRÍTICA: Intentando cambiar paciente');
-          console.error('[GlobalStore] 🚨 Actual:', current.full_name, '(', current.user_id, ')');
-          console.error('[GlobalStore] 🚨 Nuevo:', patient.full_name, '(', patient.user_id, ')');
-          console.error('[GlobalStore] 🚨 Stack trace:', new Error().stack);
+          console.warn('[GlobalStore] ⚠️ Cambio de paciente detectado:');
+          console.warn('[GlobalStore] ⚠️ Actual:', current.full_name, '(', current.user_id, ')');
+          console.warn('[GlobalStore] ⚠️ Nuevo:', patient.full_name, '(', patient.user_id, ')');
+          console.warn('[GlobalStore] ⚠️ Force:', force);
           
-          // 🚨 BLOQUEO DE SEGURIDAD: Si es un cambio no intencional, rechazar
-          // Solo permitir si la cédula también coincide (validación cruzada)
-          const currentId = current.identification;
-          const newId = patient.identification;
-          if (currentId !== newId) {
-            console.error('[GlobalStore] 🚨 MEZCLA DE DATOS DETECTADA - CAMBIO BLOQUEADO');
-            console.error('[GlobalStore] 🚨 CC Actual:', currentId, 'CC Nueva:', newId);
-            // No permitir el cambio - posible corrupción de datos
-            return;
+          // 🚨 BLOQUEO DE SEGURIDAD: Si NO es un cambio forzado (intencional), validar
+          if (!force) {
+            // Solo permitir si la cédula también coincide (actualización del mismo paciente)
+            const currentId = current.identification;
+            const newId = patient.identification;
+            if (currentId !== newId) {
+              console.error('[GlobalStore] 🚨 MEZCLA DE DATOS DETECTADA - CAMBIO BLOQUEADO');
+              console.error('[GlobalStore] 🚨 CC Actual:', currentId, 'CC Nueva:', newId);
+              console.error('[GlobalStore] 🚨 Use force=true para cambios intencionales');
+              // No permitir el cambio - posible corrupción de datos
+              return;
+            }
+          } else {
+            console.log('[GlobalStore] ✅ Cambio FORZADO (intencional) - permitiendo cambio de paciente');
           }
         }
         
@@ -224,7 +229,9 @@ export const useGlobalStore = create<GlobalStore>()(
               return;
             }
             
-            set({ activePatient: profile });
+            // 🚨 CRÍTICO: Usar setActivePatient con force=true porque loadActivePatient
+            // solo se llama desde cambios intencionales (búsqueda de paciente, setPatientContext)
+            get().setActivePatient(profile, true);
             console.log('[GlobalStore] ✅ Paciente cargado exitosamente:', profile.full_name, '(', profile.user_id, ') CC:', profile.identification);
           } else {
             console.error('[GlobalStore] ❌ Error cargando paciente:', error);

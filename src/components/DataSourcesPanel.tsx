@@ -552,6 +552,8 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
   };
 
   const handlePatientSelected = async (patientUserId: string, clinicaId: string) => {
+    console.log('[DataSourcesPanel] 🎯 Cambio INTENCIONAL de paciente a:', patientUserId);
+    
     // Actualizar el contexto del profesional
     await setPatientContext(patientUserId, clinicaId);
     
@@ -563,7 +565,8 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
       .single();
     
     if (!error && profile) {
-      setActivePatient(profile);
+      // 🚨 CRÍTICO: Usar force=true para indicar que es un cambio intencional
+      setActivePatient(profile, true);
       toast.success(`Paciente activo: ${profile.full_name || 'Sin nombre'}`);
     } else {
       toast.error('Error al cargar el perfil del paciente');
