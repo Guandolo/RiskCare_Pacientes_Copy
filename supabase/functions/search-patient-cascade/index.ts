@@ -157,9 +157,14 @@ serve(async (req) => {
 
     const topusResult = await topusResponse.text();
     const topusData = JSON.parse(topusResult);
+    
+    console.log('Topus API response:', JSON.stringify(topusData, null, 2));
 
     // Verificar si Topus encontró el paciente
-    if (!topusData || topusData.error || !topusData.identificacion) {
+    // La estructura de respuesta de Topus puede ser: { result: { ... } } o directa { ... }
+    const topusInfo = topusData.result || topusData;
+    
+    if (!topusInfo || topusData.error || !topusInfo.identificacion) {
       return new Response(
         JSON.stringify({
           level: 4,
@@ -172,15 +177,21 @@ serve(async (req) => {
     console.log('Nivel 3: Paciente encontrado en Topus, consultando HiSmart...');
 
     // Crear perfil del paciente con datos de Topus
+    // Construir full_name desde topusInfo (ya sea result o directo)
+    const firstName = topusInfo.nombre || topusInfo.primer_nombre || '';
+    const secondName = topusInfo.s_nombre || topusInfo.segundo_nombre || '';
+    const lastName = topusInfo.apellido || topusInfo.primer_apellido || '';
+    const secondLastName = topusInfo.s_apellido || topusInfo.segundo_apellido || '';
+    
     const newPatientData = {
       document_type: documentType,
       identification: identification.trim(),
-      full_name: topusData.primer_nombre && topusData.primer_apellido 
-        ? `${topusData.primer_nombre} ${topusData.segundo_nombre || ''} ${topusData.primer_apellido} ${topusData.segundo_apellido || ''}`.trim()
+      full_name: (firstName && lastName) 
+        ? `${firstName} ${secondName} ${lastName} ${secondLastName}`.replace(/\s+/g, ' ').trim()
         : null,
-      age: topusData.edad ? parseInt(topusData.edad) : null,
-      eps: topusData.eps || null,
-      topus_data: topusData,
+      age: topusInfo.edad ? parseInt(topusInfo.edad) : null,
+      eps: topusInfo.eps || null,
+      topus_data: topusData, // Guardar la respuesta completa original
     };
 
     // Verificar si ya existe el perfil (por si acaso)

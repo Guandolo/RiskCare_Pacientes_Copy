@@ -65,6 +65,13 @@ export const PatientSearchModal = ({ open, onOpenChange, onPatientSelected, prof
       }
 
       // Niveles 1, 2 y 3 - paciente encontrado
+      console.log('[PatientSearchModal] 🎯 Paciente encontrado:', {
+        level: data.level,
+        patient: data.patient,
+        full_name: data.patient?.full_name,
+        topus_data: data.patient?.topus_data
+      });
+      
       setSearchResult(data);
       setSearchLevel(data.level);
       
@@ -229,13 +236,21 @@ export const PatientSearchModal = ({ open, onOpenChange, onPatientSelected, prof
                 <div className="text-sm space-y-1">
                   <p><strong>Nombre:</strong> {
                     searchResult.patient.full_name || 
-                    searchResult.patient.nombre || 
-                    searchResult.patient.name ||
-                    `${searchResult.patient.primer_nombre || ''} ${searchResult.patient.primer_apellido || ''}`.trim() ||
-                    // Intentar extraer desde topus_data si existe
+                    // Intentar construir desde topus_data.result (estructura anidada de Topus API)
+                    (searchResult.patient.topus_data?.result?.nombre && searchResult.patient.topus_data?.result?.apellido
+                      ? `${searchResult.patient.topus_data.result.nombre || ''} ${searchResult.patient.topus_data.result.s_nombre || ''} ${searchResult.patient.topus_data.result.apellido || ''} ${searchResult.patient.topus_data.result.s_apellido || ''}`.trim()
+                      : null) ||
+                    // Intentar construir desde topus_data directo (cuando viene procesado del backend)
                     (searchResult.patient.topus_data?.primer_nombre && searchResult.patient.topus_data?.primer_apellido
                       ? `${searchResult.patient.topus_data.primer_nombre || ''} ${searchResult.patient.topus_data.segundo_nombre || ''} ${searchResult.patient.topus_data.primer_apellido || ''} ${searchResult.patient.topus_data.segundo_apellido || ''}`.trim()
-                      : 'No disponible')
+                      : null) ||
+                    // Intentar desde campos directos del paciente
+                    (searchResult.patient.primer_nombre && searchResult.patient.primer_apellido
+                      ? `${searchResult.patient.primer_nombre || ''} ${searchResult.patient.segundo_nombre || ''} ${searchResult.patient.primer_apellido || ''} ${searchResult.patient.segundo_apellido || ''}`.trim()
+                      : null) ||
+                    searchResult.patient.nombre || 
+                    searchResult.patient.name ||
+                    'No disponible'
                   }</p>
                   <p><strong>Documento:</strong> {searchResult.patient.document_type} {searchResult.patient.identification}</p>
                   <p><strong>Edad:</strong> {searchResult.patient.age || searchResult.patient.edad || 'N/A'} años</p>
