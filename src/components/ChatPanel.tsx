@@ -104,9 +104,15 @@ export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: 
     }
     
     const init = async () => {
-      console.log('[ChatPanel] 🚀 Inicializando chat para paciente:', currentPatientId);
-      await loadOrCreateConversation();
+      console.log('[ChatPanel] 🚀 Inicializando chat LIMPIO para paciente:', currentPatientId);
+      
+      // 🆕 CRÍTICO: Siempre iniciar con chat limpio (sin cargar conversación anterior)
+      setMessages([]);
+      setCurrentConversationId(null);
+      
+      // Cargar lista de conversaciones para el historial
       await loadConversations();
+      
       // Solo cargar sugerencias iniciales si no se han cargado en esta sesión
       const alreadyLoaded = typeof window !== 'undefined' && sessionStorage.getItem('rc_suggestions_loaded') === '1';
       if (!alreadyLoaded) {
@@ -1027,9 +1033,9 @@ export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: 
                   </div>
                   <div className="flex-1">
                     <p className="text-sm text-foreground leading-relaxed">
-                      ¡Hola! Soy tu asistente clínico personal. Puedo ayudarte a entender la información 
-                      en tus documentos médicos. Pregúntame sobre términos médicos, resultados de exámenes, 
-                      consultas anteriores o medicamentos.
+                      {isProfesional && activePatient 
+                        ? "¡Hola! Soy tu Asistente Clínico IA. Estoy aquí para ofrecerte soporte avanzado en la toma de decisiones. Puedo analizar y resumir historias clínicas, verificar interacciones farmacológicas, buscar protocolos y responder preguntas específicas basadas en los datos del paciente actualmente seleccionado o en información médica general. ¿Con qué información clínica puedo asistirte hoy?"
+                        : "¡Hola! Soy tu asistente de salud personal. Puedo ayudarte a comprender la información en tus documentos médicos. Pregúntame sobre resultados de exámenes, términos técnicos, medicamentos o consultas anteriores. Recuerda: Soy un asistente informativo, no reemplazo el consejo de tu médico."}
                     </p>
                   </div>
                 </div>
