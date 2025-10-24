@@ -1,4 +1,6 @@
 import { Upload, FileText, Calendar, Heart, Edit2, ChevronDown, ChevronUp, RefreshCw, Trash2, Download, User, CreditCard, MapPin, Building2, Phone, Droplet, FolderOpen, Activity, FilePlus2, Pill, Check, Loader2, AlertCircle, CheckCircle, Users } from "lucide-react";
+import { PatientProfileSkeleton } from "./skeletons/PatientProfileSkeleton";
+import { DocumentListSkeleton } from "./skeletons/DocumentListSkeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -722,11 +724,7 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
               
               <CollapsibleContent className="px-4 pb-4">
                 {loading ? (
-                  <div className="space-y-2 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Cargando...</span>
-                    </div>
-                  </div>
+                  <PatientProfileSkeleton />
                 ) : profile ? (
                   <div className="space-y-4 text-xs pt-2">
                     {/* Datos Personales */}

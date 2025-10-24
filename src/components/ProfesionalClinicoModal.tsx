@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { GeneralLoadingSkeleton } from "./skeletons/GeneralLoadingSkeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -128,8 +129,8 @@ export const ProfesionalClinicoModal = ({ open, onOpenChange, onSuccess, isReval
 
         <div className="space-y-4 py-4">
           {loadingProfile ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <div className="py-4">
+              <GeneralLoadingSkeleton rows={4} variant="form" />
             </div>
           ) : patientProfile ? (
             <>

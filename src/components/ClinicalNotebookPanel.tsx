@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Network, FlaskConical, ScanSearch, Pill, Activity, Loader2, History, Trash2, Pencil, Check, ThumbsUp, ThumbsDown, Search } from "lucide-react";
+import { NotebookHistorySkeleton } from "./skeletons/NotebookHistorySkeleton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -421,8 +422,8 @@ export const ClinicalNotebookPanel = ({ displayedUserId }: ClinicalNotebookPanel
               
               <ScrollArea className="h-[calc(100vh-180px)]">
                 {loadingHistory ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  <div className="p-4">
+                    <NotebookHistorySkeleton />
                   </div>
                 ) : savedNotes.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">

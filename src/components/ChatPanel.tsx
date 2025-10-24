@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Send, Sparkles, Lightbulb, RotateCw, History, Pencil, Check, Mic, MicOff, Paperclip, Clock, CheckCircle2, Loader2, ShieldCheck, ChevronLeft, ChevronRight, Copy, ThumbsUp, ThumbsDown, MoreVertical, Share2, User, Search } from "lucide-react";
+import { ChatMessagesSkeleton } from "./skeletons/ChatMessagesSkeleton";
+import { SuggestionsSkeleton } from "./skeletons/SuggestionsSkeleton";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useActivePatient } from "@/hooks/useActivePatient";
 import { useGlobalStore } from "@/stores/globalStore";
@@ -1194,11 +1196,7 @@ export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: 
                   style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
                   {suggestionsLoading ? (
-                    Array.from({ length: 3 }).map((_, idx) => (
-                      <Card key={idx} className="flex-shrink-0 w-[200px] px-2.5 py-1.5 bg-muted/30 animate-pulse">
-                        <div className="h-6 bg-muted rounded"></div>
-                      </Card>
-                    ))
+                    <SuggestionsSkeleton />
                   ) : (
                     suggestions.map((question, idx) => (
                       <Card

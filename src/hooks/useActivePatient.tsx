@@ -16,7 +16,7 @@ interface PatientProfile {
 
 interface ActivePatientContextType {
   activePatient: PatientProfile | null;
-  setActivePatient: (patient: PatientProfile | null) => void;
+  setActivePatient: (patient: PatientProfile | null, force?: boolean) => void;
   clearActivePatient: () => void;
   loading: boolean;
 }

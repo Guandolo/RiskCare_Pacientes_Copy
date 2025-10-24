@@ -8,6 +8,7 @@ import { CollapsibleNotebookPanel } from "@/components/CollapsibleNotebookPanel"
 import { Header } from "@/components/Header";
 import { PatientIdentificationModal } from "@/components/PatientIdentificationModal";
 import { MobileNavigation } from "@/components/MobileNavigation";
+import { MainPanelsSkeleton } from "@/components/skeletons/MainPanelsSkeleton";
 import { SettingsModal } from "@/components/SettingsModal";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageVisibility } from "@/hooks/usePageVisibility";
@@ -264,14 +265,7 @@ const Index = () => {
   }, []);
 
   if (loading || checkingProfile || contextLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gradient-subtle">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Cargando...</p>
-        </div>
-      </div>
-    );
+    return <MainPanelsSkeleton />;
   }
 
   if (!user) {
