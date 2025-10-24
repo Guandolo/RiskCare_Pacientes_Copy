@@ -927,13 +927,16 @@ export const DataSourcesPanel = ({ displayedUserId, isGuestMode = false, allowDo
                     <div className="flex-1">
                       <h3 className="text-sm font-semibold text-foreground">
                         {hismartLastFetch 
-                          ? (isProfesional && activePatient ? 'Actualizar Datos del Paciente' : 'Actualizar Datos Clínicos')
-                          : (isProfesional && activePatient ? 'Consultar Datos del Paciente' : 'Consultar Datos Clínicos')
+                          ? (isProfesional && activePatient ? 'Interoperabilidad de Datos Clínicos' : 'Actualizar Datos Clínicos')
+                          : (isProfesional && activePatient ? 'Interoperabilidad de Datos Clínicos' : 'Consultar Datos Clínicos')
                         }
                       </h3>
                       {hismartLastFetch && (
                         <p className="text-xs text-muted-foreground">
-                          Última consulta: {hismartLastFetch}
+                          {isProfesional && activePatient 
+                            ? 'Sincronización de registros desde la fuente oficial de HC'
+                            : `Última consulta: ${hismartLastFetch}`
+                          }
                         </p>
                       )}
                       {!hismartLastFetch && (
