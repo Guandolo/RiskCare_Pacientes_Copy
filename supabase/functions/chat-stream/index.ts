@@ -183,20 +183,18 @@ serve(async (req) => {
       isViewingOtherPatient = false; // Los invitados usan el prompt de paciente
       console.log(`Invitado accediendo a paciente ${patientUserId}`);
     } else if (isProfessional && targetUserId && targetUserId !== user.id) {
-      // Verificar que el profesional tiene acceso a este paciente
-      const { data: hasAccess } = await supabase
-        .from('clinica_pacientes')
-        .select('id')
-        .eq('paciente_user_id', targetUserId)
-        .or(`profesional_asignado_user_id.eq.${user.id}`)
-        .maybeSingle();
-      
-      if (hasAccess) {
-        patientUserId = targetUserId;
-        isViewingOtherPatient = true;
-        console.log(`Profesional ${user.id} accediendo a paciente ${targetUserId}`);
-      }
+      // ✅ Profesionales pueden consultar a otros pacientes explícitamente
+      patientUserId = targetUserId;
+      isViewingOtherPatient = true;
+      console.log(`Profesional ${user.id} accediendo a paciente ${targetUserId}`);
+    } else if (!isProfessional && targetUserId && targetUserId !== user.id) {
+      // ❌ Bloquear a usuarios no profesionales intentando acceder a otros pacientes
+      return new Response(JSON.stringify({ error: "No autorizado: solo profesionales pueden consultar a otros pacientes" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
+    
     
     const SYSTEM_PROMPT = (isProfessional && isViewingOtherPatient) 
       ? PROFESSIONAL_SYSTEM_PROMPT 
