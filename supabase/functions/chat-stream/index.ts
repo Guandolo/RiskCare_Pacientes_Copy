@@ -292,60 +292,116 @@ CONTEXTO CLÍNICO DEL PACIENTE (3 FUENTES DE DATOS INTEGRADAS)
     // Extraer datos de HiSmart si existen
     const hismartData = externalData?.hismart_data;
     
+    console.log('🔍 Verificando datos de HiSmart:', {
+      existeHismart: !!hismartData,
+      tipoHismart: typeof hismartData,
+      claves: hismartData ? Object.keys(hismartData) : []
+    });
+    
     if (hismartData && typeof hismartData === 'object') {
       contextInfo += `✅ Datos obtenidos de HiSmart/BDOro (Historia Clínica Electrónica)\n\n`;
       
-      // Registros Clínicos
-      if (hismartData.records && Array.isArray(hismartData.records) && hismartData.records.length > 0) {
-        contextInfo += `📝 REGISTROS CLÍNICOS (${hismartData.records.length} registros):\n`;
+      // 🔧 CORRECCIÓN: Usar clinical_records (no records)
+      if (hismartData.clinical_records && Array.isArray(hismartData.clinical_records) && hismartData.clinical_records.length > 0) {
+        contextInfo += `📝 REGISTROS CLÍNICOS (${hismartData.clinical_records.length} registros):\n`;
         contextInfo += `────────────────────────────────────────────────────────────\n`;
-        hismartData.records.forEach((record: any, idx: number) => {
-          contextInfo += `\nRegistro ${idx + 1}:\n`;
-          if (record.fecha) contextInfo += `  • Fecha: ${record.fecha}\n`;
-          if (record.tipo) contextInfo += `  • Tipo: ${record.tipo}\n`;
-          if (record.profesional) contextInfo += `  • Profesional: ${record.profesional}\n`;
-          if (record.especialidad) contextInfo += `  • Especialidad: ${record.especialidad}\n`;
-          if (record.diagnostico) contextInfo += `  • Diagnóstico: ${record.diagnostico}\n`;
-          if (record.motivo_consulta) contextInfo += `  • Motivo de Consulta: ${record.motivo_consulta}\n`;
-          if (record.hallazgos) contextInfo += `  • Hallazgos: ${record.hallazgos}\n`;
-          if (record.plan_tratamiento) contextInfo += `  • Plan de Tratamiento: ${record.plan_tratamiento}\n`;
-          if (record.observaciones) contextInfo += `  • Observaciones: ${record.observaciones}\n`;
+        hismartData.clinical_records.forEach((record: any, idx: number) => {
+          contextInfo += `\n🔹 Registro Clínico ${idx + 1}:\n`;
           
-          // Incluir todos los datos del registro
-          contextInfo += `  • Datos Completos: ${JSON.stringify(record, null, 2).substring(0, 500)}\n`;
+          // Información básica del registro
+          if (record.registration_date) contextInfo += `  • Fecha de Registro: ${record.registration_date}\n`;
+          if (record.date_of_attention) contextInfo += `  • Fecha de Atención: ${record.date_of_attention}\n`;
+          if (record.id_company) contextInfo += `  • ID Compañía: ${record.id_company}\n`;
+          if (record.id_attention) contextInfo += `  • ID Atención: ${record.id_attention}\n`;
+          if (record.diagnoses) contextInfo += `  • Diagnósticos: ${record.diagnoses}\n`;
+          
+          // Detalles del registro clínico (suele ser un array)
+          if (record.details && Array.isArray(record.details)) {
+            contextInfo += `  • DETALLES DEL REGISTRO:\n`;
+            record.details.forEach((detail: any, detailIdx: number) => {
+              contextInfo += `    ▸ Detalle ${detailIdx + 1}:\n`;
+              if (detail.observaciones) contextInfo += `      - Observaciones: ${detail.observaciones}\n`;
+              if (detail.motivo_de_consulta) contextInfo += `      - Motivo de Consulta: ${detail.motivo_de_consulta}\n`;
+              if (detail.plan_de_manejo) contextInfo += `      - Plan de Manejo: ${detail.plan_de_manejo}\n`;
+              if (detail.examen_fisico) {
+                contextInfo += `      - Examen Físico:\n`;
+                Object.entries(detail.examen_fisico).forEach(([key, value]) => {
+                  contextInfo += `        * ${key}: ${JSON.stringify(value)}\n`;
+                });
+              }
+              if (detail.examenes_realizados) {
+                contextInfo += `      - Exámenes Realizados:\n`;
+                Object.entries(detail.examenes_realizados).forEach(([key, value]) => {
+                  contextInfo += `        * ${key}: ${JSON.stringify(value)}\n`;
+                });
+              }
+              if (detail.antecedentes_familiares) {
+                contextInfo += `      - Antecedentes Familiares: ${JSON.stringify(detail.antecedentes_familiares)}\n`;
+              }
+              if (detail.antecedentes_personales) {
+                contextInfo += `      - Antecedentes Personales: ${JSON.stringify(detail.antecedentes_personales)}\n`;
+              }
+            });
+          }
+          
+          // Incluir todos los datos del registro completo (para casos no capturados)
+          contextInfo += `  • DATOS COMPLETOS DEL REGISTRO:\n${JSON.stringify(record, null, 2).substring(0, 1000)}\n`;
         });
         contextInfo += `\n`;
       }
       
-      // Prescripciones
-      if (hismartData.prescriptions && Array.isArray(hismartData.prescriptions) && hismartData.prescriptions.length > 0) {
-        contextInfo += `💊 PRESCRIPCIONES MÉDICAS (${hismartData.prescriptions.length} prescripciones):\n`;
+      // 🔧 CORRECCIÓN: Usar prescription_records (no prescriptions)
+      if (hismartData.prescription_records && Array.isArray(hismartData.prescription_records) && hismartData.prescription_records.length > 0) {
+        contextInfo += `💊 PRESCRIPCIONES MÉDICAS (${hismartData.prescription_records.length} prescripciones):\n`;
         contextInfo += `────────────────────────────────────────────────────────────\n`;
-        hismartData.prescriptions.forEach((prescription: any, idx: number) => {
-          contextInfo += `\nPrescripción ${idx + 1}:\n`;
-          if (prescription.fecha) contextInfo += `  • Fecha: ${prescription.fecha}\n`;
-          if (prescription.medicamento) contextInfo += `  • Medicamento: ${prescription.medicamento}\n`;
-          if (prescription.dosis) contextInfo += `  • Dosis: ${prescription.dosis}\n`;
-          if (prescription.frecuencia) contextInfo += `  • Frecuencia: ${prescription.frecuencia}\n`;
-          if (prescription.duracion) contextInfo += `  • Duración: ${prescription.duracion}\n`;
-          if (prescription.indicaciones) contextInfo += `  • Indicaciones: ${prescription.indicaciones}\n`;
-          if (prescription.profesional) contextInfo += `  • Prescrito por: ${prescription.profesional}\n`;
+        hismartData.prescription_records.forEach((prescription: any, idx: number) => {
+          contextInfo += `\n🔹 Prescripción ${idx + 1}:\n`;
+          
+          // Información básica de la prescripción
+          if (prescription.registration_date) contextInfo += `  • Fecha de Registro: ${prescription.registration_date}\n`;
+          if (prescription.id_company) contextInfo += `  • ID Compañía: ${prescription.id_company}\n`;
+          if (prescription.id_attention) contextInfo += `  • ID Atención: ${prescription.id_attention}\n`;
+          if (prescription.diagnoses) contextInfo += `  • Diagnósticos Asociados: ${prescription.diagnoses}\n`;
+          
+          // Detalles de los medicamentos prescritos
+          if (prescription.details && Array.isArray(prescription.details)) {
+            contextInfo += `  • MEDICAMENTOS PRESCRITOS:\n`;
+            prescription.details.forEach((detail: any, detailIdx: number) => {
+              contextInfo += `    ▸ Medicamento ${detailIdx + 1}:\n`;
+              if (detail.medicamento) contextInfo += `      - Nombre: ${detail.medicamento}\n`;
+              if (detail.dosis) contextInfo += `      - Dosis: ${detail.dosis}\n`;
+              if (detail.via) contextInfo += `      - Vía: ${detail.via}\n`;
+              if (detail.frecuencia) contextInfo += `      - Frecuencia: ${detail.frecuencia}\n`;
+              if (detail.duracion) contextInfo += `      - Duración: ${detail.duracion}\n`;
+              if (detail.cantidad) contextInfo += `      - Cantidad: ${detail.cantidad}\n`;
+              if (detail.indicaciones) contextInfo += `      - Indicaciones: ${detail.indicaciones}\n`;
+            });
+          }
           
           // Incluir todos los datos de la prescripción
-          contextInfo += `  • Datos Completos: ${JSON.stringify(prescription, null, 2).substring(0, 500)}\n`;
+          contextInfo += `  • DATOS COMPLETOS DE LA PRESCRIPCIÓN:\n${JSON.stringify(prescription, null, 2).substring(0, 800)}\n`;
         });
         contextInfo += `\n`;
       }
       
-      // Otros datos de HiSmart
-      if (hismartData.summary) {
-        contextInfo += `📊 RESUMEN CLÍNICO:\n`;
-        contextInfo += `${JSON.stringify(hismartData.summary, null, 2)}\n\n`;
+      // Otros datos de HiSmart que puedan existir
+      if (hismartData.billing_records && Array.isArray(hismartData.billing_records) && hismartData.billing_records.length > 0) {
+        contextInfo += `💰 REGISTROS DE FACTURACIÓN (${hismartData.billing_records.length} registros)\n`;
       }
       
-      // Dump completo de datos de HiSmart (limitado)
-      contextInfo += `📦 Datos Completos de HiSmart:\n`;
-      contextInfo += `${JSON.stringify(hismartData, null, 2).substring(0, 2000)}${JSON.stringify(hismartData).length > 2000 ? '...\n(Datos adicionales disponibles)' : ''}\n\n`;
+      if (hismartData.scheduling_records && Array.isArray(hismartData.scheduling_records) && hismartData.scheduling_records.length > 0) {
+        contextInfo += `📅 REGISTROS DE AGENDAMIENTO (${hismartData.scheduling_records.length} registros)\n`;
+      }
+      
+      if (hismartData.telemonitoring_records && Array.isArray(hismartData.telemonitoring_records) && hismartData.telemonitoring_records.length > 0) {
+        contextInfo += `📡 REGISTROS DE TELEMONITOREO (${hismartData.telemonitoring_records.length} registros)\n`;
+      }
+      
+      // Dump completo de datos de HiSmart para contexto adicional
+      contextInfo += `\n📦 ESTRUCTURA COMPLETA DE DATOS HISMART (para referencia):\n`;
+      contextInfo += `${JSON.stringify(hismartData, null, 2).substring(0, 3000)}${JSON.stringify(hismartData).length > 3000 ? '...\n(Datos adicionales disponibles - se incluyen arriba de forma estructurada)' : ''}\n\n`;
+    } else {
+      contextInfo += `⚠️ No hay datos de HiSmart/BDOro disponibles para este paciente.\n\n`;
     }
     
     // Datos demográficos de Topus (fuera de hismart_data)
