@@ -57,22 +57,34 @@ serve(async (req) => {
         });
       }
       
-      // Verificar que el profesional tiene acceso a este paciente a través de una clínica
-      const { data: clinicaAccess, error: accessError } = await supabase
-        .from('clinica_profesionales')
-        .select(`
-          clinica_id,
-          clinica_pacientes!inner(paciente_user_id)
-        `)
-        .eq('profesional_user_id', user.id)
-        .eq('clinica_pacientes.paciente_user_id', targetUserId)
+      // Verificar acceso del profesional al paciente
+      // 1) Acceso directo si es el profesional asignado al paciente
+      const { data: directAssignment } = await supabase
+        .from('clinica_pacientes')
+        .select('id')
+        .eq('paciente_user_id', targetUserId)
+        .eq('profesional_asignado_user_id', user.id)
         .limit(1)
         .maybeSingle();
-      
-      if (accessError || !clinicaAccess) {
-        return new Response(JSON.stringify({ error: "No tienes acceso a este paciente" }), {
+
+      let hasClinicAccess = !!directAssignment;
+
+      // 2) Si no hay asignación directa, validar relación por clínica
+      if (!hasClinicAccess) {
+        const { data: clinicaAccess } = await supabase
+          .from('clinica_profesionales')
+          .select(`clinica_id, clinica_pacientes!inner(paciente_user_id)`) 
+          .eq('profesional_user_id', user.id)
+          .eq('clinica_pacientes.paciente_user_id', targetUserId)
+          .limit(1)
+          .maybeSingle();
+        hasClinicAccess = !!clinicaAccess;
+      }
+
+      if (!hasClinicAccess) {
+        return new Response(JSON.stringify({ error: 'No tienes acceso a este paciente' }), {
           status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       

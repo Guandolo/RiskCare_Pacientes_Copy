@@ -550,8 +550,7 @@ export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: 
     const initialSteps: ProgressStep[] = [
       { id: 'analyzing', label: 'Analizando tu pregunta', status: 'pending' },
       { id: 'searching', label: 'Buscando en tus documentos', status: 'pending' },
-      { id: 'drafting', label: 'Redactando la respuesta', status: 'pending' },
-      { id: 'verifying', label: 'Verificando la precisión', status: 'pending' }
+      { id: 'drafting', label: 'Redactando la respuesta', status: 'pending' }
     ];
 
     try {
@@ -656,9 +655,6 @@ export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: 
                 setProgressSteps(prev => prev.map(step => 
                   step.id === 'drafting' ? { ...step, status: 'completed' as const } : step
                 ));
-                setProgressSteps(prev => prev.map(step => 
-                  step.id === 'verifying' ? { ...step, status: 'in-progress' as const } : step
-                ));
                 hasStartedStreaming = true;
               }
 
@@ -681,13 +677,7 @@ export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: 
         }
       }
 
-      // Completar verificación
-      setProgressSteps(prev => prev.map(step => 
-        step.id === 'verifying' ? { ...step, status: 'completed' as const } : step
-      ));
-      
-      // Esperar antes de limpiar
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Limpiar pasos de progreso
       setProgressSteps([]);
 
       // 🆕 CRÍTICO: Guardar mensaje del usuario en la BD
@@ -738,7 +728,7 @@ export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: 
   };
 
   const handleUploadSuccess = () => {
-    toast({ title: 'Éxito', description: 'Documento cargado y verificado correctamente' });
+    toast({ title: 'Éxito', description: 'Documento cargado y procesado correctamente' });
     window.dispatchEvent(new CustomEvent('documentsUpdated'));
     // Las sugerencias se actualizarán automáticamente via el evento documentsUpdated
   };
@@ -1128,17 +1118,6 @@ export const ChatPanel = ({ displayedUserId, isGuestMode = false, guestToken }: 
                             </Tooltip>
                           </>
 
-                          {!isLoading && (
-                            <>
-                              <div className="flex-1" />
-                              <div className="flex items-center gap-2">
-                                <ShieldCheck className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                                <span className="text-xs font-medium text-green-600 dark:text-green-400">
-                                  Verificada
-                                </span>
-                              </div>
-                            </>
-                          )}
                         </div>
                       )}
                     </div>

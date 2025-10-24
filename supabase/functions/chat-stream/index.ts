@@ -596,42 +596,11 @@ CONTEXTO CLÍNICO DEL PACIENTE (3 FUENTES DE DATOS INTEGRADAS)
       });
     }
 
-    // FLUJO PRINCIPAL CON AUDITORÍA
-    console.log("Iniciando generación con auditoría...");
-    let finalResponse = "";
-    let auditPassed = false;
-    const MAX_ATTEMPTS = 2;
-
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS && !auditPassed; attempt++) {
-      console.log(`Intento ${attempt} de generación...`);
-      
-      // Paso 1: Generar respuesta borrador
-      const draft = await generateResponse(
-        attempt > 1 ? "La respuesta anterior fue rechazada por el auditor. Genera una nueva respuesta más precisa y basada estrictamente en los documentos." : ""
-      );
-      
-      console.log(`Respuesta generada (${draft.length} caracteres). Enviando a auditoría...`);
-      
-      // Paso 2: Auditar la respuesta
-      const auditResult = await auditResponse(draft);
-      console.log(`Resultado de auditoría: ${auditResult.valido ? "VÁLIDO" : "INVÁLIDO"} - ${auditResult.justificacion}`);
-
-      // Heurística de respaldo: si el borrador cita al menos un documento real, lo aceptamos
-      const docNames = (documents || []).map((d: any) => d.file_name).filter(Boolean);
-      const hasCitation = docNames.some((n: string) => draft.includes(String(n)));
-      
-      if (auditResult.valido || hasCitation) {
-        finalResponse = draft;
-        auditPassed = true;
-        console.log(hasCitation && !auditResult.valido 
-          ? "Respuesta aceptada por citar documentos reales (fallback)" 
-          : "Respuesta aprobada por el auditor");
-      } else if (attempt === MAX_ATTEMPTS) {
-        // Paso 3: Si no se aprueba después de MAX_ATTEMPTS, usar mensaje de seguridad
-        console.log("Máximo de intentos alcanzado. Usando mensaje de seguridad.");
-        finalResponse = SAFETY_MESSAGE;
-        auditPassed = true; // Para salir del loop
-      }
+    // FLUJO SIMPLIFICADO SIN AUDITORÍA (optimizado por rendimiento)
+    console.log("Iniciando generación sin auditoría...");
+    let finalResponse = await generateResponse("");
+    if (!finalResponse || finalResponse.trim().length === 0) {
+      finalResponse = SAFETY_MESSAGE;
     }
 
     // Guardar mensaje del asistente en DB (solo para usuarios autenticados)
@@ -641,7 +610,6 @@ CONTEXTO CLÍNICO DEL PACIENTE (3 FUENTES DE DATOS INTEGRADAS)
       ]);
     }
 
-    // Paso 4: Simular streaming de la respuesta validada
     const responseStream = simulateStream(finalResponse);
 
     return new Response(responseStream, {
