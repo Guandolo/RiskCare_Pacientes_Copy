@@ -4,20 +4,38 @@ steps:
     entrypoint: node
     args: ['-v']
 
-  # Build Docker image using the Dockerfile at repo root
+  # Build Docker image using .env (fallback) or substitutions
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build'
+    entrypoint: bash
     args:
-      - 'build'
-      - '-f'
-      - 'Dockerfile'
-      - '--build-arg'
-      - 'VITE_SUPABASE_URL=$_VITE_SUPABASE_URL'
-      - '--build-arg'
-      - 'VITE_SUPABASE_PUBLISHABLE_KEY=$_VITE_SUPABASE_PUBLISHABLE_KEY'
-      - '-t'
-      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/$_IMAGE:$SHORT_SHA'
-      - '.'
+      - -ceu
+      - |
+        SUPABASE_URL="${_VITE_SUPABASE_URL:-}"
+        SUPABASE_KEY="${_VITE_SUPABASE_PUBLISHABLE_KEY:-}"
+
+        if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_KEY" ]]; then
+          echo "Reading values from .env..."
+          if [[ -f .env ]]; then
+            SUPABASE_URL=$(grep -E '^VITE_SUPABASE_URL=' .env | head -n1 | cut -d '=' -f2- | tr -d '"\'')
+            SUPABASE_KEY=$(grep -E '^VITE_SUPABASE_PUBLISHABLE_KEY=' .env | head -n1 | cut -d '=' -f2- | tr -d '"\'')
+          fi
+        fi
+
+        if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_KEY" ]]; then
+          echo "ERROR: Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY. Define substitutions or put them in .env" >&2
+          exit 1
+        fi
+
+        echo "Using VITE_SUPABASE_URL=$SUPABASE_URL"
+        echo "Using VITE_SUPABASE_PUBLISHABLE_KEY=$(echo "$SUPABASE_KEY" | cut -c1-8)********"
+
+        docker build \
+          -f Dockerfile \
+          --build-arg VITE_SUPABASE_URL="$SUPABASE_URL" \
+          --build-arg VITE_SUPABASE_PUBLISHABLE_KEY="$SUPABASE_KEY" \
+          -t "$_REGION-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/$_IMAGE:$SHORT_SHA" \
+          .
 
   # Push the image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
