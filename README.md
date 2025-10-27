@@ -64,6 +64,41 @@ This project is built with:
 
 Simply open [Lovable](https://lovable.dev/projects/2ef49cca-cba6-4684-88ab-6fc3b04f0484) and click on Share -> Publish.
 
+## Deploy to Google Cloud Run (CI with Cloud Build)
+
+This project includes a `cloudbuild.yaml` that builds the Docker image and deploys it to Cloud Run. The build requires two Vite environment values to be provided at build-time:
+
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_PUBLISHABLE_KEY
+
+Recommended (secure) flow: use Secret Manager and the provided helper script.
+
+Quick automated steps (from your machine):
+
+1. Ensure `gcloud` is installed and you're authenticated:
+
+```powershell
+gcloud auth login
+gcloud config set project <YOUR_PROJECT_ID>
+```
+
+2. Run the helper script to create secrets, grant access to Cloud Build and submit the build.
+
+```powershell
+# from the repo root
+powershell.exe -ExecutionPolicy Bypass -File .\scripts\deploy-cloudrun.ps1 -ProjectId <YOUR_PROJECT_ID>
+```
+
+The script will prompt for the two Vite values (it won't store them in plaintext in the repo). After submission Cloud Build will build the image and deploy to Cloud Run.
+
+Alternative (quick test): pass substitutions on build submit (not recommended for secrets in CI):
+
+```powershell
+gcloud builds submit --config cloudbuild.yaml --substitutions=_VITE_SUPABASE_URL="https://...",_VITE_SUPABASE_PUBLISHABLE_KEY="pk_..."
+```
+
+If you need help running the script or want me to prepare a Cloud Build trigger configuration, dime y te guío paso a paso.
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!
