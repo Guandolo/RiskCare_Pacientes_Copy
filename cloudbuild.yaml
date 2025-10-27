@@ -4,37 +4,31 @@ steps:
     entrypoint: node
     args: ['-v']
 
-  # Build Docker image using .env (fallback) or substitutions
+  # Build Docker image: prefer secrets injected from Secret Manager (env vars),
+  # fall back to substitutions (_VITE_...) if present.
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build'
     entrypoint: bash
     args:
-      - -ceu
+      - -c
       - |
-        SUPABASE_URL="${_VITE_SUPABASE_URL:-}"
-        SUPABASE_KEY="${_VITE_SUPABASE_PUBLISHABLE_KEY:-}"
+        # Prefer secret-env vars (injected via availableSecrets). If not present,
+        # fall back to substitutions provided to the build (_VITE_...)
+        SUPABASE_URL="${VITE_SUPABASE_URL:-${_VITE_SUPABASE_URL:-}}"
+        SUPABASE_KEY="${VITE_SUPABASE_PUBLISHABLE_KEY:-${_VITE_SUPABASE_PUBLISHABLE_KEY:-}}"
 
         if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_KEY" ]]; then
-          echo "Reading values from .env..."
-          if [[ -f .env ]]; then
-            SUPABASE_URL=$(grep -E '^VITE_SUPABASE_URL=' .env | head -n1 | cut -d '=' -f2- | tr -d '"\'')
-            SUPABASE_KEY=$(grep -E '^VITE_SUPABASE_PUBLISHABLE_KEY=' .env | head -n1 | cut -d '=' -f2- | tr -d '"\'')
-          fi
-        fi
-
-        if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_KEY" ]]; then
-          echo "ERROR: Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY. Define substitutions or put them in .env" >&2
+          echo "ERROR: Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY.\n\nOptions to fix:\n  - Create secrets in Secret Manager and configure this build to use them (recommended).\n  - Provide substitutions when running the build: --substitutions=_VITE_SUPABASE_URL=...,_VITE_SUPABASE_PUBLISHABLE_KEY=...\n  - Add a .env file in the repo with the vars (not recommended for production)." >&2
           exit 1
         fi
 
-        echo "Using VITE_SUPABASE_URL=$SUPABASE_URL"
-        echo "Using VITE_SUPABASE_PUBLISHABLE_KEY=$(echo "$SUPABASE_KEY" | cut -c1-8)********"
+        echo "Using VITE_SUPABASE_URL=${SUPABASE_URL:0:40}..."
 
         docker build \
           -f Dockerfile \
           --build-arg VITE_SUPABASE_URL="$SUPABASE_URL" \
           --build-arg VITE_SUPABASE_PUBLISHABLE_KEY="$SUPABASE_KEY" \
-          -t "$_REGION-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/$_IMAGE:$SHORT_SHA" \
+          -t "${_REGION}-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/$_IMAGE:$SHORT_SHA" \
           .
 
   # Push the image to Artifact Registry
@@ -76,3 +70,10 @@ substitutions:
   _IMAGE: 'riskcare-pacientes'
   _VITE_SUPABASE_URL: ''
   _VITE_SUPABASE_PUBLISHABLE_KEY: ''
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/VITE_SUPABASE_URL/versions/latest
+      env: VITE_SUPABASE_URL
+    - versionName: projects/$PROJECT_ID/secrets/VITE_SUPABASE_PUBLISHABLE_KEY/versions/latest
+      env: VITE_SUPABASE_PUBLISHABLE_KEY
