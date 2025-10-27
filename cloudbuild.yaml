@@ -17,8 +17,16 @@ steps:
         SUPABASE_URL="${VITE_SUPABASE_URL:-${_VITE_SUPABASE_URL:-}}"
         SUPABASE_KEY="${VITE_SUPABASE_PUBLISHABLE_KEY:-${_VITE_SUPABASE_PUBLISHABLE_KEY:-}}"
 
+        # If still empty, try to read from .env in repo
         if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_KEY" ]]; then
-          echo "ERROR: Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY.\n\nOptions to fix:\n  - Create secrets in Secret Manager and configure this build to use them (recommended).\n  - Provide substitutions when running the build: --substitutions=_VITE_SUPABASE_URL=...,_VITE_SUPABASE_PUBLISHABLE_KEY=...\n  - Add a .env file in the repo with the vars (not recommended for production)." >&2
+          if [[ -f .env ]]; then
+            SUPABASE_URL=$(grep -E '^VITE_SUPABASE_URL=' .env | head -n1 | cut -d '=' -f2- | tr -d '"\'' | tr -d '\r')
+            SUPABASE_KEY=$(grep -E '^VITE_SUPABASE_PUBLISHABLE_KEY=' .env | head -n1 | cut -d '=' -f2- | tr -d '"\'' | tr -d '\r')
+          fi
+        fi
+
+        if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_KEY" ]]; then
+          echo "ERROR: Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY.\n\nOptions to fix:\n  - Create secrets in Secret Manager and configure this build to use them (recommended).\n  - Provide substitutions when running the build: --substitutions=_VITE_SUPABASE_URL=...,_VITE_SUPABASE_PUBLISHABLE_KEY=...\n  - Or add a .env file in the repo with the vars (dev only)." >&2
           exit 1
         fi
 
