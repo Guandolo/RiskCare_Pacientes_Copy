@@ -9,8 +9,8 @@ RUN npm install -g bun
 COPY package.json ./
 COPY bun.lockb ./
 
-# Install deps
-RUN bun install --frozen-lockfile
+# Install deps (allow lockfile update to include new deps)
+RUN bun install
 
 # Copy the rest of the app
 COPY . .
@@ -40,4 +40,3 @@ EXPOSE 8080
 
 # Start server (expand $PORT via shell)
 CMD ["sh", "-c", "serve -s dist -l ${PORT}"]
-
