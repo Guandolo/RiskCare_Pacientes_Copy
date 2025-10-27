@@ -1,40 +1,19 @@
 steps:
-  # Print Node.js version
+  # Just show node version (sanity)
   - name: 'node:20-alpine'
     entrypoint: node
     args: ['-v']
 
-  # Build the container image with build args
-  - name: 'gcr.io/cloud-builders/docker'
-    args: [
-      'build',
-      '--build-arg', 'NODE_ENV=production',
-      '--build-arg', 'VITE_SUPABASE_URL=$_VITE_SUPABASE_URL',
-      '--build-arg', 'VITE_SUPABASE_PUBLISHABLE_KEY=$_VITE_SUPABASE_PUBLISHABLE_KEY',
-      '-t', 'gcr.io/$PROJECT_ID/riskcare-pacientes',
-      '.'
-    ]
-    id: 'build'
-    
-  # Test the container
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['run', '--rm', 'gcr.io/$PROJECT_ID/riskcare-pacientes', 'node', '-v']
-    id: 'test'
-    
-  # Push the container image
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/riskcare-pacientes']
-    id: 'push'
-    
-  # Deploy to Cloud Run
+  # Deploy from source using Cloud Buildpacks (no Dockerfile)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy'
     entrypoint: gcloud
     args:
       - 'run'
       - 'deploy'
-      - 'riskcare-pacientes'
-      - '--image'
-      - 'gcr.io/$PROJECT_ID/riskcare-pacientes'
+      - '$_SERVICE_NAME'
+      - '--source'
+      - '.'
       - '--region'
       - 'northamerica-south1'
       - '--platform'
@@ -44,13 +23,12 @@ steps:
       - '8080'
       - '--memory'
       - '512Mi'
-    id: 'deploy'
-
-images:
-  - 'gcr.io/$PROJECT_ID/riskcare-pacientes'
+      - '--set-build-env-vars'
+      - 'VITE_SUPABASE_URL=$_VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY=$_VITE_SUPABASE_PUBLISHABLE_KEY'
 
 timeout: '1800s'
 
 substitutions:
+  _SERVICE_NAME: 'riskcare-pacientes-copy'
   _VITE_SUPABASE_URL: ''
   _VITE_SUPABASE_PUBLISHABLE_KEY: ''
