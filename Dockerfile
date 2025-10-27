@@ -19,11 +19,12 @@ COPY . .
 # Build the application
 RUN bun run build
 
-# Install a simple server to serve the static files
-RUN npm install -g serve
+# Install a production-grade server
+RUN npm install -g @google/local-server
 
-# Expose the port the app runs on
+# Expose the port that Cloud Run will use
+ENV PORT=8080
 EXPOSE 8080
 
-# Command to run the application
-CMD ["serve", "-s", "dist", "-l", "8080"]
+# Command to run the application with proper headers and configuration
+CMD ["local-server", "dist", "--host", "0.0.0.0", "--port", "8080", "--cors"]
