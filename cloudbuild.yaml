@@ -1,10 +1,32 @@
 steps:
-  # Just show node version (sanity)
+  # Print Node.js version (sanity)
   - name: 'node:20-alpine'
     entrypoint: node
     args: ['-v']
 
-  # Deploy from source using Cloud Buildpacks (no Dockerfile)
+  # Build Docker image using the Dockerfile at repo root
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build'
+    args:
+      - 'build'
+      - '-f'
+      - 'Dockerfile'
+      - '--build-arg'
+      - 'VITE_SUPABASE_URL=$_VITE_SUPABASE_URL'
+      - '--build-arg'
+      - 'VITE_SUPABASE_PUBLISHABLE_KEY=$_VITE_SUPABASE_PUBLISHABLE_KEY'
+      - '-t'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/$_IMAGE:$SHORT_SHA'
+      - '.'
+
+  # Push the image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push'
+    args:
+      - 'push'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/$_IMAGE:$SHORT_SHA'
+
+  # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'deploy'
     entrypoint: gcloud
@@ -12,10 +34,10 @@ steps:
       - 'run'
       - 'deploy'
       - '$_SERVICE_NAME'
-      - '--source'
-      - '.'
+      - '--image'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/$_IMAGE:$SHORT_SHA'
       - '--region'
-      - 'northamerica-south1'
+      - '$_REGION'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
@@ -23,12 +45,16 @@ steps:
       - '8080'
       - '--memory'
       - '512Mi'
-      - '--set-build-env-vars'
-      - 'VITE_SUPABASE_URL=$_VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY=$_VITE_SUPABASE_PUBLISHABLE_KEY'
+
+images:
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/$_IMAGE:$SHORT_SHA'
 
 timeout: '1800s'
 
 substitutions:
   _SERVICE_NAME: 'riskcare-pacientes-copy'
+  _REGION: 'northamerica-south1'
+  _AR_REPO: 'docker'
+  _IMAGE: 'riskcare-pacientes'
   _VITE_SUPABASE_URL: ''
   _VITE_SUPABASE_PUBLISHABLE_KEY: ''
