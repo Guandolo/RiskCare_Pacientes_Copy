@@ -9,9 +9,14 @@ dist
 .gitignore
 .gitattributes
 
-# Local env and secrets (do not bake into image)
-.env
-.env.*
+# Local env and secrets
+# Allow .env so Vite can read values during build if build-args are not provided.
+#! Be cautious with real secrets; these VITE_* are public for frontend.
+!.env
+*.env.local
+*.env.development
+*.env.test
+*.env.ci
 !.env.example
 *.pem
 *.key

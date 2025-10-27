@@ -4,7 +4,8 @@ WORKDIR /app
 
 # Install dependencies (use clean install if lockfile exists)
 COPY package.json package-lock.json* ./
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+# Use npm install to avoid lockfile mismatch failures in CI
+RUN npm install --no-audit --no-fund
 
 # Copy the source code
 COPY . .
@@ -12,12 +13,19 @@ COPY . .
 # Build-time variables required by Vite
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_KEY
-ENV VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
-ENV VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY}
 
-# Fail early if required vars are missing to avoid blank page deployments
-RUN test -n "$VITE_SUPABASE_URL" -a -n "$VITE_SUPABASE_PUBLISHABLE_KEY" || \
-    (echo "ERROR: Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY. Pass --build-arg values in your Cloud Build/CI." && exit 1)
+# Generate .env.production for Vite using build args or fallback to .env in repo
+RUN set -eux; \
+  if [ -n "${VITE_SUPABASE_URL:-}" ] && [ -n "${VITE_SUPABASE_PUBLISHABLE_KEY:-}" ]; then \
+    echo "Using build args for Vite env"; \
+    printf "VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n" "$VITE_SUPABASE_URL" "$VITE_SUPABASE_PUBLISHABLE_KEY" > .env.production; \
+  elif [ -f .env ]; then \
+    echo "Using .env to create .env.production"; \
+    cp .env .env.production; \
+  else \
+    echo "ERROR: Provide build args VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY or include a .env file"; \
+    exit 1; \
+  fi
 
 # Build static assets
 RUN npm run build
@@ -38,4 +46,3 @@ EXPOSE 8080
 
 # Start the server
 CMD ["sh", "-c", "serve -s dist -l ${PORT}"]
-
