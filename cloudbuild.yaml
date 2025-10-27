@@ -1,13 +1,30 @@
 steps:
-  # Build the container image
+  # Print Node.js version
+  - name: 'node:20-alpine'
+    entrypoint: node
+    args: ['-v']
+
+  # Build the container image with build args
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/riskcare-pacientes', '.']
-  
-  # Push the container image to Container Registry
+    args: [
+      'build',
+      '--build-arg', 'NODE_ENV=production',
+      '-t', 'gcr.io/$PROJECT_ID/riskcare-pacientes',
+      '.'
+    ]
+    id: 'build'
+    
+  # Test the container
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['run', '--rm', 'gcr.io/$PROJECT_ID/riskcare-pacientes', 'node', '-v']
+    id: 'test'
+    
+  # Push the container image
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/riskcare-pacientes']
-  
-  # Deploy container image to Cloud Run
+    id: 'push'
+    
+  # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -17,10 +34,17 @@ steps:
       - '--image'
       - 'gcr.io/$PROJECT_ID/riskcare-pacientes'
       - '--region'
-      - 'us-central1'
+      - 'northamerica-south1'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
+      - '--memory'
+      - '512Mi'
+    id: 'deploy'
 
 images:
   - 'gcr.io/$PROJECT_ID/riskcare-pacientes'
+
+timeout: '1800s'

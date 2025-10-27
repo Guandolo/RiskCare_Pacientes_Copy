@@ -1,30 +1,33 @@
-# Use an official Node.js runtime as the base image
-FROM node:20-slim
+# Use Node.js 20 as the base image
+FROM node:20-alpine
 
-# Set the working directory in the container
+# Set working directory
 WORKDIR /app
 
-# Install bun
+# Install bun globally
 RUN npm install -g bun
 
-# Copy package.json and bun.lockb
-COPY package.json bun.lockb ./
+# Copy package files
+COPY package.json .
+COPY bun.lockb .
 
-# Install dependencies using bun
+# Install dependencies
 RUN bun install
 
-# Copy the rest of the application code
+# Copy application files
 COPY . .
 
 # Build the application
 RUN bun run build
 
-# Install a production-grade server
-RUN npm install -g @google/local-server
+# Use a lightweight production server
+RUN npm install -g serve
 
-# Expose the port that Cloud Run will use
+# Set environment variable for port
 ENV PORT=8080
+
+# Expose the port
 EXPOSE 8080
 
-# Command to run the application with proper headers and configuration
-CMD ["local-server", "dist", "--host", "0.0.0.0", "--port", "8080", "--cors"]
+# Start the server
+CMD serve -s dist -l $PORT
