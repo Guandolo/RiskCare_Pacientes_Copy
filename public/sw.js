@@ -1,5 +1,5 @@
 // Versión estática del cache - cambiar manualmente cuando se necesite actualizar
-const CACHE_VERSION = 'riskcare-v3-stable';
+const CACHE_VERSION = 'riskcare-v4-20251027';
 const CACHE_NAME = CACHE_VERSION;
 
 // Install: NO usar skipWaiting automáticamente para evitar recargas forzadas
