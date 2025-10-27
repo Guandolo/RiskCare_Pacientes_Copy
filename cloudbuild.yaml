@@ -9,6 +9,8 @@ steps:
     args: [
       'build',
       '--build-arg', 'NODE_ENV=production',
+      '--build-arg', 'VITE_SUPABASE_URL=$_VITE_SUPABASE_URL',
+      '--build-arg', 'VITE_SUPABASE_PUBLISHABLE_KEY=$_VITE_SUPABASE_PUBLISHABLE_KEY',
       '-t', 'gcr.io/$PROJECT_ID/riskcare-pacientes',
       '.'
     ]
@@ -48,3 +50,7 @@ images:
   - 'gcr.io/$PROJECT_ID/riskcare-pacientes'
 
 timeout: '1800s'
+
+substitutions:
+  _VITE_SUPABASE_URL: ''
+  _VITE_SUPABASE_PUBLISHABLE_KEY: ''
