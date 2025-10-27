@@ -21,6 +21,11 @@ ARG VITE_SUPABASE_PUBLISHABLE_KEY
 ENV VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
 ENV VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY}
 
+# Validate required build args to avoid blank pages at runtime
+RUN test -n "$VITE_SUPABASE_URL" && \
+    test -n "$VITE_SUPABASE_PUBLISHABLE_KEY" || \
+    (echo "ERROR: VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY missing. Pass --build-arg values in Cloud Build." && exit 1)
+
 # Build static assets
 RUN bun run build
 
