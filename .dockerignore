@@ -1,0 +1,38 @@
+# Dependencies and build output
+node_modules
+dist
+.next
+.turbo
+
+# VCS and metadata
+.git
+.gitignore
+.gitattributes
+
+# Local env and secrets (do not bake into image)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Logs and caches
+*.log
+logs
+cache
+tmp
+.cache
+
+# Editor/OS files
+.DS_Store
+.vscode
+.idea
+Thumbs.db
+
+# Misc
+Dockerfile
+.dockerignore
+README.md
+**/__tests__/
+**/*.spec.*
+**/*.test.*
