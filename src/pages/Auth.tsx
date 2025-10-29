@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "@/components/ui/sonner";
 import riskCareLogo from "@/assets/riskcare-logo.png";
 import { supabase } from "@/integrations/supabase/client";
+import { getAppUrl } from "@/utils/constants";
 
 const Auth = () => {
   const [authLoading, setAuthLoading] = useState(false);
@@ -23,7 +24,7 @@ const Auth = () => {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: `${getAppUrl()}/`,
           queryParams: { prompt: 'select_account' },
           skipBrowserRedirect: true,
         },
