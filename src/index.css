@@ -77,26 +77,28 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 244 88% 8%;
+    /* Gris neutro profundo (no azulado) */
+    --background: 220 15% 12%;
     --foreground: 0 0% 95%;
 
-    --card: 244 70% 12%;
+    --card: 220 14% 16%;
     --card-foreground: 0 0% 95%;
 
-    --popover: 244 70% 12%;
+    --popover: 220 14% 16%;
     --popover-foreground: 0 0% 95%;
 
+    /* Mantiene acentos de marca, fondo ya no es azul */
     --primary: 240 100% 35%;
     --primary-foreground: 0 0% 100%;
     --primary-light: 240 100% 50%;
-    --primary-dark: 244 88% 15%;
+    --primary-dark: 240 80% 20%;
 
     --secondary: 181 100% 43%;
     --secondary-foreground: 244 88% 15%;
     --secondary-light: 181 100% 55%;
 
-    --muted: 244 50% 18%;
-    --muted-foreground: 220 15% 65%;
+    --muted: 220 10% 20%;
+    --muted-foreground: 220 12% 70%;
 
     --accent: 189 70% 47%;
     --accent-foreground: 0 0% 100%;
@@ -110,13 +112,13 @@ All colors MUST be HSL.
     --destructive: 0 80% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 244 50% 20%;
-    --input: 244 50% 18%;
+    --border: 220 10% 24%;
+    --input: 220 10% 20%;
     --ring: 240 100% 35%;
 
     --gradient-primary: linear-gradient(135deg, hsl(240, 100%, 35%), hsl(181, 100%, 43%));
-    --gradient-subtle: linear-gradient(180deg, hsl(244, 88%, 8%), hsl(244, 70%, 12%));
-    --gradient-card: linear-gradient(145deg, hsl(244, 70%, 12%), hsl(244, 60%, 15%));
+    --gradient-subtle: linear-gradient(180deg, hsl(220, 15%, 12%), hsl(220, 14%, 16%));
+    --gradient-card: linear-gradient(145deg, hsl(220, 14%, 16%), hsl(220, 12%, 20%));
 
     --shadow-sm: 0 2px 4px hsl(0, 0%, 0%, 0.3);
     --shadow-md: 0 4px 16px hsl(0, 0%, 0%, 0.4);
