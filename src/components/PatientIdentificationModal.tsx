@@ -35,12 +35,16 @@ export const PatientIdentificationModal = ({ open, onComplete, userId }: Patient
   const [phone, setPhone] = useState("");
 
   const fetchTopusData = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('No hay sesión activa');
+
     const { data, error } = await supabase.functions.invoke('fetch-topus-data', {
-      body: { documentType, identification }
+      body: { documentType, identification },
+      headers: { Authorization: `Bearer ${session.access_token}` }
     });
 
     if (error) throw error;
-    if (!data.success) throw new Error(data.error || 'Error al consultar Topus');
+    if (!data?.success) throw new Error(data?.error || 'Error al consultar Topus');
     
     return data.data;
   };
